@@ -5,10 +5,18 @@ points you at the test workflow.
 
 ## Requirements
 
-- Windows 10/11 with **WSL ≥ 2.9.3** including WSL Containers (`wsl --install --no-distribution`).
-- .NET SDK 11 or later; the packages target `net11.0-windows10.0.19041.0` (x64).
-- Verify the host with `wsl --version` (needs 2.9.3+) and `wslc version`. The library never installs or
-  updates WSL for you — call `WslContainerRuntime.GetInfoAsync()` to report what is missing.
+- Windows 10/11 with **WSL Containers** (`wsl --install --no-distribution`), verified against WSL
+  3.0.1.0.
+- **A .NET 11 project targeting Windows specifically** — `net11.0-windows10.0.19041.0`, x64 or
+  arm64. The packages ship MSBuild defaults for `WindowsSdkPackageVersion` and `PlatformTarget`;
+  an unsupported target framework fails the build with `PWC0001` and a non-64-bit consumer with
+  `PWC0002`. The full contract, every error, and the `EnableWindowsTargeting` workaround for
+  non-Windows CI agents live in [Consumer Requirements](Consumer-Requirements.md).
+- Verify the host with `wsl --version` and `wslc version`. The library never installs or updates WSL
+  for you — call `WslContainerRuntime.GetInfoAsync()` to report what is missing.
+
+> **Experimental.** The API, defaults and packaging rules can change between prereleases; there is no
+> production support guarantee.
 
 ## 1. Reference a package
 

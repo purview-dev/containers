@@ -13,8 +13,13 @@ Each package ships exactly:
 | `lib/$(TFM)/Purview.WslContainers[.<Module>].xml` | XML documentation, generated because `GenerateDocumentationFile` is on for packable projects. |
 | `README.md` | The package's bespoke `Sdk/README.md` (see below). |
 | `purview-logo-light.png` | The shared Purview package icon (`assets/images/purview-logo-light.png`). |
+| `buildTransitive/Purview.WslContainers.props` | **Core package only.** Defaults `WindowsSdkPackageVersion` for consumers. |
+| `buildTransitive/Purview.WslContainers.targets` | **Core package only.** Defaults `PlatformTarget` to `x64` and raises `PWC0001`/`PWC0002` for unsupported consumers. |
 
 Portable PDBs are delivered through the `.snupkg`, never inside the `.nupkg`.
+
+`$(TFM)` is `net11.0-windows10.0.19041.0`, so every package is a **.NET 11, Windows-only** package.
+Consumers must target a matching framework; see [Consumer Requirements](Consumer-Requirements.md).
 
 ## The `Sdk/` folder convention
 
@@ -61,6 +66,11 @@ alongside the `Sdk/README.md`. Removing content from a package means removing th
 2. Add `Sdk/README.md` documenting the package (see the existing modules for the shape).
 3. Add the package to `RequiredContent` in `purview-build.json`.
 4. Prove it with `just pack` and `just pipeline-pack-validate`.
+
+The two `Sdk/buildTransitive/` files belong to the **core** package only: a module inherits them
+through its dependency on `Purview.WslContainers`. They are declared in `RequiredContent` like any
+other asset, so a package that starts or stops shipping MSBuild assets has to update that manifest —
+a produced package with no rule, or a packed entry matched by no glob, fails validation.
 
 ## Related
 

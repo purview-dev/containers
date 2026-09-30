@@ -9,6 +9,10 @@ applies that value to `Version` and `PackageVersion` for every project, so a rel
 bump — never a manual project-file edit. `package.json` also carries the repository, homepage and issue URLs
 that end up in each nuspec.
 
+The project is **experimental**, so versions stay on a `-prerelease.N` suffix: consumers should pin an
+exact version rather than float, and each bump can change the API or the
+[consumer requirements](Consumer-Requirements.md).
+
 ## Local commands
 
 The `Justfile` wraps the common steps:
@@ -19,6 +23,7 @@ The `Justfile` wraps the common steps:
 | `just test` | `dotnet test` across the solution, one test module at a time (see [Testing](Testing.md)). |
 | `just lint-check` / `just lint-fix` | CSharpier check / format over the repository root. |
 | `just pack` | Build (Debug) and `dotnet pack` into `./artifacts`. |
+| `just verify-consumers` | Pack, then build throwaway consumer projects that assert the published consumer contract ([Consumer Requirements](Consumer-Requirements.md)). |
 | `just scrub` | Delete `bin`/`obj`, clean, re-restore with `--force-evaluate`, and shut down the build server. |
 | `just pipeline-pack-validate` | Shared pipeline: restore, build, lint, test, pack and **validate** the packages, without publishing. |
 
@@ -50,6 +55,12 @@ the run with the failing module's output.
 
 Both workflows pin `dotnet-version` to the SDK in `global.json` (`11.0.100-rc.1.26425.128`); keep them in
 sync when the SDK is bumped, and keep `purview-build.json` pointing at `src/WSLTestContainers.slnx`.
+
+The shared workflow runs on **`ubuntu-latest`**, so the Linux agent builds these
+`net11.0-windows10.0.19041.0` projects. That only works because `src/Directory.Build.props` sets
+`EnableWindowsTargeting=true`; removing it fails the pipeline with `NETSDK1100`. The agent has no WSL
+Containers, which is why the pipeline is filtered to `[Category=Unit]` — see
+[Consumer Requirements](Consumer-Requirements.md) and [Testing](Testing.md).
 
 ## Related
 

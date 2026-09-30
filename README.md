@@ -1,26 +1,39 @@
 # Purview.WslContainers
 
+[![NuGet version](https://img.shields.io/nuget/v/Purview.WslContainers.svg)](https://www.nuget.org/packages/Purview.WslContainers)
+[![Release](https://github.com/purview-dev/wslc-testcontainers/actions/workflows/release.yml/badge.svg)](https://github.com/purview-dev/wslc-testcontainers/actions/workflows/release.yml)
+
 A **WSLC-native** Testcontainers-style library for .NET that runs throwaway Linux containers for integration testing on **Microsoft WSL Containers (WSLC)** — with no Docker installation.
 
 Built directly against the `Microsoft.WSL.Containers` NuGet package (the WSLC managed C# API). No `wslc.exe`/`wsl.exe`/`docker` CLI, no Docker.DotNet, no Testcontainers internally.
+
+> **Experimental.** This project is an experiment in running throwaway containers through Microsoft
+> WSL Containers. The public API, defaults and packaging rules can change between prereleases, and
+> there is no production support guarantee. Pin the exact package version you build against, and read
+> [Consumer Requirements](docs/wiki/Consumer-Requirements.md) before adopting it.
 
 > **Status: Phase 8 in progress.** Core runtime, wait strategies, the `Image`/`Tag` parser, registry auth,
 > observability, hardening, and **seven service modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite,
 > NATS, MySQL). **Images are shared by default** (`StorageMode.Shared`): sessions reuse a stable
 > image store (`%LOCALAPPDATA%\Purview\WslContainers\images`) so images are pulled once, not per session;
-> `StorageMode.PerSession` provides isolation. 69+ unit tests pass across all modules.
+> `StorageMode.PerSession` provides isolation. 76 unit tests pass across all modules.
 
 ## Prerequisites
 
-- Windows 10/11
-- **WSL ≥ 3.0.1.0** with WSL Containers, installed via `wsl --install --no-distribution`
-- .NET SDK 11 (the repo pins `11.0.100-rc.1`)
+- Windows 10/11.
+- **WSL Containers**, installed via `wsl --install --no-distribution` (verified against WSL 3.0.1.0).
+- .NET SDK 11 (the repo pins `11.0.100-rc.1`).
+- A **consuming project must be a .NET 11 project that targets Windows specifically** —
+  `net11.0-windows10.0.19041.0`, x64 or arm64. The packages ship MSBuild defaults for the supporting
+  settings; the full contract, the exact errors raised when it is not met, and the
+  `EnableWindowsTargeting` workaround for non-Windows CI agents are documented in
+  [Consumer Requirements](docs/wiki/Consumer-Requirements.md).
 
 Verify:
 
 ```powershell
-wsl --version     # needs 3.0.1.0+
-wslc version      # needs 3.0.1.0+
+wsl --version     # WSL Containers installed (verified against 3.0.1.0)
+wslc version      # e.g. 3.0.1.0
 ```
 
 The library reports missing prerequisites via `WslContainerRuntime.GetInfoAsync()`; it never installs or updates WSL on its own.
@@ -129,6 +142,7 @@ The project documentation lives in [`docs/wiki`](docs/wiki/Home.md) and is publi
 (`mkdocs.yml`, `docs_dir: docs/wiki`, aggregated by the purview-dev website):
 
 - [Getting Started](docs/wiki/Getting-Started.md) — prerequisites, first container, first module.
+- [Consumer Requirements](docs/wiki/Consumer-Requirements.md) — the .NET 11 + Windows target framework contract, the `PWC0001`/`PWC0002` guards, and the CI workarounds.
 - [Architecture](docs/wiki/Architecture.md) — the shared session model, concurrency and cleanup decisions.
 - [Lifecycle](docs/wiki/Lifecycle.md), [Networking](docs/wiki/Networking.md), [Wait Strategies](docs/wiki/Wait-Strategies.md).
 - [Modules](docs/wiki/Modules.md) — the module contract and every shipped module.
@@ -221,6 +235,18 @@ just test                     # dotnet test, one test module at a time
 
 > The `WslContainers.IntegrationTests` module runs 27 real containers in one session and takes ~4
 > minutes because WSLC serialises container operations; expect slow-test warnings while it runs.
+
+### Verifying the consumer contract
+
+```powershell
+just verify-consumers          # pack, then build 12 throwaway consumer projects against ./artifacts
+just verify-consumers -Keep    # same, keeping the generated projects for inspection
+```
+
+`just verify-consumers` asserts every claim in [Consumer Requirements](docs/wiki/Consumer-Requirements.md):
+the happy path, the shipped `buildTransitive` defaults, the `PWC0001`/`PWC0002` guards, and the
+non-.NET-11 escape hatch that deliberately does not work. It needs network access and is therefore a
+local step rather than part of the `[Category=Unit]` pipeline filter.
 
 ## Running the Phase 0 spikes
 

@@ -8,6 +8,8 @@ directly on **Microsoft WSL Containers**, with no Docker installation.
 
 ## Guides
 
+- [Getting Started](Getting-Started.md)
+- [Consumer requirements](Consumer-Requirements.md)
 - [Architecture](Architecture.md)
 - [Lifecycle](Lifecycle.md)
 - [Networking](Networking.md)

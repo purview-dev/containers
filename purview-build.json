@@ -19,7 +19,9 @@
 				"lib/$(TFM)/Purview.WslContainers.dll",
 				"lib/$(TFM)/Purview.WslContainers.xml",
 				"README.md",
-				"purview-logo-light.png"
+				"purview-logo-light.png",
+				"buildTransitive/Purview.WslContainers.props",
+				"buildTransitive/Purview.WslContainers.targets"
 			],
 			"purview.wslcontainers.azurite": [
 				"lib/$(TFM)/Purview.WslContainers.Azurite.dll",

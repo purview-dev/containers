@@ -10,6 +10,16 @@ dotnet add package Purview.WslContainers.RabbitMq
 Depends on `Purview.WslContainers` (the core runtime). `RabbitMQ.Client` is not referenced by this package —
 bring your own client.
 
+## Requirements
+
+- Windows 10/11 with **WSL Containers** (`wsl --install --no-distribution`).
+- **A .NET 11 project targeting Windows specifically** (`net11.0-windows10.0.19041.0`, x64 or arm64).
+  `Purview.WslContainers` supplies `buildTransitive` defaults for `WindowsSdkPackageVersion` and
+  `PlatformTarget`, and rejects an unsupported consumer with `PWC0001`/`PWC0002` — see the
+  [consumer requirements](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Consumer-Requirements.md).
+- **Experimental:** the API, defaults and packaging can change between prereleases; there is no
+  production support guarantee.
+
 ## Quick start
 
 ```csharp
