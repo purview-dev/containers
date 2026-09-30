@@ -16,7 +16,7 @@ connection-string generation and readiness probing.
 - **A .NET 11 project targeting Windows specifically** (`net11.0-windows10.0.19041.0`, x64 or arm64).
   `Purview.WslContainers` supplies `buildTransitive` defaults for `WindowsSdkPackageVersion` and
   `PlatformTarget`, and rejects an unsupported consumer with `PWC0001`/`PWC0002` — see the
-  [consumer requirements](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Consumer-Requirements.md).
+  [consumer requirements](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Consumer-Requirements.md).
 - **Experimental:** the API, defaults and packaging can change between prereleases; there is no
   production support guarantee.
 
@@ -61,5 +61,5 @@ await connection.OpenAsync();
 
 ## Documentation
 
-- [Modules](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Modules.md) — the module contract and readiness choices.
-- [Getting Started](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Getting-Started.md) — prerequisites and first-container walkthrough.
+- [Modules](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Modules.md) — the module contract and readiness choices.
+- [Getting Started](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Getting-Started.md) — prerequisites and first-container walkthrough.

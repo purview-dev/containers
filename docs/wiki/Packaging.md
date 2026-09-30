@@ -21,6 +21,21 @@ Portable PDBs are delivered through the `.snupkg`, never inside the `.nupkg`.
 `$(TFM)` is `net11.0-windows10.0.19041.0`, so every package is a **.NET 11, Windows-only** package.
 Consumers must target a matching framework; see [Consumer Requirements](Consumer-Requirements.md).
 
+## Package metadata
+
+Metadata is split by where its source of truth lives:
+
+| Metadata | Source |
+| --- | --- |
+| `id`, `description`, `tags`, licence, authors | each project's `.csproj` |
+| `version`, `repository`, `bugs` | `package.json` (applied by `Purview.BuildSdk`) |
+| icon, package README, **project site** | `src/Directory.Build.props`, for every packable project |
+
+The **project site** (`PackageProjectUrl`) is `https://github.com/purview-dev/wsl-containers`, the
+repository that hosts this documentation wiki; it shows as *Project Site* on nuget.org. Repository and
+commit metadata come from SourceLink, so the `repository` entry in a locally packed `.nupkg` points at
+the branch and commit that produced it.
+
 ## The `Sdk/` folder convention
 
 `Purview.BuildSdk` packs a packable project's `Sdk/` folder automatically (`PurviewAutoSdkPack`):

@@ -8,7 +8,7 @@ dotnet add package Purview.WslContainers.Azurite
 ```
 
 Depends on `Purview.WslContainers` (the core runtime).
-See the [Getting Started guide](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Getting-Started.md).
+See the [Getting Started guide](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Getting-Started.md).
 
 ## Requirements
 
@@ -16,7 +16,7 @@ See the [Getting Started guide](https://github.com/purview-dev/wsl-testcontainer
 - **A .NET 11 project targeting Windows specifically** (`net11.0-windows10.0.19041.0`, x64 or arm64).
   `Purview.WslContainers` supplies `buildTransitive` defaults for `WindowsSdkPackageVersion` and
   `PlatformTarget`, and rejects an unsupported consumer with `PWC0001`/`PWC0002` — see the
-  [consumer requirements](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Consumer-Requirements.md).
+  [consumer requirements](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Consumer-Requirements.md).
 - **Experimental:** the API, defaults and packaging can change between prereleases; there is no
   production support guarantee.
 
@@ -52,5 +52,5 @@ for the `successfully listening` log signal. Endpoints and the connection string
 The well-known `devstoreaccount1` key is a published constant of the emulator, but this library does not
 embed it: `AzuriteAccount.Key` holds a placeholder. Supply the real key in your test infrastructure before
 exercising authenticated operations (anonymous/local development paths are unaffected when the client does
-not require the key). See [Modules](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Modules.md)
+not require the key). See [Modules](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Modules.md)
 for the module contract.

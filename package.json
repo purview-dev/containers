@@ -1,17 +1,17 @@
 {
-	"name": "purview-wsl-testcontainers",
+	"name": "purview-wsl-containers",
 	"version": "1.0.0-prerelease.1",
 	"license": "MIT",
 	"author": {
 		"name": "Kieron Lanning",
 		"url": "https://kieronlanning.dev/"
 	},
-	"homepage": "https://purview.dev/projects/wsl-testcontainers/",
+	"homepage": "https://purview.dev/projects/wsl-containers/",
 	"bugs": {
-		"url": "https://github.com/purview-dev/wsl-testcontainers/issues"
+		"url": "https://github.com/purview-dev/wsl-containers/issues"
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/purview-dev/wsl-testcontainers.git"
+		"url": "git+https://github.com/purview-dev/wsl-containers.git"
 	}
 }
