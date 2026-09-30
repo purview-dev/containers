@@ -1,0 +1,71 @@
+{
+	"Build": {
+		"Solution": "src/WSLTestContainers.slnx",
+		"TestRoot": "src/tests",
+		"TestPatterns": "*UnitTests.csproj",
+		"TestProjects": "*Tests.csproj",
+		"TestFilter": "/*/*/*/*[Category=Unit]"
+	},
+	"PackValidation": {
+		"RequireSymbolPackage": true,
+		"RequireSymbolFiles": true,
+		// RequireExplicitContent defaults to true, so this is the exhaustive declaration of what each
+		// package ships: the library assembly and its XML docs, the bespoke package README
+		// (src/src/<Project>/Sdk/README.md) and the shared Purview logo
+		// (assets/images/purview-logo-light.png, linked as Sdk/purview-logo-light.png). A package with
+		// no rule here, or an entry matching none of its globs, fails validation.
+		"RequiredContent": {
+			"purview.wslcontainers": [
+				"lib/$(TFM)/Purview.WslContainers.dll",
+				"lib/$(TFM)/Purview.WslContainers.xml",
+				"README.md",
+				"purview-logo-light.png"
+			],
+			"purview.wslcontainers.azurite": [
+				"lib/$(TFM)/Purview.WslContainers.Azurite.dll",
+				"lib/$(TFM)/Purview.WslContainers.Azurite.xml",
+				"README.md",
+				"purview-logo-light.png"
+			],
+			"purview.wslcontainers.mssql": [
+				"lib/$(TFM)/Purview.WslContainers.MsSql.dll",
+				"lib/$(TFM)/Purview.WslContainers.MsSql.xml",
+				"README.md",
+				"purview-logo-light.png"
+			],
+			"purview.wslcontainers.mysql": [
+				"lib/$(TFM)/Purview.WslContainers.MySql.dll",
+				"lib/$(TFM)/Purview.WslContainers.MySql.xml",
+				"README.md",
+				"purview-logo-light.png"
+			],
+			"purview.wslcontainers.nats": [
+				"lib/$(TFM)/Purview.WslContainers.Nats.dll",
+				"lib/$(TFM)/Purview.WslContainers.Nats.xml",
+				"README.md",
+				"purview-logo-light.png"
+			],
+			"purview.wslcontainers.postgresql": [
+				"lib/$(TFM)/Purview.WslContainers.PostgreSql.dll",
+				"lib/$(TFM)/Purview.WslContainers.PostgreSql.xml",
+				"README.md",
+				"purview-logo-light.png"
+			],
+			"purview.wslcontainers.rabbitmq": [
+				"lib/$(TFM)/Purview.WslContainers.RabbitMq.dll",
+				"lib/$(TFM)/Purview.WslContainers.RabbitMq.xml",
+				"README.md",
+				"purview-logo-light.png"
+			],
+			"purview.wslcontainers.redis": [
+				"lib/$(TFM)/Purview.WslContainers.Redis.dll",
+				"lib/$(TFM)/Purview.WslContainers.Redis.xml",
+				"README.md",
+				"purview-logo-light.png"
+			]
+		}
+	},
+	"Release": {
+		"Mode": "None"
+	}
+}

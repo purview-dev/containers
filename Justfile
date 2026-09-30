@@ -1,5 +1,10 @@
 set quiet
 
+export TESTINGPLATFORM_EXITCODE_IGNORE := "8"
+export DOTNET_CLI_TELEMETRY_OPTOUT := "1"
+export DOTNET_SKIP_FIRST_TIME_EXPERIENCE := "1"
+export DO_NOT_TRACK := "1"
+
 root_folder := "./src/"
 solution_file := root_folder + "WSLTestContainers.slnx"
 test_solution := solution_file
@@ -84,10 +89,14 @@ restore *args:
     dotnet restore {{ solution_file }} {{ args }}
 
 # Runs tests for the solution with the specified configuration (default: Debug)
+# Test modules run serially by default: a WSLC session exclusively locks its image-store VHD, so parallel
+# test assemblies contend for the shared store and fail with 0x80070020 ("file is being used by another
+# process"). Override by appending the flag, e.g.
+# just test '/*/*/*/*/' --max-parallel-test-modules 4
 [group('Build and Test')]
 test filter="/*/*/*/*/" *args:
     echo "Running tests for {{ BLUE }}{{ test_solution }}{{ NORMAL }} with {{ YELLOW }}{{ build_configuration }}{{ NORMAL }}..."
-    dotnet test --solution "{{ test_solution }}" --configuration "{{ build_configuration }}" --treenode-filter={{ filter }} {{ args }}
+    dotnet test --solution "{{ test_solution }}" --configuration "{{ build_configuration }}" --max-parallel-test-modules 1 --treenode-filter={{ filter }} {{ args }}
 
 # Cleans the solution with the specified configuration (default: Debug)
 [group('Build and Test')]

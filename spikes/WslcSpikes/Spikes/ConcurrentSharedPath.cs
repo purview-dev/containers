@@ -34,7 +34,9 @@ static class ConcurrentSharedPath
 			}
 			catch (Exception ex)
 			{
-				Console.WriteLine("[s18] RESULT: session B FAILED to start on the shared path (concurrent sharing unsafe):");
+				Console.WriteLine(
+					"[s18] RESULT: session B FAILED to start on the shared path (concurrent sharing unsafe):"
+				);
 				SpikeSupport.Dump(ex);
 				return 0;
 			}
@@ -57,8 +59,18 @@ static class ConcurrentSharedPath
 			Console.WriteLine("[s18] starting containers in A and B concurrently...");
 			try
 			{
-				Container ca = SpikeSupport.CreateContainer(a, "docker.io/library/alpine:latest", "s18-a", new[] { "/bin/echo", "from-a" });
-				Container cb = SpikeSupport.CreateContainer(b, "docker.io/library/alpine:latest", "s18-b", new[] { "/bin/echo", "from-b" });
+				Container ca = SpikeSupport.CreateContainer(
+					a,
+					"docker.io/library/alpine:latest",
+					"s18-a",
+					new[] { "/bin/echo", "from-a" }
+				);
+				Container cb = SpikeSupport.CreateContainer(
+					b,
+					"docker.io/library/alpine:latest",
+					"s18-b",
+					new[] { "/bin/echo", "from-b" }
+				);
 				await Task.WhenAll(Task.Run(() => ca.Start()), Task.Run(() => cb.Start()));
 				await Task.Delay(1500);
 				Console.WriteLine("[s18] A container state={0}, B container state={1}", ca.State, cb.State);

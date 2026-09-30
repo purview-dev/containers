@@ -1,0 +1,30 @@
+name: PR
+
+on:
+  pull_request:
+    branches: [main]
+    # `ready_for_review` is not one of the default activity types, so a draft PR would never
+    # re-evaluate the required build gate once it is marked ready for review.
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test
+    uses: purview-dev/build/.github/workflows/purview-build.yml@main
+    with:
+      # The shared workflow defaults to the 10.0.x SDK, but this repository targets net11.0 and pins
+      # the .NET 11 SDK in global.json. Without the matching SDK the runner cannot resolve global.json
+      # ("A compatible .NET SDK was not found") and every step fails.
+      # Keep in sync with `sdk.version` in global.json.
+      dotnet-version: "11.0.100-rc.1.26425.128"
+      # Mirrors Build:TestFilter in purview-build.json: the SDK categorises unit test projects as Unit,
+      # so the WSLC integration suites are never selected and the runner needs no WSLC host.
+      test-filter: "/*/*/*/*[Category=Unit]"
+      # All eight library projects are packable, so pack and validate the produced packages.
+      run-pack: true
+      validate-pack: true
+    secrets: inherit

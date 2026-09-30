@@ -5,22 +5,22 @@ A **WSLC-native** Testcontainers-style library for .NET that runs throwaway Linu
 Built directly against the `Microsoft.WSL.Containers` NuGet package (the WSLC managed C# API). No `wslc.exe`/`wsl.exe`/`docker` CLI, no Docker.DotNet, no Testcontainers internally.
 
 > **Status: Phase 8 in progress.** Core runtime, wait strategies, the `Image`/`Tag` parser, registry auth,
-> observability, hardening, and **eight service modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite,
-> NATS, MySQL, MinIO). **Images are shared by default** (`StorageMode.Shared`): sessions reuse a stable
+> observability, hardening, and **seven service modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite,
+> NATS, MySQL). **Images are shared by default** (`StorageMode.Shared`): sessions reuse a stable
 > image store (`%LOCALAPPDATA%\Purview\WslContainers\images`) so images are pulled once, not per session;
 > `StorageMode.PerSession` provides isolation. 69+ unit tests pass across all modules.
 
 ## Prerequisites
 
 - Windows 10/11
-- **WSL ≥ 2.9.3** with WSL Containers, installed via `wsl --install --no-distribution`
+- **WSL ≥ 3.0.1.0** with WSL Containers, installed via `wsl --install --no-distribution`
 - .NET SDK 11 (the repo pins `11.0.100-rc.1`)
 
 Verify:
 
 ```powershell
-wsl --version     # needs 2.9.3+
-wslc version      # prints e.g. 3.0.1.0
+wsl --version     # needs 3.0.1.0+
+wslc version      # needs 3.0.1.0+
 ```
 
 The library reports missing prerequisites via `WslContainerRuntime.GetInfoAsync()`; it never installs or updates WSL on its own.
@@ -77,7 +77,7 @@ string amqp = rabbitMq.GetConnectionString();
 ## Key design decisions (verified by spikes)
 
 | Decision | Evidence |
-|---|---|
+| --- | --- |
 | One shared process-wide session, shared storage path | image store is keyed by storage path; session start ~20 ms (S2); concurrent sessions can't share the VHD (S18) → auto-fallback to isolated store |
 | Unique session names `wslc-{pid}-{rand}` | session names are machine-reserved (S1, S13) |
 | Default `NetworkingMode = Bridged` | port mappings require Bridged; default is `none` (S4) |
@@ -99,7 +99,6 @@ src/
   WslContainers.Azurite/    Azurite module (builder, container, blob/queue/table endpoints)
   WslContainers.Nats/       NATS module (builder, container, client + monitoring endpoints)
   WslContainers.MySql/      MySQL module (builder, container, MySqlConnector connection string)
-  WslContainers.MinIo/      MinIO module (builder, container, S3 API + console endpoints)
 tests/
   SharedTestingFramework/   shared WSLC skip/helper for integration tests
   WslContainers.UnitTests/
@@ -117,10 +116,28 @@ tests/
 spikes/
   WslcSpikes/               Phase 0 investigation harness (run: see below)
 docs/
-  architecture.md  wslc-api-investigation.md  wslc-capability-matrix.md
-  lifecycle.md  networking.md  wait-strategies.md  modules.md
-  contributing-modules.md
+  wiki/                     project wiki (mkdocs.yml -> docs_dir: docs/wiki)
+    index.md  Home.md  _Sidebar.md  Getting-Started.md  Testing.md
+    Architecture.md  Lifecycle.md  Networking.md  Wait-Strategies.md  Modules.md
+    Packaging.md  Release-Flow.md  Contributing.md  Contributing-Modules.md
+    Wslc-Api-Investigation.md  Wslc-Capability-Matrix.md
 ```
+
+## Documentation
+
+The project documentation lives in [`docs/wiki`](docs/wiki/Home.md) and is published as a MkDocs site
+(`mkdocs.yml`, `docs_dir: docs/wiki`, aggregated by the purview-dev website):
+
+- [Getting Started](docs/wiki/Getting-Started.md) — prerequisites, first container, first module.
+- [Architecture](docs/wiki/Architecture.md) — the shared session model, concurrency and cleanup decisions.
+- [Lifecycle](docs/wiki/Lifecycle.md), [Networking](docs/wiki/Networking.md), [Wait Strategies](docs/wiki/Wait-Strategies.md).
+- [Modules](docs/wiki/Modules.md) — the module contract and every shipped module.
+- [Testing](docs/wiki/Testing.md) — unit vs integration categories and the serial WSLC test rule.
+- [Packaging](docs/wiki/Packaging.md) and [Release Flow](docs/wiki/Release-Flow.md) — what ships and how it is released.
+- [Contributing](docs/wiki/Contributing.md) and [Contributing Modules](docs/wiki/Contributing-Modules.md).
+
+Every package also ships its own `README.md` (from `src/src/<Project>/Sdk/README.md`), so
+`dotnet add package Purview.WslContainers.<Module>` brings documentation specific to that package.
 
 The PostgreSQL, Redis, SQL Server and RabbitMQ modules work today:
 
@@ -179,6 +196,31 @@ await azurite.StartAsync();    // waits for the blob/queue/table listeners
 string connectionString = azurite.GetConnectionString();
 Uri blob = azurite.GetBlobEndpoint();
 ```
+
+## Running the tests
+
+Every test process owns a single shared WSLC session and, by default, uses the shared image store
+(`%LOCALAPPDATA%\Purview\WslContainers\images`). A WSLC session **exclusively locks its
+`storage.vhdx`**, and the lock is taken lazily on the first store access — so running test assemblies
+in parallel makes the losers fail with `0x80070020`:
+
+```
+The process cannot access the file because it is being used by another process.
+```
+
+The runtime now verifies the store on first use and transparently falls back to an isolated
+per-process store (removed when that process's session terminates), but running test modules serially
+keeps the warm shared image cache (no per-process re-pull) and is the fastest option:
+
+```powershell
+just test                     # dotnet test, one test module at a time
+
+# Visual Studio: Test > Options > untick "Run Tests in Parallel" (or set
+# "Maximum Parallel Test Projects" to 1) before running the WSLC integration tests.
+```
+
+> The `WslContainers.IntegrationTests` module runs 27 real containers in one session and takes ~4
+> minutes because WSLC serialises container operations; expect slow-test warnings while it runs.
 
 ## Running the Phase 0 spikes
 
