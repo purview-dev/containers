@@ -1,6 +1,6 @@
 using StackExchange.Redis;
 
-namespace Purview.WslContainers.Redis;
+namespace Purview.Containers.Redis;
 
 public class RedisIntegrationTests
 {

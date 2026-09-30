@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Purview.Containers backend registration (props).
+
+  Declares the list of container backends that Purview.Containers.targets turns into a
+  generated module initializer inside the consuming assembly. Each backend package appends its own
+  entry from its own buildTransitive props (for example Purview.Containers.Wsl adds
+  Purview.Containers.Wsl.WslContainerBackend), so a consumer that references several backends gets
+  them all registered and the selection policy decides which one runs.
+  NOTE: NuGet only auto-imports buildTransitive/<PackageId>.props and buildTransitive/<PackageId>.targets.
+-->
+<Project>
+	<PropertyGroup>
+		<PurviewContainersBackends Condition="'$(PurviewContainersBackends)' == ''"></PurviewContainersBackends>
+	</PropertyGroup>
+</Project>

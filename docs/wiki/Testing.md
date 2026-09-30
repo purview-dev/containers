@@ -14,10 +14,10 @@ Test projects are discovered under `src/tests` and the SDK stamps every test ass
 `purview-build.json` filters the pipeline run to `/*/*/*/*[Category=Unit]`, so the shared pipeline never
 starts containers. Run integration projects explicitly when you have a WSLC host.
 
-> The shared `purview-dev/build` workflow runs on **`ubuntu-latest`**, so the pipeline builds these
-> `net11.0-windows…` projects on Linux. That works because `src/Directory.Build.props` sets
-> `EnableWindowsTargeting=true`; without it the SDK reports `NETSDK1100`. See
-> [Consumer Requirements](Consumer-Requirements.md) for what that workaround does and does not
+> The shared `purview-dev/build` workflow runs on **`ubuntu-latest`**, so the pipeline builds the portable
+> `net10.0` projects and the `net11.0-windows…` test projects on Linux. That works because
+> `src/Directory.Build.props` sets `EnableWindowsTargeting=true`; without it the SDK reports `NETSDK1100`.
+> See [Consumer Requirements](Consumer-Requirements.md) for what that workaround does and does not
 > cover.
 
 ```powershell
@@ -25,6 +25,14 @@ just test                              # every discovered test project
 just test '/*/*/*/*[Category=Unit]'     # unit tests only
 just test '/*/*/*/*[Category=Integration]' --max-parallel-test-modules 1
 ```
+
+Integration suites target whichever backend is selected. Automatic detection prefers WSLC and falls back
+to Docker, so a WSLC host runs the WSLC suites and a Docker-only host runs the Docker ones; pin one with
+`PURVIEW_CONTAINERS_BACKEND=wsl|docker` to fail loudly instead of falling back. The Docker suites
+(`Docker.IntegrationTests` for the container contract, `Modules.DockerIntegrationTests` for the seven
+service modules) skip themselves when no daemon is reachable, and the WSLC suites skip themselves when the
+host lacks the WSL Containers components. See [Backends: WSLC or Docker](Backends.md) for consumer-facing
+setup and CI examples.
 
 ## Why test modules run serially
 
@@ -45,7 +53,7 @@ running the WSLC integration suites.
 
 ## Expectations
 
-- The `WslContainers.IntegrationTests` module runs many real containers in one session and can take several
+- The `Wsl.IntegrationTests` module runs many real containers in one session and can take several
   minutes, because WSLC serialises container operations. Slow-test warnings while it runs are expected.
 - Integration tests skip themselves when the host lacks the required WSL/WSLC components, so a machine
   without WSLC can still run the unit suites.
@@ -54,7 +62,7 @@ running the WSLC integration suites.
 
 ## Verifying the consumer contract
 
-`WslContainers.UnitTests/ConsumerRequirementsTests.cs` guards the shape of the shipped library inside
+`Wsl.UnitTests/ConsumerRequirementsTests.cs` guards the shape of the shipped library inside
 the normal unit run: the assembly targets `.NETCoreApp,Version=v11.0`, targets `Windows10.0.19041.0`
 and declares only that OS platform. If the target framework ever drifts, that test fails — and
 [Consumer Requirements](Consumer-Requirements.md), the package READMEs and the shipped
@@ -66,7 +74,7 @@ throwaway consumer projects for every documented outcome (see
 outside the `[Category=Unit]` filter because it packs and restores from nuget.org:
 
 ```powershell
-just verify-consumers          # 12 consumer projects, all assertions
+just verify-consumers          # 16 consumer projects, all assertions
 just verify-consumers -Keep    # same, keeping the generated projects for inspection
 ```
 

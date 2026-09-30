@@ -1,7 +1,7 @@
-using Purview.WslContainers.Runtime;
-using Purview.WslContainers.Waiting;
+using Purview.Containers.Runtime;
+using Purview.Containers.Waiting;
 
-namespace Purview.WslContainers.RabbitMq;
+namespace Purview.Containers.RabbitMq;
 
 public class RabbitMqBuilderTests
 {
@@ -43,6 +43,6 @@ public class RabbitMqBuilderTests
 	{
 		var builder = new RabbitMqBuilder().WithPassword(string.Empty);
 
-		await Assert.That(() => builder.Build()).Throws<WslContainerConfigurationException>();
+		await Assert.That(() => builder.Build()).Throws<ContainerConfigurationException>();
 	}
 }

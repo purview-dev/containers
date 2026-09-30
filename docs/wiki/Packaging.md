@@ -1,6 +1,6 @@
 # Packaging
 
-Every project under `src/src` is packable and ships as `Purview.WslContainers.*`; test and spike projects
+Every project under `src/src` is packable and ships as `Purview.Containers.*`; test and spike projects
 never pack. Packages are produced into `./artifacts` with a matching `.snupkg`.
 
 ## What a package contains
@@ -9,17 +9,21 @@ Each package ships exactly:
 
 | Entry | Source |
 | --- | --- |
-| `lib/$(TFM)/Purview.WslContainers[.<Module>].dll` | The built assembly (`net11.0-windows10.0.19041`). |
-| `lib/$(TFM)/Purview.WslContainers[.<Module>].xml` | XML documentation, generated because `GenerateDocumentationFile` is on for packable projects. |
+| `lib/$(TFM)/Purview.Containers.Wsl.dll` / `lib/$(TFM)/Purview.Containers.<Module>.dll` | The built assembly: `net10.0` for `Purview.Containers` and the service modules, `net11.0-windows10.0.19041` for the WSL Containers backend. |
+| `lib/$(TFM)/Purview.Containers.Wsl.xml` / `lib/$(TFM)/Purview.Containers.<Module>.xml` | XML documentation, generated because `GenerateDocumentationFile` is on for packable projects. |
 | `README.md` | The package's bespoke `Sdk/README.md` (see below). |
 | `purview-logo-light.png` | The shared Purview package icon (`assets/images/purview-logo-light.png`). |
-| `buildTransitive/Purview.WslContainers.props` | **Core package only.** Defaults `WindowsSdkPackageVersion` for consumers. |
-| `buildTransitive/Purview.WslContainers.targets` | **Core package only.** Defaults `PlatformTarget` to `x64` and raises `PWC0001`/`PWC0002` for unsupported consumers. |
+| `buildTransitive/Purview.Containers.props` / `.targets` | **Abstractions package.** Declares the `PurviewContainersBackends` list and turns it into a generated backend initializer in the consuming assembly. |
+| `buildTransitive/Purview.Containers.Wsl.props` / `.targets` | **WSL Containers backend only.** Defaults `WindowsSdkPackageVersion`/`PlatformTarget` and raises `PCC0001`/`PCC0002` for unsupported consumers. |
+| `buildTransitive/Purview.Containers.Docker.props` | **Docker backend only.** Adds the Docker backend to the `PurviewContainersBackends` list. |
 
 Portable PDBs are delivered through the `.snupkg`, never inside the `.nupkg`.
 
-`$(TFM)` is `net11.0-windows10.0.19041.0`, so every package is a **.NET 11, Windows-only** package.
-Consumers must target a matching framework; see [Consumer Requirements](Consumer-Requirements.md).
+`$(TFM)` is expanded per shipped framework: `Purview.Containers`, `Purview.Containers.Docker` and the
+service modules ship `lib/net10.0/`, and `Purview.Containers.Wsl` ships
+`lib/net11.0-windows10.0.19041/`, so only the WSL Containers backend is a **.NET 11, Windows-only**
+package. Consumers must target a matching framework; see
+[Consumer Requirements](Consumer-Requirements.md).
 
 ## Package metadata
 
@@ -82,10 +86,19 @@ alongside the `Sdk/README.md`. Removing content from a package means removing th
 3. Add the package to `RequiredContent` in `purview-build.json`.
 4. Prove it with `just pack` and `just pipeline-pack-validate`.
 
-The two `Sdk/buildTransitive/` files belong to the **core** package only: a module inherits them
-through its dependency on `Purview.WslContainers`. They are declared in `RequiredContent` like any
-other asset, so a package that starts or stops shipping MSBuild assets has to update that manifest —
-a produced package with no rule, or a packed entry matched by no glob, fails validation.
+> **Packaging a backend or a new MSBuild asset?** NuGet only auto-imports `buildTransitive/<PackageId>.props`
+> and `buildTransitive/<PackageId>.targets`, so an asset named after anything else — including a shorter
+> product name — is shipped but never applied. A regression here is invisible to the build of this
+> repository, because our own projects reference each other by project and never import these assets;
+> `just verify-consumers` is the check that catches it.
+
+The `Sdk/buildTransitive/` assets are per package, and NuGet only auto-imports a file named after its own
+package id (`buildTransitive/<PackageId>.props|targets`). The abstractions package ships the backend
+registration, each backend package ships its own registration entry (and, for the WSL backend, the
+consumer defaults and guards), and the service modules ship none — a module is backend-neutral, so a
+consumer adds a backend package explicitly. They are declared in `RequiredContent` like any other asset,
+so a package that starts or stops shipping MSBuild assets has to update that manifest — a produced
+package with no rule, or a packed entry matched by no glob, fails validation.
 
 ## Related
 

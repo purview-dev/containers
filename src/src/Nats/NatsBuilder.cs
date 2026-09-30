@@ -1,6 +1,6 @@
-using Purview.WslContainers.Waiting;
+using Purview.Containers.Waiting;
 
-namespace Purview.WslContainers.Nats;
+namespace Purview.Containers.Nats;
 
 /// <summary>Fluent builder for a NATS test container.</summary>
 public class NatsBuilder : ContainerBuilder<NatsBuilder, NatsContainer, NatsConfiguration>
@@ -27,8 +27,8 @@ public class NatsBuilder : ContainerBuilder<NatsBuilder, NatsContainer, NatsConf
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
-	public NatsBuilder(IContainerRuntime runtime)
-		: base(runtime)
+	public NatsBuilder(IContainerBackend backend)
+		: base(backend)
 	{
 		WithImage(NatsImage)
 			.WithPortBinding(ClientPort, assignRandomHostPort: true)
@@ -52,6 +52,6 @@ public class NatsBuilder : ContainerBuilder<NatsBuilder, NatsContainer, NatsConf
 	/// <inheritdoc />
 	protected override NatsContainer CreateContainer(NatsConfiguration configuration)
 	{
-		return new NatsContainer(configuration, Runtime ?? WslContainerRuntime.Instance);
+		return new NatsContainer(configuration, Backend);
 	}
 }

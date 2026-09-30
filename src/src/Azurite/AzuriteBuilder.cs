@@ -1,6 +1,6 @@
-using Purview.WslContainers.Waiting;
+using Purview.Containers.Waiting;
 
-namespace Purview.WslContainers.Azurite;
+namespace Purview.Containers.Azurite;
 
 /// <summary>Fluent builder for an Azurite (Azure Storage emulator) test container.</summary>
 public class AzuriteBuilder : ContainerBuilder<AzuriteBuilder, AzuriteContainer, AzuriteConfiguration>
@@ -32,8 +32,8 @@ public class AzuriteBuilder : ContainerBuilder<AzuriteBuilder, AzuriteContainer,
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
-	public AzuriteBuilder(IContainerRuntime runtime)
-		: base(runtime)
+	public AzuriteBuilder(IContainerBackend backend)
+		: base(backend)
 	{
 		WithImage(AzuriteImage)
 			.WithCommand("azurite", "--blobHost", "0.0.0.0", "--queueHost", "0.0.0.0", "--tableHost", "0.0.0.0")
@@ -58,5 +58,5 @@ public class AzuriteBuilder : ContainerBuilder<AzuriteBuilder, AzuriteContainer,
 
 	/// <inheritdoc />
 	protected override AzuriteContainer CreateContainer(AzuriteConfiguration configuration) =>
-		new(configuration, Runtime ?? WslContainerRuntime.Instance);
+		new(configuration, Backend);
 }

@@ -1,7 +1,7 @@
 using System.Text;
 using RabbitMQ.Client;
 
-namespace Purview.WslContainers.RabbitMq;
+namespace Purview.Containers.RabbitMq;
 
 public class RabbitMqIntegrationTests
 {

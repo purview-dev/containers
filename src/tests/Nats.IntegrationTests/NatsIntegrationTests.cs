@@ -1,6 +1,6 @@
 using NATS.Client.Core;
 
-namespace Purview.WslContainers.Nats;
+namespace Purview.Containers.Nats;
 
 public class NatsIntegrationTests
 {

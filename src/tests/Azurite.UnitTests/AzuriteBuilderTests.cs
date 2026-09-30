@@ -1,6 +1,6 @@
-using Purview.WslContainers.Waiting;
+using Purview.Containers.Waiting;
 
-namespace Purview.WslContainers.Azurite;
+namespace Purview.Containers.Azurite;
 
 public class AzuriteBuilderTests
 {

@@ -122,6 +122,22 @@ verify-consumers *args:
     pwsh -NoProfile -File scripts/verify-consumers.ps1 {{ args }}
 
 # -----------------------------------------------------------------------------
+# Samples
+# -----------------------------------------------------------------------------
+
+# Runs the WSLC getting-started sample: needs WSL Containers, starts a real container
+[group('Samples')]
+sample-wsl:
+    echo "Running {{ BLUE }}samples/getting-started/WslSample{{ NORMAL }} (needs WSL Containers)..."
+    dotnet run --project samples/getting-started/WslSample/WslSample.csproj
+
+# Runs the Docker getting-started sample: needs a reachable Docker daemon, starts a real container
+[group('Samples')]
+sample-docker:
+    echo "Running {{ BLUE }}samples/getting-started/DockerSample{{ NORMAL }} (needs a Docker daemon)..."
+    dotnet run --project samples/getting-started/DockerSample/DockerSample.csproj
+
+# -----------------------------------------------------------------------------
 # Formatting
 # -----------------------------------------------------------------------------
 

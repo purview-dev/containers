@@ -1,13 +1,13 @@
 using System.Globalization;
 using System.Text;
 
-namespace Purview.WslContainers.Azurite;
+namespace Purview.Containers.Azurite;
 
 /// <summary>A throwaway Azurite (Azure Storage emulator) instance running on WSL Containers.</summary>
-public sealed class AzuriteContainer : WslContainer
+public sealed class AzuriteContainer : ContainerBase
 {
-	internal AzuriteContainer(AzuriteConfiguration configuration, IContainerRuntime runtime)
-		: base(configuration, runtime) { }
+	internal AzuriteContainer(AzuriteConfiguration configuration, IContainerBackend? backend)
+		: base(configuration, backend) { }
 
 	/// <summary>Blob service endpoint. Safe to call after <see cref="IContainer.StartAsync" />.</summary>
 	public Uri GetBlobEndpoint()

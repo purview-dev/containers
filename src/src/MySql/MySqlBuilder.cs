@@ -1,9 +1,9 @@
 using MySqlConnector;
-using Purview.WslContainers.Diagnostics;
-using Purview.WslContainers.Runtime;
-using Purview.WslContainers.Waiting;
+using Purview.Containers.Diagnostics;
+using Purview.Containers.Runtime;
+using Purview.Containers.Waiting;
 
-namespace Purview.WslContainers.MySql;
+namespace Purview.Containers.MySql;
 
 /// <summary>Fluent builder for a MySQL test container.</summary>
 public class MySqlBuilder : ContainerBuilder<MySqlBuilder, MySqlContainer, MySqlConfiguration>
@@ -30,8 +30,8 @@ public class MySqlBuilder : ContainerBuilder<MySqlBuilder, MySqlContainer, MySql
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
-	public MySqlBuilder(IContainerRuntime runtime)
-		: base(runtime)
+	public MySqlBuilder(IContainerBackend backend)
+		: base(backend)
 	{
 		WithImage(MySqlImage).WithPortBinding(MySqlPort, assignRandomHostPort: true);
 	}
@@ -101,19 +101,19 @@ public class MySqlBuilder : ContainerBuilder<MySqlBuilder, MySqlContainer, MySql
 		base.Validate(configuration);
 		if (string.IsNullOrWhiteSpace(_database))
 		{
-			throw new WslContainerConfigurationException("MySQL database cannot be empty.");
+			throw new ContainerConfigurationException("MySQL database cannot be empty.");
 		}
 
 		if (string.IsNullOrEmpty(_password.Value))
 		{
-			throw new WslContainerConfigurationException("MySQL password cannot be empty.");
+			throw new ContainerConfigurationException("MySQL password cannot be empty.");
 		}
 	}
 
 	/// <inheritdoc />
 	protected override MySqlContainer CreateContainer(MySqlConfiguration configuration)
 	{
-		return new MySqlContainer(configuration, Runtime ?? WslContainerRuntime.Instance);
+		return new MySqlContainer(configuration, Backend);
 	}
 
 	WaitStrategy BuildReadinessWait()

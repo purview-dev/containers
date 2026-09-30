@@ -1,0 +1,23 @@
+<Project>
+	<!--
+	  Subtree defaults for the library projects under src/src.
+
+	  The backend-neutral abstractions and the service modules are cross-platform and target net10.0,
+	  the floor that Testcontainers-for-.NET supports. Only the WSL Containers backend is Windows-only
+	  (Microsoft.WSL.Containers ships a .NET 11 WinRT projection), so it overrides TargetFramework in
+	  its own project file.
+
+	  The parent Directory.Build.props still owns the repo-wide identity (NamespacePrefix), the SDK
+	  import and the shared package metadata, so import it explicitly: MSBuild stops at the nearest
+	  Directory.Build.props and would otherwise skip it.
+	-->
+	<Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<!-- Cross-platform libraries stay AnyCPU and must not pin a Windows SDK pack version; the WSL
+		     backend re-applies both (x64 + 10.0.26100.80) in its own project file. -->
+		<PlatformTarget></PlatformTarget>
+		<WindowsSdkPackageVersion></WindowsSdkPackageVersion>
+	</PropertyGroup>
+</Project>

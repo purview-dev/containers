@@ -1,22 +1,24 @@
-# Purview.WslContainers.PostgreSql
+# Purview.Containers.PostgreSql
 
-Throwaway PostgreSQL databases for .NET integration testing, running as WSLC containers on
-**Microsoft WSL Containers** — no Docker installation.
+Throwaway PostgreSQL databases for .NET integration testing on **WSL Containers (WSLC)** or **Docker**.
 
 ```bash
-dotnet add package Purview.WslContainers.PostgreSql
+dotnet add package Purview.Containers.PostgreSql
 ```
 
-Depends on `Purview.WslContainers` (the core runtime) and brings `Npgsql` for connection-string generation.
+Backend-neutral: depends on `Purview.Containers` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`) and brings `Npgsql` for connection-string generation.
 See the [Getting Started guide](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Getting-Started.md).
 
 ## Requirements
 
-- Windows 10/11 with **WSL Containers** (`wsl --install --no-distribution`).
-- **A .NET 11 project targeting Windows specifically** (`net11.0-windows10.0.19041.0`, x64 or arm64).
-  `Purview.WslContainers` supplies `buildTransitive` defaults for `WindowsSdkPackageVersion` and
-  `PlatformTarget`, and rejects an unsupported consumer with `PWC0001`/`PWC0002` — see the
+- **WSL Containers backend:** Windows 10/11 with WSL Containers (`wsl --install --no-distribution`), and a
+  consuming project that is a .NET 11 project targeting Windows specifically
+  (`net11.0-windows10.0.19041.0`, x64 or arm64). The `Purview.Containers.Wsl` package is Windows-only and
+  supplies `buildTransitive` defaults for `WindowsSdkPackageVersion`/`PlatformTarget`, rejecting an
+  unsupported consumer with `PCC0001`/`PCC0002` — see the
   [consumer requirements](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Consumer-Requirements.md).
+- **Docker backend:** any reachable Docker daemon (`docker info`), with a `net10.0` or later project on any
+  platform. No Windows target framework and no `PCC` guards apply.
 - **Experimental:** the API, defaults and packaging can change between prereleases; there is no
   production support guarantee.
 
@@ -24,7 +26,7 @@ See the [Getting Started guide](https://github.com/purview-dev/wsl-containers/bl
 
 ```csharp
 using Npgsql;
-using Purview.WslContainers.PostgreSql;
+using Purview.Containers.PostgreSql;
 
 await using var postgres = new PostgreSqlBuilder()
     .WithDatabase("tests")
@@ -49,11 +51,12 @@ await connection.OpenAsync();
 | `WithPassword(string)` | Sets `POSTGRES_PASSWORD` (default `postgres`); stored as a redacted `Secret`. |
 | `PostgreSqlContainer.GetConnectionString()` | `NpgsqlConnectionStringBuilder` connection string for the mapped host port. |
 
-`Build()` rejects an empty database, username or password with `WslContainerConfigurationException`. The
+`Build()` rejects an empty database, username or password with `ContainerConfigurationException`. The
 default wait strategy runs `pg_isready -U {username} -d {database}` inside the container unless you supply
 your own with `WithWaitStrategy(...)`. Call `GetConnectionString()` after `StartAsync()`.
 
 ## Documentation
 
+- [Backends: WSLC or Docker](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Backends.md) — choosing and configuring the runtime.
 - [Modules](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Modules.md) — the module contract and readiness choices.
 - [Wait Strategies](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Wait-Strategies.md) — overriding readiness checks.

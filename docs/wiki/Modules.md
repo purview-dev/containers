@@ -1,10 +1,11 @@
 # Modules
 
-Module architecture for `Purview.WslContainers`.
+Module architecture for `Purview.Containers`.
 
 ## Principle
 
-Modules are thin packages layered on the core. A module supplies only:
+Modules are thin packages layered on the backend-neutral abstractions
+([`Purview.Containers`](Architecture.md)). A module supplies only:
 
 - default image
 - default ports
@@ -14,7 +15,10 @@ Modules are thin packages layered on the core. A module supplies only:
 - connection string / endpoint generation
 - module-specific convenience APIs
 
-Modules must **not** duplicate container runtime infrastructure.
+Modules must **not** duplicate container runtime infrastructure, and they must never reference a backend
+package (`Purview.Containers.Wsl`, …): the container base resolves the backend through
+`ContainerBackends.ResolveAsync()`, which is what lets the same module package run on WSLC or Docker. Every
+module targets `net10.0` and is portable.
 
 ## Builder model
 
@@ -23,7 +27,7 @@ A generic CRTP base with immutable built configurations:
 ```csharp
 public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
     where TBuilder : ContainerBuilder<TBuilder, TContainer, TConfiguration>
-    where TContainer : WslContainer
+    where TContainer : IContainer
     where TConfiguration : ContainerConfiguration, new()
 {
     public TBuilder WithImage(string image) { /* accumulate */ return (TBuilder)this; }
@@ -87,15 +91,15 @@ public sealed class PostgreSqlBuilder : ContainerBuilder<PostgreSqlBuilder, Post
     }
 
     protected override PostgreSqlContainer CreateContainer(PostgreSqlConfiguration configuration)
-        => new(configuration, Runtime ?? WslContainerRuntime.Instance);
+        => new(configuration, Backend);
 }
 
-public sealed class PostgreSqlContainer : WslContainer
+public sealed class PostgreSqlContainer : ContainerBase
 {
     private readonly PostgreSqlConfiguration configuration;
 
-    internal PostgreSqlContainer(PostgreSqlConfiguration configuration, IContainerRuntime runtime)
-        : base(configuration, runtime) => this.configuration = configuration;
+    internal PostgreSqlContainer(PostgreSqlConfiguration configuration, IContainerBackend backend)
+        : base(configuration, backend) => this.configuration = configuration;
 
     public string GetConnectionString()
     {

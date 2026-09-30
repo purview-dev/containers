@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<!--
+	  A consumer-shaped sample: the settings below are what a real project needs when it uses the WSL
+	  Containers backend. A package consumer inherits WindowsSdkPackageVersion and PlatformTarget from the
+	  Purview.Containers.Wsl package; the project reference used here (so the sample builds from a clone)
+	  does not, so they are written out explicitly.
+	-->
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net11.0-windows10.0.19041.0</TargetFramework>
+		<PlatformTarget>x64</PlatformTarget>
+		<!-- or arm64 -->
+		<WindowsSdkPackageVersion>10.0.26100.80</WindowsSdkPackageVersion>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<IsPackable>false</IsPackable>
+		<!-- Needed when the project is built on a non-Windows CI agent; see docs/wiki/Consumer-Requirements.md. -->
+		<EnableWindowsTargeting>true</EnableWindowsTargeting>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- In a real project: dotnet add package Purview.Containers.Wsl -->
+		<ProjectReference Include="../../../src/src/Wsl/Wsl.csproj" />
+	</ItemGroup>
+</Project>

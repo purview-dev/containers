@@ -2,7 +2,7 @@
 
 Composable readiness waits. **A started WSLC container is not necessarily a ready service** — `Container.Start()` returns once the init process is running; readiness is checked separately.
 
-> **Status: implemented (Phase 2).** Verified by integration tests (`tests/WslContainers.IntegrationTests/WaitStrategyTests.cs`).
+> **Status: implemented (Phase 2).** Verified by integration tests (`tests/Wsl.IntegrationTests/WaitStrategyTests.cs`).
 
 ## Model
 
@@ -27,7 +27,7 @@ Wait (factory)
 WaitStrategy.WithTimeout / .WithInterval / .WithRetries   (fluent)
 ```
 
-- Waits run inside `StartAsync()` after the container starts. `StartAsync` only returns once every configured strategy is ready (or throws `WslContainerTimeoutException`).
+- Waits run inside `StartAsync()` after the container starts. `StartAsync` only returns once every configured strategy is ready (or throws `ContainerTimeoutException`).
 - Default timeout = the container's `StartupTimeout` (5 min, overridable via `.WithStartupTimeout(...)` or per-strategy `.WithTimeout(...)`).
 - Timeout failure produces a diagnostic including container name, image, state, mapped ports, the strategy type, the last check error, and a tail of stdout/stderr (bounded, secret-redacted).
 

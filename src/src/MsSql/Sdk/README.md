@@ -1,22 +1,24 @@
-# Purview.WslContainers.MsSql
+# Purview.Containers.MsSql
 
-Throwaway Microsoft SQL Server databases for .NET integration testing, running as WSLC containers on
-**Microsoft WSL Containers** — no Docker installation.
+Throwaway Microsoft SQL Server databases for .NET integration testing on **WSL Containers (WSLC)** or **Docker**.
 
 ```bash
-dotnet add package Purview.WslContainers.MsSql
+dotnet add package Purview.Containers.MsSql
 ```
 
-Depends on `Purview.WslContainers` (the core runtime) and brings `Microsoft.Data.SqlClient` for
+Backend-neutral: depends on `Purview.Containers` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`) and brings `Microsoft.Data.SqlClient` for
 connection-string generation and readiness probing.
 
 ## Requirements
 
-- Windows 10/11 with **WSL Containers** (`wsl --install --no-distribution`).
-- **A .NET 11 project targeting Windows specifically** (`net11.0-windows10.0.19041.0`, x64 or arm64).
-  `Purview.WslContainers` supplies `buildTransitive` defaults for `WindowsSdkPackageVersion` and
-  `PlatformTarget`, and rejects an unsupported consumer with `PWC0001`/`PWC0002` — see the
+- **WSL Containers backend:** Windows 10/11 with WSL Containers (`wsl --install --no-distribution`), and a
+  consuming project that is a .NET 11 project targeting Windows specifically
+  (`net11.0-windows10.0.19041.0`, x64 or arm64). The `Purview.Containers.Wsl` package is Windows-only and
+  supplies `buildTransitive` defaults for `WindowsSdkPackageVersion`/`PlatformTarget`, rejecting an
+  unsupported consumer with `PCC0001`/`PCC0002` — see the
   [consumer requirements](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Consumer-Requirements.md).
+- **Docker backend:** any reachable Docker daemon (`docker info`), with a `net10.0` or later project on any
+  platform. No Windows target framework and no `PCC` guards apply.
 - **Experimental:** the API, defaults and packaging can change between prereleases; there is no
   production support guarantee.
 
@@ -24,7 +26,7 @@ connection-string generation and readiness probing.
 
 ```csharp
 using Microsoft.Data.SqlClient;
-using Purview.WslContainers.MsSql;
+using Purview.Containers.MsSql;
 
 await using var sqlServer = new MsSqlBuilder()
     .WithPassword("SomeStrong!Password1")
@@ -52,7 +54,7 @@ await connection.OpenAsync();
 - **Memory:** SQL Server refuses to start below 2000 MB. The default session VM is capped at 4096 MB
   (`WslContainerRuntimeOptions.Default`), so it works out of the box; override with
   `MemorySizeInMB` if you configure your own runtime.
-- **Licence:** `Build()` throws `WslContainerConfigurationException` unless `AcceptLicense()` was called.
+- **Licence:** `Build()` throws `ContainerConfigurationException` unless `AcceptLicense()` was called.
   The SA password must be at least 8 characters.
 - **Readiness:** a listening TCP port is not enough — the image reports readiness before it can serve
   queries, so the default strategy opens a host-side `SqlClient` connection every 2 seconds. The
@@ -61,5 +63,6 @@ await connection.OpenAsync();
 
 ## Documentation
 
+- [Backends: WSLC or Docker](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Backends.md) — choosing and configuring the runtime.
 - [Modules](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Modules.md) — the module contract and readiness choices.
 - [Getting Started](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Getting-Started.md) — prerequisites and first-container walkthrough.

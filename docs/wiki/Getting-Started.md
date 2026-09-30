@@ -5,38 +5,48 @@ points you at the test workflow.
 
 ## Requirements
 
-- Windows 10/11 with **WSL Containers** (`wsl --install --no-distribution`), verified against WSL
-  3.0.1.0.
-- **A .NET 11 project targeting Windows specifically** — `net11.0-windows10.0.19041.0`, x64 or
-  arm64. The packages ship MSBuild defaults for `WindowsSdkPackageVersion` and `PlatformTarget`;
-  an unsupported target framework fails the build with `PWC0001` and a non-64-bit consumer with
-  `PWC0002`. The full contract, every error, and the `EnableWindowsTargeting` workaround for
-  non-Windows CI agents live in [Consumer Requirements](Consumer-Requirements.md).
-- Verify the host with `wsl --version` and `wslc version`. The library never installs or updates WSL
-  for you — call `WslContainerRuntime.GetInfoAsync()` to report what is missing.
+Everything runs on one of two backends; pick the one that matches your machine — see
+[Backends: WSLC or Docker](Backends.md) for the full comparison.
+
+- **WSL Containers backend:** Windows 10/11 with **WSL Containers** (`wsl --install --no-distribution`),
+  verified against WSL **3.0.1.0**. A consuming project must be a **.NET 11 project targeting Windows
+  specifically** — `net11.0-windows10.0.19041.0`, x64 or arm64. The `Purview.Containers.Wsl` package ships
+  MSBuild defaults for `WindowsSdkPackageVersion` and `PlatformTarget`; an unsupported target framework
+  fails the build with `PCC0001` and a non-64-bit consumer with `PCC0002`.
+- **Docker backend:** any reachable Docker daemon, on any platform, with a `net10.0` or later project. No
+  Windows target framework and no `PCC` guards apply.
+- Verify the host with `wsl --version` and `wslc version`, or with `docker info`. The library never
+  installs a runtime for you — `WslContainerRuntime.GetInfoAsync()` and
+  `DockerContainerBackend.GetInfoAsync()` report what is missing.
+- The full consumer contract, every error, and the `EnableWindowsTargeting` workaround for non-Windows CI
+  agents live in [Consumer Requirements](Consumer-Requirements.md).
 
 > **Experimental.** The API, defaults and packaging rules can change between prereleases; there is no
 > production support guarantee.
 
 ## 1. Reference a package
 
-Reference the core runtime directly for a generic container:
+Reference a backend package for generic containers:
 
 ```bash
-dotnet add package Purview.WslContainers
+dotnet add package Purview.Containers.Wsl      # WSL Containers (Windows, .NET 11)
+dotnet add package Purview.Containers.Docker   # Docker / Testcontainers (any platform)
 ```
 
-or a service module, which depends on the core package:
+or a service module, which is backend-neutral and needs a backend package alongside it:
 
 ```bash
-dotnet add package Purview.WslContainers.PostgreSql
+dotnet add package Purview.Containers.PostgreSql
+dotnet add package Purview.Containers.Wsl      # ...or Purview.Containers.Docker
 ```
 
 ## 2. Run a generic container
 
+The same code works on either backend — only the package reference from step 1 decides where it runs:
+
 ```csharp
-using Purview.WslContainers;
-using Purview.WslContainers.Waiting;
+using Purview.Containers;
+using Purview.Containers.Waiting;
 
 await using var container = new ContainerBuilder()
     .WithImage("docker.io/library/redis:latest")
@@ -49,15 +59,15 @@ await container.StartAsync();
 ushort port = container.GetMappedPublicPort(6379);
 ```
 
-`Build()` validates the accumulated configuration; `StartAsync()` ensures the session and image, creates the
-container, starts it, and only returns once every configured wait strategy is satisfied. `DisposeAsync()`
-stops and deletes the container (and never terminates the shared session).
+`Build()` validates the accumulated configuration and resolves the backend when the container starts;
+`StartAsync()` creates the container, starts it, and only returns once every configured wait strategy is
+satisfied. `DisposeAsync()` stops and deletes the container (and never terminates a shared WSLC session).
 
 ## 3. Use a typed module
 
 ```csharp
 using Npgsql;
-using Purview.WslContainers.PostgreSql;
+using Purview.Containers.PostgreSql;
 
 await using var postgres = new PostgreSqlBuilder()
     .WithDatabase("tests")
@@ -71,18 +81,26 @@ await using var connection = new NpgsqlConnection(postgres.GetConnectionString()
 await connection.OpenAsync();
 ```
 
-Each module ships a bespoke README inside the package (`Purview.WslContainers.<Module>`) and a page in the
+Each module ships a bespoke README inside the package (`Purview.Containers.<Module>`) and a page in the
 [Modules](Modules.md) reference.
 
 ## 4. Run the tests
 
 ```powershell
 just test                 # dotnet test, one test module at a time
-just test '/*/*/*/*[Category=Unit]'   # unit tests only (no WSLC required)
+just test '/*/*/*/*[Category=Unit]'   # unit tests only (no runtime required)
 ```
 
-Integration tests need a working WSLC installation. A WSLC session exclusively locks its image-store VHD, so
-test modules run serially by default — see [Testing](Testing.md) for the details and how to run a subset.
+Integration tests need a **running backend**: WSL Containers or a Docker daemon, depending on which you
+selected. A WSLC session exclusively locks its image-store VHD, so test modules run serially by default —
+see [Testing](Testing.md) for the details and how to run a subset.
+
+To see a container start end to end, run one of the samples in this repository:
+
+```powershell
+just sample-wsl      # needs WSL Containers
+just sample-docker   # needs a Docker daemon
+```
 
 ## 5. Build and pack locally
 

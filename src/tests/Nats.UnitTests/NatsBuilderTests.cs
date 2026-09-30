@@ -1,6 +1,6 @@
-using Purview.WslContainers.Waiting;
+using Purview.Containers.Waiting;
 
-namespace Purview.WslContainers.Nats;
+namespace Purview.Containers.Nats;
 
 public class NatsBuilderTests
 {

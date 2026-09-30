@@ -1,14 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<IsPackable>true</IsPackable>
-		<Description>Microsoft SQL Server module for Purview.WslContainers: throwaway SQL Server databases on WSL Containers.</Description>
+		<Description>Microsoft SQL Server module for Purview.Containers: throwaway SQL Server databases on WSL Containers.</Description>
 		<PackageTags>wsl;containers;sqlserver;sql;mssql;testing;integration</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<Authors>Purview</Authors>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="../WslContainers/WslContainers.csproj" />
+		<ProjectReference Include="../Containers/Containers.csproj" />
 		<PackageReference Include="Microsoft.Data.SqlClient" />
 	</ItemGroup>
 </Project>

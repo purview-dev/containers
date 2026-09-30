@@ -1,12 +1,12 @@
-namespace Purview.WslContainers.RabbitMq;
+namespace Purview.Containers.RabbitMq;
 
 /// <summary>A throwaway RabbitMQ broker running on WSL Containers.</summary>
-public sealed class RabbitMqContainer : WslContainer
+public sealed class RabbitMqContainer : ContainerBase
 {
 	readonly RabbitMqConfiguration _configuration;
 
-	internal RabbitMqContainer(RabbitMqConfiguration configuration, IContainerRuntime runtime)
-		: base(configuration, runtime)
+	internal RabbitMqContainer(RabbitMqConfiguration configuration, IContainerBackend? backend)
+		: base(configuration, backend)
 	{
 		_configuration = configuration;
 	}

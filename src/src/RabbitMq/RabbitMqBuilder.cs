@@ -1,8 +1,8 @@
-using Purview.WslContainers.Diagnostics;
-using Purview.WslContainers.Runtime;
-using Purview.WslContainers.Waiting;
+using Purview.Containers.Diagnostics;
+using Purview.Containers.Runtime;
+using Purview.Containers.Waiting;
 
-namespace Purview.WslContainers.RabbitMq;
+namespace Purview.Containers.RabbitMq;
 
 /// <summary>Fluent builder for a RabbitMQ test container.</summary>
 public class RabbitMqBuilder : ContainerBuilder<RabbitMqBuilder, RabbitMqContainer, RabbitMqConfiguration>
@@ -33,8 +33,8 @@ public class RabbitMqBuilder : ContainerBuilder<RabbitMqBuilder, RabbitMqContain
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
-	public RabbitMqBuilder(IContainerRuntime runtime)
-		: base(runtime)
+	public RabbitMqBuilder(IContainerBackend backend)
+		: base(backend)
 	{
 		WithImage(RabbitMqImage)
 			.WithPortBinding(AmqpPort, assignRandomHostPort: true)
@@ -98,23 +98,23 @@ public class RabbitMqBuilder : ContainerBuilder<RabbitMqBuilder, RabbitMqContain
 		base.Validate(configuration);
 		if (string.IsNullOrWhiteSpace(_username))
 		{
-			throw new WslContainerConfigurationException("RabbitMQ username cannot be empty.");
+			throw new ContainerConfigurationException("RabbitMQ username cannot be empty.");
 		}
 
 		if (string.IsNullOrEmpty(_password.Value))
 		{
-			throw new WslContainerConfigurationException("RabbitMQ password cannot be empty.");
+			throw new ContainerConfigurationException("RabbitMQ password cannot be empty.");
 		}
 
 		if (string.IsNullOrEmpty(_virtualHost))
 		{
-			throw new WslContainerConfigurationException("RabbitMQ virtual host cannot be empty.");
+			throw new ContainerConfigurationException("RabbitMQ virtual host cannot be empty.");
 		}
 	}
 
 	/// <inheritdoc />
 	protected override RabbitMqContainer CreateContainer(RabbitMqConfiguration configuration)
 	{
-		return new RabbitMqContainer(configuration, Runtime ?? WslContainerRuntime.Instance);
+		return new RabbitMqContainer(configuration, Backend);
 	}
 }

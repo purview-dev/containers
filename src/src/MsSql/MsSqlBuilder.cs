@@ -1,9 +1,9 @@
 using Microsoft.Data.SqlClient;
-using Purview.WslContainers.Diagnostics;
-using Purview.WslContainers.Runtime;
-using Purview.WslContainers.Waiting;
+using Purview.Containers.Diagnostics;
+using Purview.Containers.Runtime;
+using Purview.Containers.Waiting;
 
-namespace Purview.WslContainers.MsSql;
+namespace Purview.Containers.MsSql;
 
 /// <summary>Fluent builder for a Microsoft SQL Server test container.</summary>
 public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSqlConfiguration>
@@ -28,8 +28,8 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
-	public MsSqlBuilder(IContainerRuntime runtime)
-		: base(runtime)
+	public MsSqlBuilder(IContainerBackend backend)
+		: base(backend)
 	{
 		WithImage(MsSqlImage).WithPortBinding(MsSqlPort, assignRandomHostPort: true);
 	}
@@ -87,23 +87,21 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 		base.Validate(configuration);
 		if (!_acceptLicense)
 		{
-			throw new WslContainerConfigurationException(
+			throw new ContainerConfigurationException(
 				"The SQL Server image requires accepting the EULA. Call AcceptLicense() explicitly before Build()."
 			);
 		}
 
 		if (_password.Value.Length < 8)
 		{
-			throw new WslContainerConfigurationException(
-				"The SQL Server SA password must be at least 8 characters long."
-			);
+			throw new ContainerConfigurationException("The SQL Server SA password must be at least 8 characters long.");
 		}
 	}
 
 	/// <inheritdoc />
 	protected override MsSqlContainer CreateContainer(MsSqlConfiguration configuration)
 	{
-		return new MsSqlContainer(configuration, Runtime ?? WslContainerRuntime.Instance);
+		return new MsSqlContainer(configuration, Backend);
 	}
 
 	WaitStrategy BuildReadinessWait()

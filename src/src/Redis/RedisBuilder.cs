@@ -1,6 +1,6 @@
-using Purview.WslContainers.Waiting;
+using Purview.Containers.Waiting;
 
-namespace Purview.WslContainers.Redis;
+namespace Purview.Containers.Redis;
 
 /// <summary>
 /// Fluent builder for a Redis-compatible test container. Works with Redis and Redis-compatible images
@@ -25,8 +25,8 @@ public class RedisBuilder : ContainerBuilder<RedisBuilder, RedisContainer, Redis
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
-	public RedisBuilder(IContainerRuntime runtime)
-		: base(runtime)
+	public RedisBuilder(IContainerBackend backend)
+		: base(backend)
 	{
 		WithImage(RedisImage).WithPortBinding(RedisPort, assignRandomHostPort: true);
 	}
@@ -48,6 +48,6 @@ public class RedisBuilder : ContainerBuilder<RedisBuilder, RedisContainer, Redis
 	/// <inheritdoc />
 	protected override RedisContainer CreateContainer(RedisConfiguration configuration)
 	{
-		return new RedisContainer(configuration, Runtime ?? WslContainerRuntime.Instance);
+		return new RedisContainer(configuration, Backend);
 	}
 }

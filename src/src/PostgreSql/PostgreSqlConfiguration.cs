@@ -1,6 +1,6 @@
-using Purview.WslContainers.Diagnostics;
+using Purview.Containers.Diagnostics;
 
-namespace Purview.WslContainers.PostgreSql;
+namespace Purview.Containers.PostgreSql;
 
 /// <summary>Immutable configuration for a PostgreSQL test container.</summary>
 public sealed record PostgreSqlConfiguration : ContainerConfiguration

@@ -1,14 +1,14 @@
 using MySqlConnector;
 
-namespace Purview.WslContainers.MySql;
+namespace Purview.Containers.MySql;
 
 /// <summary>A throwaway MySQL database running on WSL Containers.</summary>
-public sealed class MySqlContainer : WslContainer
+public sealed class MySqlContainer : ContainerBase
 {
 	readonly MySqlConfiguration _configuration;
 
-	internal MySqlContainer(MySqlConfiguration configuration, IContainerRuntime runtime)
-		: base(configuration, runtime)
+	internal MySqlContainer(MySqlConfiguration configuration, IContainerBackend? backend)
+		: base(configuration, backend)
 	{
 		_configuration = configuration;
 	}

@@ -1,6 +1,6 @@
-using Purview.WslContainers.Diagnostics;
+using Purview.Containers.Diagnostics;
 
-namespace Purview.WslContainers.MySql;
+namespace Purview.Containers.MySql;
 
 /// <summary>Immutable configuration for a MySQL test container.</summary>
 public sealed record MySqlConfiguration : ContainerConfiguration

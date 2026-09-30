@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<IsPackable>true</IsPackable>
+		<Description>Docker backend for Purview.Containers: throwaway containers from any reachable Docker daemon, driven by Testcontainers.</Description>
+		<PackageTags>docker;containers;testing;integration;testcontainers</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Authors>Purview</Authors>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../Containers/Containers.csproj" />
+		<PackageReference Include="Testcontainers" />
+	</ItemGroup>
+</Project>

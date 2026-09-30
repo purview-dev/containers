@@ -1,6 +1,6 @@
-using Purview.WslContainers.Diagnostics;
+using Purview.Containers.Diagnostics;
 
-namespace Purview.WslContainers.RabbitMq;
+namespace Purview.Containers.RabbitMq;
 
 /// <summary>Immutable configuration for a RabbitMQ test container.</summary>
 public sealed record RabbitMqConfiguration : ContainerConfiguration

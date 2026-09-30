@@ -1,6 +1,6 @@
-using Purview.WslContainers.Diagnostics;
+using Purview.Containers.Diagnostics;
 
-namespace Purview.WslContainers.MsSql;
+namespace Purview.Containers.MsSql;
 
 /// <summary>Immutable configuration for a Microsoft SQL Server test container.</summary>
 public sealed record MsSqlConfiguration : ContainerConfiguration

@@ -11,18 +11,28 @@
 	</Folder>
 	<Folder Name="/src/">
 		<Project Path="src/Azurite/Azurite.csproj" />
+		<Project Path="src/Containers/Containers.csproj" />
+		<Project Path="src/Docker/Docker.csproj" />
 		<Project Path="src/MsSql/MsSql.csproj" />
 		<Project Path="src/MySql/MySql.csproj" />
 		<Project Path="src/Nats/Nats.csproj" />
 		<Project Path="src/PostgreSql/PostgreSql.csproj" />
 		<Project Path="src/RabbitMq/RabbitMq.csproj" />
 		<Project Path="src/Redis/Redis.csproj" />
-		<Project Path="src/WslContainers/WslContainers.csproj" />
+		<Project Path="src/Wsl/Wsl.csproj" />
+	</Folder>
+
+	<Folder Name="/samples/">
+		<Project Path="../samples/getting-started/DockerSample/DockerSample.csproj" />
+		<Project Path="../samples/getting-started/WslSample/WslSample.csproj" />
 	</Folder>
 
 	<Folder Name="/tests/">
 		<Project Path="tests/Azurite.IntegrationTests/Azurite.IntegrationTests.csproj" />
 		<Project Path="tests/Azurite.UnitTests/Azurite.UnitTests.csproj" />
+		<Project Path="tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj" />
+		<Project Path="tests/Docker.UnitTests/Docker.UnitTests.csproj" />
+		<Project Path="tests/Modules.DockerIntegrationTests/Modules.DockerIntegrationTests.csproj" />
 		<Project Path="tests/MsSql.IntegrationTests/MsSql.IntegrationTests.csproj" />
 		<Project Path="tests/MsSql.UnitTests/MsSql.UnitTests.csproj" />
 		<Project Path="tests/MySql.IntegrationTests/MySql.IntegrationTests.csproj" />
@@ -36,7 +46,7 @@
 		<Project Path="tests/Redis.IntegrationTests/Redis.IntegrationTests.csproj" />
 		<Project Path="tests/Redis.UnitTests/Redis.UnitTests.csproj" />
 		<Project Path="tests/SharedTestingFramework/SharedTestingFramework.csproj" />
-		<Project Path="tests/WslContainers.IntegrationTests/WslContainers.IntegrationTests.csproj" />
-		<Project Path="tests/WslContainers.UnitTests/WslContainers.UnitTests.csproj" />
+		<Project Path="tests/Wsl.IntegrationTests/Wsl.IntegrationTests.csproj" />
+		<Project Path="tests/Wsl.UnitTests/Wsl.UnitTests.csproj" />
 	</Folder>
 </Solution>

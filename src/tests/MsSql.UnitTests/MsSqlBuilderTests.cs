@@ -1,6 +1,6 @@
-using Purview.WslContainers.Runtime;
+using Purview.Containers.Runtime;
 
-namespace Purview.WslContainers.MsSql;
+namespace Purview.Containers.MsSql;
 
 public class MsSqlBuilderTests
 {
@@ -9,7 +9,7 @@ public class MsSqlBuilderTests
 	{
 		var builder = new MsSqlBuilder().WithPassword("SomeStrong!Password1");
 
-		await Assert.That(() => builder.Build()).Throws<WslContainerConfigurationException>();
+		await Assert.That(() => builder.Build()).Throws<ContainerConfigurationException>();
 	}
 
 	[Test]
@@ -17,7 +17,7 @@ public class MsSqlBuilderTests
 	{
 		var builder = new MsSqlBuilder().WithPassword("short").AcceptLicense();
 
-		await Assert.That(() => builder.Build()).Throws<WslContainerConfigurationException>();
+		await Assert.That(() => builder.Build()).Throws<ContainerConfigurationException>();
 	}
 
 	[Test]

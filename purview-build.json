@@ -15,53 +15,68 @@
 		// (assets/images/purview-logo-light.png, linked as Sdk/purview-logo-light.png). A package with
 		// no rule here, or an entry matching none of its globs, fails validation.
 		"RequiredContent": {
-			"purview.wslcontainers": [
-				"lib/$(TFM)/Purview.WslContainers.dll",
-				"lib/$(TFM)/Purview.WslContainers.xml",
+			"purview.containers": [
+				"lib/$(TFM)/Purview.Containers.dll",
+				"lib/$(TFM)/Purview.Containers.xml",
 				"README.md",
 				"purview-logo-light.png",
-				"buildTransitive/Purview.WslContainers.props",
-				"buildTransitive/Purview.WslContainers.targets"
+				"buildTransitive/Purview.Containers.props",
+				"buildTransitive/Purview.Containers.targets"
 			],
-			"purview.wslcontainers.azurite": [
-				"lib/$(TFM)/Purview.WslContainers.Azurite.dll",
-				"lib/$(TFM)/Purview.WslContainers.Azurite.xml",
+			"purview.containers.docker": [
+				"lib/$(TFM)/Purview.Containers.Docker.dll",
+				"lib/$(TFM)/Purview.Containers.Docker.xml",
+				"README.md",
+				"purview-logo-light.png",
+				"buildTransitive/Purview.Containers.Docker.props"
+			],
+			"purview.containers.wsl": [
+				"lib/$(TFM)/Purview.Containers.Wsl.dll",
+				"lib/$(TFM)/Purview.Containers.Wsl.xml",
+				"README.md",
+				"purview-logo-light.png",
+				"buildTransitive/Purview.Containers.Wsl.props",
+				"buildTransitive/Purview.Containers.Wsl.targets"
+			],
+			"purview.containers.azurite": [
+				"lib/$(TFM)/Purview.Containers.Azurite.dll",
+				"lib/$(TFM)/Purview.Containers.Azurite.xml",
 				"README.md",
 				"purview-logo-light.png"
 			],
-			"purview.wslcontainers.mssql": [
-				"lib/$(TFM)/Purview.WslContainers.MsSql.dll",
-				"lib/$(TFM)/Purview.WslContainers.MsSql.xml",
+			"purview.containers.mssql": [
+				"lib/$(TFM)/Purview.Containers.MsSql.dll",
+				"lib/$(TFM)/Purview.Containers.MsSql.xml",
 				"README.md",
 				"purview-logo-light.png"
 			],
-			"purview.wslcontainers.mysql": [
-				"lib/$(TFM)/Purview.WslContainers.MySql.dll",
-				"lib/$(TFM)/Purview.WslContainers.MySql.xml",
+			"purview.containers.mysql": [
+				"lib/$(TFM)/Purview.Containers.MySql.dll",
+				"lib/$(TFM)/Purview.Containers.MySql.xml",
 				"README.md",
 				"purview-logo-light.png"
 			],
-			"purview.wslcontainers.nats": [
-				"lib/$(TFM)/Purview.WslContainers.Nats.dll",
-				"lib/$(TFM)/Purview.WslContainers.Nats.xml",
+			"purview.containers.nats": [
+				"lib/$(TFM)/Purview.Containers.Nats.dll",
+				"lib/$(TFM)/Purview.Containers.Nats.xml",
 				"README.md",
 				"purview-logo-light.png"
 			],
-			"purview.wslcontainers.postgresql": [
-				"lib/$(TFM)/Purview.WslContainers.PostgreSql.dll",
-				"lib/$(TFM)/Purview.WslContainers.PostgreSql.xml",
+			"purview.containers.postgresql": [
+				"lib/$(TFM)/Purview.Containers.PostgreSql.dll",
+				"lib/$(TFM)/Purview.Containers.PostgreSql.xml",
 				"README.md",
 				"purview-logo-light.png"
 			],
-			"purview.wslcontainers.rabbitmq": [
-				"lib/$(TFM)/Purview.WslContainers.RabbitMq.dll",
-				"lib/$(TFM)/Purview.WslContainers.RabbitMq.xml",
+			"purview.containers.rabbitmq": [
+				"lib/$(TFM)/Purview.Containers.RabbitMq.dll",
+				"lib/$(TFM)/Purview.Containers.RabbitMq.xml",
 				"README.md",
 				"purview-logo-light.png"
 			],
-			"purview.wslcontainers.redis": [
-				"lib/$(TFM)/Purview.WslContainers.Redis.dll",
-				"lib/$(TFM)/Purview.WslContainers.Redis.xml",
+			"purview.containers.redis": [
+				"lib/$(TFM)/Purview.Containers.Redis.dll",
+				"lib/$(TFM)/Purview.Containers.Redis.xml",
 				"README.md",
 				"purview-logo-light.png"
 			]

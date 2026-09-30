@@ -1,22 +1,22 @@
 # Contributing a module
 
-How to add a new service module to `Purview.WslContainers`.
+How to add a new service module to `Purview.Containers`.
 
 ## Files
 
 ```
-src/WslContainers.MyService/
-  WslContainers.MyService.csproj        -> PackageId Purview.WslContainers.MyService
+src/MyService/
+  MyService.csproj                      -> PackageId Purview.Containers.MyService
   MyServiceConfiguration.cs             -> immutable record, module fields
   MyServiceBuilder.cs                   -> fluent builder
   MyServiceContainer.cs                 -> container, connection string / endpoints
-tests/WslContainers.MyService.UnitTests/
-tests/WslContainers.MyService.IntegrationTests/
+tests/MyService.UnitTests/
+tests/MyService.IntegrationTests/
 ```
 
 ## Steps
 
-1. **Reference the core**: `<ProjectReference Include="../WslContainers/WslContainers.csproj" />` (the Purview SDK adds the right `InternalsVisibleTo`/pack defaults).
+1. **Reference the core**: `<ProjectReference Include="../Wsl/Wsl.csproj" />` (the Purview SDK adds the right `InternalsVisibleTo`/pack defaults).
 2. **Configuration record** — derive from `ContainerConfiguration`, add module fields; credentials as `Secret`:
 
 ```csharp
@@ -60,7 +60,7 @@ public class MyServiceBuilder : ContainerBuilder<MyServiceBuilder, MyServiceCont
     }
 
     protected override MyServiceContainer CreateContainer(MyServiceConfiguration configuration)
-        => new(configuration, Runtime ?? WslContainerRuntime.Instance);
+        => new(configuration, Backend);
 }
 ```
 
@@ -71,8 +71,8 @@ public class MyServiceBuilder : ContainerBuilder<MyServiceBuilder, MyServiceCont
 
 ## Conventions
 
-- Package ID `Purview.WslContainers.MyService` (namespace prefix `Purview`).
+- Package ID `Purview.Containers.MyService` (namespace prefix `Purview`).
 - Module is thin: no session management, no port allocation logic, no output buffering.
 - Default networking is `Bridged` (from the core defaults); ports use native random allocation unless a fixed host port is explicitly requested.
-- The module inherits the core package's consumer requirements (a .NET 11 Windows target framework, x64/arm64) and its `buildTransitive` MSBuild defaults. See [Consumer Requirements](Consumer-Requirements.md).
-- If a Testcontainers capability has no WSLC equivalent (e.g. UDP, TTY, `--user`), throw `WslContainerNotSupportedException` at build/validation rather than silently ignoring it.
+- The module is **backend-neutral** (`net10.0`, references `Purview.Containers` only) and therefore does **not** bring a backend or inherit its consumer requirements. A consumer references the module *and* a backend package (`Purview.Containers.Wsl` for the .NET 11 Windows contract, `Purview.Containers.Docker` for Docker). See [Consumer Requirements](Consumer-Requirements.md).
+- If a Testcontainers capability has no WSLC equivalent (e.g. UDP, TTY, `--user`), throw `ContainerNotSupportedException` at build/validation rather than silently ignoring it.

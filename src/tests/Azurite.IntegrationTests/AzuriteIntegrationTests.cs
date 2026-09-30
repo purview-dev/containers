@@ -1,4 +1,4 @@
-namespace Purview.WslContainers.Azurite;
+namespace Purview.Containers.Azurite;
 
 public class AzuriteIntegrationTests
 {

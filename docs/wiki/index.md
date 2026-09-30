@@ -1,14 +1,16 @@
 # Purview WSL Test Containers
 
-WSLC-native throwaway Linux containers for .NET integration testing — Testcontainers-style APIs built
-directly on **Microsoft WSL Containers**, with no Docker installation.
+Throwaway Linux containers for .NET integration testing — Testcontainers-style APIs for **Microsoft WSL
+Containers (WSLC)** with no Docker installation, and for **Docker** through Testcontainers. The same test
+code runs on either runtime; see [Backends: WSLC or Docker](Backends.md).
 
 [Get started](Getting-Started.md){ .md-button .md-button--primary }
-[Documentation overview](Home.md){ .md-button }
+[Choose a backend](Backends.md){ .md-button }
 
 ## Guides
 
 - [Getting Started](Getting-Started.md)
+- [Backends: WSLC or Docker](Backends.md)
 - [Consumer requirements](Consumer-Requirements.md)
 - [Architecture](Architecture.md)
 - [Lifecycle](Lifecycle.md)

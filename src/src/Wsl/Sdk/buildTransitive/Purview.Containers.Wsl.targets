@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Purview.Containers.Wsl consumer defaults and guard rails (targets).
+
+  Imported by NuGet for direct and transitive references, after the consumer's own project body
+  has been evaluated, so an explicit PlatformTarget or RuntimeIdentifier always wins. The values
+  set here are defaults only.
+
+  PlatformTarget: wslcsdk.dll (the native WSL Containers SDK) ships for win-x64 and win-arm64
+  only. A consumer left on the default AnyCPU is corrected to x64 here; an explicit x86 (32-bit)
+  consumer fails with PCC0002 instead of failing later at runtime with a load error.
+
+  Target framework: because build and buildTransitive assets are framework-agnostic, NuGet does
+  not reject an incompatible target framework at restore time with NU1202 - it silently
+  contributes no compile assets, which surfaces as a confusing CS0246 in user code. The guard
+  target below turns that into a deliberate, actionable error (PCC0001).
+
+  Note that Microsoft.WSL.Containers' own build assets do not flow transitively, so its native
+  copy/validation targets never run in a consumer: wslcsdk.dll reaches the output through the
+  package's runtimes/win-*/native assets instead, and these guards are the only build-time
+  protection a consumer gets.
+  NOTE: NuGet only auto-imports buildTransitive/<PackageId>.props and buildTransitive/<PackageId>.targets.
+-->
+<Project>
+	<PropertyGroup Condition="'$(RuntimeIdentifier)' == ''">
+		<PlatformTarget Condition="'$(PlatformTarget)' == '' OR '$(PlatformTarget)' == 'AnyCPU'">x64</PlatformTarget>
+	</PropertyGroup>
+
+	<!--
+		A .NET 11 (or later) Windows target framework of at least Windows 10 19041 - the framework
+		Microsoft.WSL.Containers ships assets for. Property groups inside a target are evaluated in
+		order at execution time, so each condition is only reached once the previous one passed;
+		MSBuild short-circuits 'AND', which keeps the version comparisons safe when
+		TargetPlatformVersion is empty (a platform-less target framework such as net11.0).
+	-->
+	<Target
+		Name="PurviewContainersWslValidateTargetFramework"
+		BeforeTargets="PrepareForBuild"
+		Condition="'$(TargetFramework)' != ''"
+	>
+		<PropertyGroup>
+			<_PurviewContainersWslPlatformVersionSupported
+				Condition="'$(TargetPlatformVersion)' != '' AND $([MSBuild]::VersionGreaterThanOrEquals($(TargetPlatformVersion), '10.0.19041.0'))"
+				>true</_PurviewContainersWslPlatformVersionSupported>
+			<_PurviewContainersWslTargetFrameworkSupported
+				Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' AND $([MSBuild]::VersionGreaterThanOrEquals($(TargetFrameworkVersion), '11.0')) AND '$(TargetPlatformIdentifier)' == 'Windows' AND '$(_PurviewContainersWslPlatformVersionSupported)' == 'true'"
+				>true</_PurviewContainersWslTargetFrameworkSupported>
+		</PropertyGroup>
+
+		<Error
+			Code="PCC0001"
+			Condition="'$(_PurviewContainersWslTargetFrameworkSupported)' != 'true'"
+			Text="Purview.Containers.Wsl requires a .NET 11 (or later) project targeting Windows 10.0.19041.0 or later, for example &lt;TargetFramework&gt;net11.0-windows10.0.19041.0&lt;/TargetFramework&gt;. The library drives the Microsoft.WSL.Containers WinRT projection, which only ships Windows assets, so '$(TargetFramework)' cannot be supported (net11.0-windows on its own defaults to an older Windows platform version). If the project multi-targets, reference the package only from the Windows inner build with a Condition on '`$(TargetFramework)'. See docs/wiki/Consumer-Requirements.md."
+		/>
+	</Target>
+
+	<Target
+		Name="PurviewContainersWslValidatePlatformTarget"
+		BeforeTargets="PrepareForBuild"
+		Condition="'$(TargetFramework)' != ''"
+	>
+		<PropertyGroup>
+			<_PurviewContainersWslPlatformTargetSupported
+				Condition="'$(PlatformTarget)' == 'x64' OR '$(PlatformTarget)' == 'arm64' OR ('$(PlatformTarget)' == '' AND '$(RuntimeIdentifier)' != '')"
+				>true</_PurviewContainersWslPlatformTargetSupported>
+		</PropertyGroup>
+
+		<Error
+			Code="PCC0002"
+			Condition="'$(_PurviewContainersWslPlatformTargetSupported)' != 'true'"
+			Text="Purview.Containers.Wsl requires a 64-bit (x64 or arm64) consumer: wslcsdk.dll ships for win-x64 and win-arm64 only. PlatformTarget is '$(PlatformTarget)'. Remove the PlatformTarget property to accept the x64 default, set it to x64 or arm64, or select a matching RuntimeIdentifier. See docs/wiki/Consumer-Requirements.md."
+		/>
+	</Target>
+</Project>

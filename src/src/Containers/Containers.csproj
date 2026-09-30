@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<IsPackable>true</IsPackable>
+		<Description>Backend-neutral container testing abstractions for .NET: a Testcontainers-style API that can run on WSL Containers or Docker.</Description>
+		<PackageTags>containers;testing;integration;testcontainers;abstractions</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Authors>Purview</Authors>
+	</PropertyGroup>
+</Project>

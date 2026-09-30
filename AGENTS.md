@@ -2,10 +2,12 @@
 
 ## Purpose and authority
 
-This repository contains `Purview.WslContainers`, a **WSLC-native** Testcontainers-style library for .NET:
-throwaway Linux containers for integration testing on **Microsoft WSL Containers (WSLC)**, with no Docker
-installation, plus the service modules (`PostgreSql`, `Redis`, `MsSql`, `RabbitMq`, `Azurite`, `Nats`,
-`MySql`).
+This repository contains `Purview.Containers`, a Testcontainers-style library for .NET that runs throwaway
+Linux containers for integration testing on **Microsoft WSL Containers (WSLC)** — the Windows runtime with
+no Docker installation — or on **Docker** through Testcontainers, plus the service modules (`PostgreSql`,
+`Redis`, `MsSql`, `RabbitMq`, `Azurite`, `Nats`, `MySql`).
+`docs/wiki/Backends.md` is the consumer guide to choosing and configuring a backend; keep it up to date
+whenever a target framework, a backend package or the `buildTransitive` assets change.
 
 - This file is the repository-wide source of truth for AI agents. A more-specific `AGENTS.md` in a subtree, if
   one is ever added, takes precedence for that subtree.
@@ -21,12 +23,15 @@ installation, plus the service modules (`PostgreSql`, `Redis`, `MsSql`, `RabbitM
 | Path | Purpose |
 | --- | --- |
 | `src/WSLTestContainers.slnx` | Canonical solution for restore, build, test and pack |
-| `src/src/WslContainers` | Core runtime (`Purview.WslContainers`): `ContainerBuilder`, `WslContainer`, runtime, sessions, images, networking, mounts, wait strategies, diagnostics |
-| `src/src/<Module>` | Service modules; each is a thin layer over the core and carries a bespoke `Sdk/README.md` |
-| `src/src/<Project>/Sdk` | Package-only assets. `Sdk/README.md` is packed as the package README (suppressing the repo-root README); `Sdk/buildTransitive/**` ships MSBuild assets to consumers (the core package's consumer defaults and guards) |
-| `src/tests` | TUnit unit (`*.UnitTests`) and WSLC integration (`*.IntegrationTests`) projects |
+| `src/src/Containers` | Backend-neutral abstractions (`Purview.Containers`, `net10.0`): `IContainer`/`ContainerConfiguration`, `ContainerBuilder`, `ContainerBase`, `IContainerBackend`/`ContainerBackends`, wait strategies, images, networking, mounts, diagnostics |
+| `src/src/Wsl` | WSL Containers backend (`Purview.Containers.Wsl`, `net11.0-windows10.0.19041.0`): `WslContainerBackend`, the shared session runtime, `WslContainer`, `WslContainerSession` |
+| `src/src/Docker` | Docker backend (`Purview.Containers.Docker`, `net10.0`): `DockerContainerBackend` + `DockerContainer` over Testcontainers |
+| `src/src/<Module>` | Service modules (`Purview.Containers.<Module>`, `net10.0`); each is a thin layer over the abstractions and carries a bespoke `Sdk/README.md` |
+| `src/src/<Project>/Sdk` | Package-only assets. `Sdk/README.md` is packed as the package README (suppressing the repo-root README); `Sdk/buildTransitive/**` ships MSBuild assets to consumers (the abstractions' backend registration, each backend package's own registration entry, and the WSL backend's consumer defaults and guards) |
+| `src/tests` | TUnit unit (`*.UnitTests`) and container integration (`*.IntegrationTests`) projects: the WSLC suites need a WSLC host, `Docker.IntegrationTests` and `Modules.DockerIntegrationTests` need a Docker daemon |
 | `spikes/WslcSpikes` | Phase 0 investigation harness (`s1`..`s14` probes); not part of the test run |
-| `docs/wiki` | User-facing documentation wiki, aggregated by the purview-dev website |
+| `docs/wiki` | User-facing documentation wiki, aggregated by the purview-dev website. `Backends.md` is the consumer guide to choosing and configuring WSLC or Docker |
+| `samples/getting-started` | Runnable consumer-shaped samples (WSLC and Docker) built with the solution; `just sample-wsl` / `just sample-docker` |
 | `mkdocs.yml` | Wiki site configuration (`docs_dir: docs/wiki`) |
 | `src/Directory.Build.props` / `src/Directory.Build.targets` | Solution-wide SDK import, package metadata and the shared package icon |
 | `purview-build.json` | Shared `Purview.Build` pipeline configuration: solution, test discovery/filter and the **exhaustive** pack-validation manifest |
@@ -57,23 +62,37 @@ installation, plus the service modules (`PostgreSql`, `Redis`, `MsSql`, `RabbitM
 - **Random host ports are native** (`windowsPort=0`) and read back from the container's mapped ports — never
   probe for a free port.
 - **Default networking is `Bridged`**; only IPv4 loopback is mapped, and UDP is unsupported
-  (`WslContainerNotSupportedException`).
+  (`ContainerNotSupportedException`).
+- **One backend registry per process** (`ContainerBackends`): backend packages register themselves through
+  the generated module initializer, `ResolveAsync()` returns the pinned backend, the
+  `PURVIEW_CONTAINERS_BACKEND`-selected backend, or the first *usable* registered backend (probing each
+  one), and an empty/unusable registry throws `ContainerBackendUnavailableException` naming the fix. A
+  named or pinned backend never silently falls back. A module must never reference a backend package — it
+  resolves through the registry.
 - **`DisposeAsync` is idempotent** and never terminates the shared session; a process-exit hook disposes the
   session so its name is released.
 - **Secrets use `Secret`** and must never reach logs, names, `ToString()` or diagnostics (they are redacted).
 
 ## Consumer requirements and compatibility
 
-- The packages are **.NET 11, Windows-only**: every project under `src/` targets
-  `net11.0-windows10.0.19041.0` (`src/Directory.Build.props`) and a consumer must match. The contract,
-  the failures that enforce it and the CI workarounds are documented in
-  [Consumer Requirements](docs/wiki/Consumer-Requirements.md); update that page whenever the target
-  framework, the `buildTransitive` defaults or the `PWC0001`/`PWC0002` guards change.
-- `Purview.WslContainers` ships `Sdk/buildTransitive/Purview.WslContainers.{props,targets}` so consumers
+- The packages split by framework: `Purview.Containers` (abstractions) and the service modules target
+  **`net10.0`** on any platform, while `Purview.Containers.Wsl` is the **.NET 11, Windows-only** backend
+  (`net11.0-windows10.0.19041.0`). `src/src/Directory.Build.props` sets the `net10.0` subtree default and
+  `Wsl.csproj` overrides it; `src/tests` keeps the Windows target because the tests drive WSLC. The
+  contract, the failures that enforce it and the CI workarounds are documented in
+  [Consumer Requirements](docs/wiki/Consumer-Requirements.md); update that page whenever a target
+  framework, the `buildTransitive` defaults or the `PCC0001`/`PCC0002` guards change.
+- `Purview.Containers.Wsl` ships `Sdk/buildTransitive/Purview.Containers.Wsl.{props,targets}` so consumers
   inherit `WindowsSdkPackageVersion`/`PlatformTarget` defaults and a clear error for an unsupported
-  target framework (`PWC0001`) or a 32-bit consumer (`PWC0002`). Those assets are framework-agnostic, so
+  target framework (`PCC0001`) or a 32-bit consumer (`PCC0002`). Those assets are framework-agnostic, so
   NuGet no longer raises `NU1202` at restore time — the guards are the fail-fast path. Keep them, and
-  keep the `RequiredContent` entries that declare them.
+  keep the `RequiredContent` entries that declare them. **These assets must never flow to a `net10.0`
+  consumer** (a Docker-backed one) or `PCC0001` fires on Linux; they belong to the WSL backend package only.
+- `Purview.Containers` ships `Sdk/buildTransitive/Purview.Containers.{props,targets}`, which turn
+  the `PurviewContainersBackends` list (each backend package appends its own entry) into a generated
+  module initializer in the consuming assembly. That is how a package consumer's process discovers its
+  backend without reflection or assembly scanning. A project-reference consumer (this repository's own
+  tests) registers explicitly instead — `WslcTest.EnsureBackendRegistered()`.
 - `src/Directory.Build.props` sets `EnableWindowsTargeting=true` because the shared CI agent is
   `ubuntu-latest`; removing it fails the pipeline with `NETSDK1100`.
 - The project is **experimental**: keep the experimental notice in `README.md`, `docs/wiki/Home.md` and
@@ -85,7 +104,11 @@ installation, plus the service modules (`PostgreSql`, `Redis`, `MsSql`, `RabbitM
   strategy, and connection-string/endpoint accessors. It must not duplicate runtime infrastructure.
 - New modules follow the shape in [Contributing Modules](docs/wiki/Contributing-Modules.md): a
   `ContainerConfiguration`-derived record, a `ContainerBuilder<TBuilder, TContainer, TConfiguration>`
-  subclass, and a container exposing `GetConnectionString()`/endpoints built from `GetMappedPublicPort`.
+  subclass, and a container deriving from `ContainerBase` that exposes
+  `GetConnectionString()`/endpoints built from `GetMappedPublicPort`. Take an `IContainerBackend` in the
+  builder and container constructors and pass it through as `new MyContainer(configuration, Backend)` — a `null` backend is resolved on start via `ContainerBackends.ResolveAsync()`; a
+  module package must never reference `Purview.Containers.Wsl` (that is what keeps it runnable on any
+  backend and restorable on Linux).
 - Prefer verifying the service for readiness (exec a readiness command or open a host client connection) over
   a bare TCP check. Where an image reports readiness too early (MySQL), a log match is wrong.
 - SQL Server requires an explicit `AcceptLicense()` call; never accept licensing terms on the caller's behalf.
@@ -96,9 +119,13 @@ installation, plus the service modules (`PostgreSql`, `Redis`, `MsSql`, `RabbitM
   resolves `IsPackable` by scanning the project file, and the package metadata/icon conditions in
   `src/Directory.Build.props` depend on it.
 - Each package ships `lib/$(TFM)/<Assembly>.{dll,xml}`, `README.md` (from `Sdk/README.md`) and
-  `purview-logo-light.png`. PDBs ship only in the `.snupkg`. The core package additionally ships
-  `buildTransitive/Purview.WslContainers.{props,targets}` (see
-  [Consumer requirements and compatibility](#consumer-requirements-and-compatibility)).
+  `purview-logo-light.png`. PDBs ship only in the `.snupkg`. MSBuild assets are per package and must be
+  named after their own package id for NuGet to import them: `Purview.Containers` ships
+  `buildTransitive/Purview.Containers.{props,targets}` (backend registration),
+  `Purview.Containers.Wsl` ships `buildTransitive/Purview.Containers.Wsl.{props,targets}` (consumer
+  defaults and guards) and `Purview.Containers.Docker` ships
+  `buildTransitive/Purview.Containers.Docker.props` (its registration entry). See
+  [Consumer requirements and compatibility](#consumer-requirements-and-compatibility).
 - `PackValidation.RequireExplicitContent` defaults to `true`, so `purview-build.json`'s `RequiredContent` is
   the **exhaustive** manifest: a produced package with no rule, or a packed entry matched by no glob, fails
   validation. Adding or removing packaged content means updating that map.
@@ -113,7 +140,7 @@ installation, plus the service modules (`PostgreSql`, `Redis`, `MsSql`, `RabbitM
   exclusively locks its image-store VHD, so parallel modules fail with `0x80070020`.
 - Use the shared `WslcTest` helper in `src/tests/SharedTestingFramework` for integration skip/availability
   checks. Unit tests may use the modules' `BuildConfigurationForTesting()` internal hook.
-- `WslContainers.UnitTests/ConsumerRequirementsTests.cs` guards the published target framework
+- `Wsl.UnitTests/ConsumerRequirementsTests.cs` guards the published target framework
   (`.NETCoreApp,Version=v11.0` plus `Windows10.0.19041.0`); keep it in step with
   [Consumer Requirements](docs/wiki/Consumer-Requirements.md).
 - `just verify-consumers` packs and then builds throwaway consumer projects to assert the documented

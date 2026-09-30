@@ -21,7 +21,7 @@ Keep product, architecture, and general engineering standards centralized in `AG
 - Never weaken the WSLC session/store invariants (single shared session, serialised session mutations, the
   shared-store fallback, `Secret` redaction) to make a test pass.
 - Treat the published consumer contract as an invariant too: `.NET 11` + a Windows target framework,
-  the `buildTransitive` defaults, and the `PWC0001`/`PWC0002` guards documented in
+  the `buildTransitive` defaults, and the `PCC0001`/`PCC0002` guards documented in
   `docs/wiki/Consumer-Requirements.md`. `just verify-consumers` must pass before a consumer-facing change
   is complete.
 - Consult the repository `.agents/` folder for additional skills/workflows that may improve execution

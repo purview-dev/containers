@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<IsPackable>true</IsPackable>
-		<Description>NATS module for Purview.WslContainers: throwaway NATS message brokers on WSL Containers.</Description>
+		<Description>NATS module for Purview.Containers: throwaway NATS message brokers on WSL Containers.</Description>
 		<PackageTags>wsl;containers;nats;messaging;testing;integration</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<Authors>Purview</Authors>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="../WslContainers/WslContainers.csproj" />
+		<ProjectReference Include="../Containers/Containers.csproj" />
 	</ItemGroup>
 </Project>

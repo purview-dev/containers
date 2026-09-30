@@ -1,6 +1,6 @@
 # Release Flow
 
-How this repository builds, versions, validates and publishes `Purview.WslContainers.*`.
+How this repository builds, versions, validates and publishes `Purview.Containers.*`.
 
 ## Versioning
 
@@ -56,9 +56,9 @@ the run with the failing module's output.
 Both workflows pin `dotnet-version` to the SDK in `global.json` (`11.0.100-rc.1.26425.128`); keep them in
 sync when the SDK is bumped, and keep `purview-build.json` pointing at `src/WSLTestContainers.slnx`.
 
-The shared workflow runs on **`ubuntu-latest`**, so the Linux agent builds these
-`net11.0-windows10.0.19041.0` projects. That only works because `src/Directory.Build.props` sets
-`EnableWindowsTargeting=true`; removing it fails the pipeline with `NETSDK1100`. The agent has no WSL
+The shared workflow runs on **`ubuntu-latest`**, so the Linux agent builds the portable `net10.0` projects
+and the `net11.0-windows10.0.19041.0` test projects. That only works because `src/Directory.Build.props`
+sets `EnableWindowsTargeting=true`; removing it fails the pipeline with `NETSDK1100`. The agent has no WSL
 Containers, which is why the pipeline is filtered to `[Category=Unit]` — see
 [Consumer Requirements](Consumer-Requirements.md) and [Testing](Testing.md).
 

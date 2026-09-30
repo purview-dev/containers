@@ -1,28 +1,62 @@
 # Architecture
 
-Design for a WSLC-native Testcontainers-style .NET library: `Purview.WslContainers`.
+Design for a Testcontainers-style .NET library with pluggable container backends: `Purview.Containers`.
 
 ## Core model
 
-```
-WslContainerRuntime (process singleton, IAsyncDisposable)
- ├─ SessionSettings (name, storagePath, cpu/mem, gpu, timeout)
- ├─ SemaphoreSlim        -> serialises session-mutating and container-lifecycle ops
- ├─ ImageCatalog         -> pull policies + keyed dedup of concurrent pulls
- ├─ PortAllocator        -> native random host ports (windowsPort=0)
- └─ SessionHandle        -> Microsoft.WSL.Containers.Session (internal)
+The library is split into a backend-neutral abstraction assembly and one assembly per backend:
 
-IContainerRuntime
-  Task<WslContainerRuntimeInfo> GetInfoAsync(CancellationToken ct = default)
-  Task<IContainerSession> GetSessionAsync(CancellationToken ct = default)
-  Task InitializeAsync(...)
+```
+Purview.Containers                       (net10.0, portable)
+ ├─ IContainer / IContainerConfiguration / ContainerConfiguration   the container contract
+ ├─ ContainerBuilder<TBuilder, TContainer, TConfiguration>          fluent configuration + validation
+ ├─ ContainerBase                                                   typed module container (delegates to the backend)
+ ├─ ContainerBackends + IContainerBackend                           backend registry and selection
+ ├─ Waiting / Images / Mounts / Networking / Diagnostics            readiness, model, secrets
+ └─ Runtime/ContainerException                                      neutral error taxonomy
+
+Purview.Containers.Wsl                   (net11.0-windows10.0.19041.0)
+ ├─ WslContainerBackend : IContainerBackend  registers itself as "wsl"
+ ├─ WslContainerRuntime : IContainerRuntime  process singleton, owns the shared session
+ │   ├─ SessionSettings (name, storagePath, cpu/mem, gpu, timeout)
+ │   ├─ SemaphoreSlim   -> serialises session-mutating and container-lifecycle ops
+ │   ├─ ImageCatalog    -> pull policies + keyed dedup of concurrent pulls
+ │   ├─ PortAllocator   -> native random host ports (windowsPort=0)
+ │   └─ SessionHandle   -> Microsoft.WSL.Containers.Session (internal)
+ ├─ WslContainer        : IContainer         WSLC-backed container
+ └─ WslContainerSession : IContainerSession  image pull + container create/start/stop/delete/exec
 
 IContainer : IAsyncDisposable
   StartAsync / StopAsync / DisposeAsync / ExecAsync / GetMappedPublicPort /
   GetLogsAsync / tailing IAsyncEnumerable
 ```
 
+A module (`Purview.Containers.PostgreSql`, `Purview.Containers.Redis`, …) derives its container from
+`ContainerBase` and references `Purview.Containers` only. The backend is resolved at run time through
+`ContainerBackends`, so the same module package works on WSLC or Docker.
+
 Microsoft types (`Session`, `Container`, `Process`, `ContainerSettings`, …) are **runtime implementation details** kept behind the public interfaces. They are not exposed through the public API surface (an opt-in accessor is the only escape hatch).
+
+## Backend selection
+
+`ContainerBackends` is the process-wide registry; `ResolveAsync()` chooses the backend with this
+precedence:
+
+1. **Pinned instance** — `ContainerBackends.Use(new WslContainerBackend())`, or `WithBackend(...)` on a
+   single builder. Used as-is: never probed, never substituted.
+2. **Named backend** — `PURVIEW_CONTAINERS_BACKEND=wsl|docker|<name>` (or
+   `Use(ContainerBackendSelection.Named(...))`). The named backend is probed: an unknown name lists what is
+   registered, and an unusable one fails with its own diagnostics. There is no fallback.
+3. **Automatic detection** — every registered backend is probed in registration order and the first
+   *available and compatible* one wins. When none is usable the exception lists each backend's
+   availability, version and missing components, plus the `PURVIEW_CONTAINERS_BACKEND` values that would
+   work.
+
+Resolution is cached per process, so probes run once; `Reset()` (tests) and `Register`/`Use` invalidate the
+cache. Package consumers get registration from the generated module initializer in
+`Purview.Containers.targets`; project-reference consumers register explicitly with
+`Register(...)`. Consumer-facing guidance (including the CI example) is in
+[Backends: WSLC or Docker](Backends.md).
 
 ## Session lifetime model (chosen after spikes)
 
@@ -37,7 +71,7 @@ Design rules:
 
 1. **One lazily-started session per process** with a deterministic name `wslc-{processId}-{8 hex}` (unique per machine; session names are reserved until the session is disposed — EXP S1/S14) and a **stable storage path** (default `%LOCALAPPDATA%\Purview.WslContainers\sessions\{name}\`), configurable.
 2. The session VM is capped at **4096 MB by default** (`WslContainerRuntimeOptions.Default`). This is required for SQL Server (which refuses to start below 2000 MB — `sqlservr: This program requires a machine with at least 2000 megabytes of memory`) and harmless for lighter containers. Override via `WslContainerRuntimeOptions.MemorySizeInMB`.
-2. `IContainerRuntime` is the seam so advanced users/tests can substitute a per-container-session runtime for isolation experiments.
+2. `IContainerBackend` is the seam for backends: a backend package (starting with `Purview.Containers.Wsl`) supplies `IContainer` instances, and `ContainerBackends` resolves which one runs. `IContainerRuntime` remains the WSLC-internal seam so advanced users/tests can substitute a per-container-session runtime for isolation experiments.
 3. Container `DisposeAsync` never terminates the shared session; it deletes the container only.
 4. The runtime registers a **process-exit handler** and `IAsyncDisposable` to `Terminate()`+`Dispose()` the session at shutdown.
 
@@ -46,7 +80,7 @@ Design rules:
 - Name: `wslc-{pid}-{random8}`. Never place secrets/credentials in names, paths, or logs.
 - **Storage is shared by default** (`StorageMode.Shared`): all sessions use
   `%LOCALAPPDATA%\Purview.WslContainers\images`, so the image store is pulled once and reused across
-  process runs. Set `StorageMode.PerSession` (or an explicit `StoragePath` / `WSL_CONTAINERS_STORAGE_PATH`)
+  process runs. Set `StorageMode.PerSession` (or an explicit `StoragePath` / `PURVIEW_CONTAINERS_STORAGE_PATH`)
   for isolation. Session names stay unique per process; only the path is shared.
 - **Concurrent sharing is not possible**: a running session exclusively locks its `storage.vhdx`
   (a second session on the same path fails with `0x80070020` — EXP S18). The lock is taken lazily on the
@@ -68,7 +102,7 @@ Design rules:
 - **Random host port = native `windowsPort=0`** (race-free, EXP S4). The assigned port is read from `Inspect().Ports`.
 - Explicit host ports are bound by WSLC at `Start`; a conflict throws `0x80072740` (surface as a clear `WslContainerPortInUseException`).
 - Default host bind is IPv4 loopback only; IPv6 is not mapped (EXP S12).
-- UDP → `WslContainerNotSupportedException`.
+- UDP → `ContainerNotSupportedException`.
 
 ## Concurrency
 
@@ -83,7 +117,7 @@ on the same path can start its session successfully and only fail later on its f
 (`GetImages()`) with `0x80070020`. The runtime therefore verifies the store once, under a gate, on the
 first `GetSessionAsync`; when a concurrent process holds the default shared store, that session is
 discarded and the runtime transparently switches to an isolated per-process store. Explicit
-`StoragePath`/`WSL_CONTAINERS_STORAGE_PATH`/`StorageMode.PerSession` configuration opts out of the
+`StoragePath`/`PURVIEW_CONTAINERS_STORAGE_PATH`/`StorageMode.PerSession` configuration opts out of the
 fallback. Isolated stores are transient and are removed when their session terminates.
 
 ## Cleanup & reaper decision
@@ -97,7 +131,7 @@ fallback. Isolated stores are transient and are removed when their session termi
 
 ## Observability
 
-- `System.Diagnostics.ActivitySource("Purview.WslContainers")` emits `wslcontainer.session.start`, `wslcontainer.image.pull`, `wslcontainer.container.create/start/stop/delete`, `wslcontainer.exec.create`, and `wslcontainer.wait`. Tags carry container name/id/image and strategy — never credentials.
+- `System.Diagnostics.ActivitySource("Purview.Containers")` emits `wslcontainer.session.start`, `wslcontainer.image.pull`, `wslcontainer.container.create/start/stop/delete`, `wslcontainer.exec.create`, and `wslcontainer.wait`. Tags carry container name/id/image and strategy — never credentials.
 - Tailing `GetLogsAsync(CancellationToken)` ends when the container's init process exits: the log buffer is flushed and its channel completed on process exit (and on container disposal), so an `await foreach` over the stream terminates instead of waiting forever. The string overload (`GetLogsAsync(stream, ct)`) reads the accumulated buffer only.
 - `Microsoft.Extensions.Logging` integration is optional/future; the core works without a host or DI.
 

@@ -1,14 +1,14 @@
 using Microsoft.Data.SqlClient;
 
-namespace Purview.WslContainers.MsSql;
+namespace Purview.Containers.MsSql;
 
 /// <summary>A throwaway Microsoft SQL Server instance running on WSL Containers.</summary>
-public sealed class MsSqlContainer : WslContainer
+public sealed class MsSqlContainer : ContainerBase
 {
 	readonly MsSqlConfiguration _configuration;
 
-	internal MsSqlContainer(MsSqlConfiguration configuration, IContainerRuntime runtime)
-		: base(configuration, runtime)
+	internal MsSqlContainer(MsSqlConfiguration configuration, IContainerBackend? backend)
+		: base(configuration, backend)
 	{
 		_configuration = configuration;
 	}
