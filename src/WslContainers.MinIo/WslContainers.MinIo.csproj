@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<IsPackable>true</IsPackable>
+		<Description>MinIO module for Purview.WslContainers: throwaway S3-compatible object storage on WSL Containers.</Description>
+		<PackageTags>wsl;containers;minio;s3;object;storage;testing;integration</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Authors>Purview</Authors>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../WslContainers/WslContainers.csproj" />
+	</ItemGroup>
+</Project>

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<IsPackable>true</IsPackable>
+		<Description>Azurite module for Purview.WslContainers: throwaway Azure Storage emulators (blob/queue/table) on WSL Containers.</Description>
+		<PackageTags>wsl;containers;azurite;azure;storage;testing;integration</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Authors>Purview</Authors>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../WslContainers/WslContainers.csproj" />
+	</ItemGroup>
+</Project>

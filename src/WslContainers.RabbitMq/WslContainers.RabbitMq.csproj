@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<IsPackable>true</IsPackable>
+		<Description>RabbitMQ module for Purview.WslContainers: throwaway RabbitMQ brokers on WSL Containers.</Description>
+		<PackageTags>wsl;containers;rabbitmq;amqp;testing;integration</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Authors>Purview</Authors>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../WslContainers/WslContainers.csproj" />
+	</ItemGroup>
+</Project>

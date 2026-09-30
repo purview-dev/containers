@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<IsPackable>false</IsPackable>
+		<NoWarn>$(NoWarn);CA1031;CA1304;CA1305;CA1307;CA1310;CA1849;CA2000;CA2027;CA1707;CA1822;CA1062;CA1515;CA1861;CA1819;IDE0040;IDE0060;IDE0074;IDE0007;IDE0305;CS4014</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.WSL.Containers" />
+	</ItemGroup>
+</Project>

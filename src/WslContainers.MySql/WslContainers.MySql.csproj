@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<IsPackable>true</IsPackable>
+		<Description>MySQL module for Purview.WslContainers: throwaway MySQL databases on WSL Containers.</Description>
+		<PackageTags>wsl;containers;mysql;database;testing;integration</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Authors>Purview</Authors>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../WslContainers/WslContainers.csproj" />
+		<PackageReference Include="MySqlConnector" />
+	</ItemGroup>
+</Project>
