@@ -4,7 +4,7 @@ using Purview.WslContainers.Runtime;
 
 namespace Purview.WslContainers;
 
-class ContainerBuilderTests
+public class ContainerBuilderTests
 {
 	sealed class TestBuilder : ContainerBuilder<TestBuilder, WslContainer, ContainerConfiguration>
 	{

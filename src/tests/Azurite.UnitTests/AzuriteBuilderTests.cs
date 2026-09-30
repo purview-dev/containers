@@ -2,9 +2,18 @@ using Purview.WslContainers.Waiting;
 
 namespace Purview.WslContainers.Azurite;
 
-class AzuriteBuilderTests
+public class AzuriteBuilderTests
 {
-	static readonly string[] Expected = ["azurite", "--blobHost", "0.0.0.0", "--queueHost", "0.0.0.0", "--tableHost", "0.0.0.0"];
+	static readonly string[] Expected =
+	[
+		"azurite",
+		"--blobHost",
+		"0.0.0.0",
+		"--queueHost",
+		"0.0.0.0",
+		"--tableHost",
+		"0.0.0.0",
+	];
 
 	[Test]
 	public async Task BuildConfig_AppliesDefaults()
@@ -12,11 +21,7 @@ class AzuriteBuilderTests
 		var configuration = new AzuriteBuilder().BuildConfigurationForTesting();
 
 		await Assert.That(configuration.Image).IsEqualTo("mcr.microsoft.com/azure-storage/azurite:latest");
-		await Assert
-			.That(configuration.Command)
-			.IsEquivalentTo(
-				Expected
-			);
+		await Assert.That(configuration.Command).IsEquivalentTo(Expected);
 		await Assert.That(configuration.PortBindings.Count).IsEqualTo(3);
 		await Assert.That(configuration.PortBindings).Contains(p => p.ContainerPort == 10000 && p.AssignRandomHostPort);
 		await Assert.That(configuration.PortBindings).Contains(p => p.ContainerPort == 10001 && p.AssignRandomHostPort);

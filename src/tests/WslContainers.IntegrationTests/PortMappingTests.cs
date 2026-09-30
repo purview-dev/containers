@@ -4,7 +4,8 @@ using Purview.WslContainers.Containers;
 
 namespace Purview.WslContainers;
 
-class PortMappingTests
+[Explicit]
+public class PortMappingTests
 {
 	[Test]
 	public async Task RandomHostPort_IsAssignedAndReachable()

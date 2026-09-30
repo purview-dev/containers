@@ -5,7 +5,8 @@ using Purview.WslContainers.Waiting;
 
 namespace Purview.WslContainers;
 
-class WaitStrategyTests
+[Explicit]
+public class WaitStrategyTests
 {
 	[Test]
 	public async Task LogMessage_WaitsForReadiness()

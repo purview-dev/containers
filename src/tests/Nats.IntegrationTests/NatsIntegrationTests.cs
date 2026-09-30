@@ -2,7 +2,7 @@ using NATS.Client.Core;
 
 namespace Purview.WslContainers.Nats;
 
-class NatsIntegrationTests
+public class NatsIntegrationTests
 {
 	[Test]
 	public async Task Nats_RespondsToPing()

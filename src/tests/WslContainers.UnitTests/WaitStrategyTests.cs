@@ -1,10 +1,10 @@
+using System.Text.RegularExpressions;
 using Purview.WslContainers.Containers;
 using Purview.WslContainers.Waiting;
-using System.Text.RegularExpressions;
 
 namespace Purview.WslContainers;
 
-class WaitStrategyTests
+public class WaitStrategyTests
 {
 	static WaitContext Context(FakeContainer container)
 	{
@@ -26,8 +26,7 @@ class WaitStrategyTests
 	[Test]
 	public async Task LogMessage_DoesNotMatchAbsentMessage(CancellationToken cancellationToken)
 	{
-		await using FakeContainer container = new()
-		{ Logs = "starting up\n" };
+		await using FakeContainer container = new() { Logs = "starting up\n" };
 #pragma warning disable SYSLIB1045 // Convert to 'GeneratedRegexAttribute'.
 		var strategy = Wait.ForLogMessage(new Regex("ready to accept"));
 #pragma warning restore SYSLIB1045 // Convert to 'GeneratedRegexAttribute'.
@@ -38,8 +37,7 @@ class WaitStrategyTests
 	[Test]
 	public async Task Command_ReturnsTrueOnExitCodeZero(CancellationToken cancellationToken)
 	{
-		await using FakeContainer container = new()
-		{ Exec = _ => new ExecResult(0, "ok", string.Empty) };
+		await using FakeContainer container = new() { Exec = _ => new ExecResult(0, "ok", string.Empty) };
 		var strategy = Wait.ForCommand("/bin/true");
 
 		await Assert.That(await strategy.UntilAsync(Context(container), cancellationToken)).IsTrue();
@@ -48,8 +46,7 @@ class WaitStrategyTests
 	[Test]
 	public async Task Command_ReturnsFalseOnNonZeroExit(CancellationToken cancellationToken)
 	{
-		await using FakeContainer container = new()
-		{ Exec = _ => new ExecResult(1, string.Empty, "boom") };
+		await using FakeContainer container = new() { Exec = _ => new ExecResult(1, string.Empty, "boom") };
 		var strategy = Wait.ForCommand("/bin/false");
 
 		await Assert.That(await strategy.UntilAsync(Context(container), cancellationToken)).IsFalse();
@@ -87,10 +84,8 @@ class WaitStrategyTests
 	[Test]
 	public async Task ContainerRunning_ReflectsState(CancellationToken cancellationToken)
 	{
-		await using FakeContainer running = new()
-		{ State = ContainerState.Running };
-		await using FakeContainer exited = new()
-		{ State = ContainerState.Exited };
+		await using FakeContainer running = new() { State = ContainerState.Running };
+		await using FakeContainer exited = new() { State = ContainerState.Exited };
 		var strategy = Wait.ForContainerRunning();
 
 		await Assert.That(await strategy.UntilAsync(Context(running), cancellationToken)).IsTrue();

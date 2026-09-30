@@ -1,6 +1,7 @@
 namespace Purview.WslContainers;
 
-class VolumeTests
+[Explicit]
+public class VolumeTests
 {
 	[Test]
 	public async Task BindMount_ReadsHostFile(CancellationToken cancellationToken)

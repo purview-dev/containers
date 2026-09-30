@@ -2,7 +2,7 @@ using Purview.WslContainers.Waiting;
 
 namespace Purview.WslContainers.Nats;
 
-class NatsBuilderTests
+public class NatsBuilderTests
 {
 	[Test]
 	public async Task BuildConfig_AppliesDefaults()

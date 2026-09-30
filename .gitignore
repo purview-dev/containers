@@ -657,4 +657,4 @@ sketch
 
 !scripts/*
 
-./.tools/purview-build/**/*
+.tools/purview-build/

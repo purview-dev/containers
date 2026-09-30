@@ -2,7 +2,8 @@ using Purview.WslContainers.Images;
 
 namespace Purview.WslContainers;
 
-class SharedStorageTests
+[Explicit]
+public class SharedStorageTests
 {
 	[Test]
 	public async Task SharedStore_IsReusedAcrossSequentialRuntimes()
@@ -14,11 +15,11 @@ class SharedStorageTests
 		try
 		{
 			IReadOnlyList<ImageSummary> firstRun;
-			await using (var runtime1 = new WslContainerRuntime(new WslContainerRuntimeOptions
-			{
-				StoragePath = path,
-				DisableProcessExitCleanup = true,
-			}))
+			await using (
+				var runtime1 = new WslContainerRuntime(
+					new WslContainerRuntimeOptions { StoragePath = path, DisableProcessExitCleanup = true }
+				)
+			)
 			{
 				await using var container = new ContainerBuilder(runtime1)
 					.WithImage("alpine:latest")
@@ -30,18 +31,22 @@ class SharedStorageTests
 			}
 
 			IReadOnlyList<ImageSummary> secondRun;
-			await using (var runtime2 = new WslContainerRuntime(new WslContainerRuntimeOptions
-			{
-				StoragePath = path,
-				DisableProcessExitCleanup = true,
-			}))
+			await using (
+				var runtime2 = new WslContainerRuntime(
+					new WslContainerRuntimeOptions { StoragePath = path, DisableProcessExitCleanup = true }
+				)
+			)
 			{
 				var session2 = await runtime2.GetSessionAsync();
 				secondRun = await session2.ListImagesAsync();
 			}
 
-			await Assert.That(firstRun.Any(image => image.Name.Contains("alpine", StringComparison.OrdinalIgnoreCase))).IsTrue();
-			await Assert.That(secondRun.Any(image => image.Name.Contains("alpine", StringComparison.OrdinalIgnoreCase))).IsTrue();
+			await Assert
+				.That(firstRun.Any(image => image.Name.Contains("alpine", StringComparison.OrdinalIgnoreCase)))
+				.IsTrue();
+			await Assert
+				.That(secondRun.Any(image => image.Name.Contains("alpine", StringComparison.OrdinalIgnoreCase)))
+				.IsTrue();
 		}
 		finally
 		{

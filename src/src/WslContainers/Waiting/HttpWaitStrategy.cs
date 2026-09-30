@@ -99,9 +99,7 @@ public sealed class HttpWaitStrategy(string path = "/") : WaitStrategy
 				request.Headers.TryAddWithoutValidation(name, value);
 			}
 
-			using var response = await client
-				.SendAsync(request, cancellationToken)
-				.ConfigureAwait(false);
+			using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 			var status = (int)response.StatusCode;
 			return _statusPredicate?.Invoke(status)
 				?? (_expectedStatusCode is HttpStatusCode expected && status == (int)expected);

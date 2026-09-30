@@ -2,17 +2,14 @@ using Microsoft.Data.SqlClient;
 
 namespace Purview.WslContainers.MsSql;
 
-class MsSqlIntegrationTests
+public class MsSqlIntegrationTests
 {
 	[Test]
 	public async Task MsSql_ConnectsAndRunsQuery()
 	{
 		await WslcTest.SkipIfUnavailableAsync();
 
-		await using var sqlServer = new MsSqlBuilder()
-			.WithPassword("SomeStrong!Password1")
-			.AcceptLicense()
-			.Build();
+		await using var sqlServer = new MsSqlBuilder().WithPassword("SomeStrong!Password1").AcceptLicense().Build();
 
 		await sqlServer.StartAsync();
 
@@ -29,10 +26,7 @@ class MsSqlIntegrationTests
 	{
 		await WslcTest.SkipIfUnavailableAsync();
 
-		await using var sqlServer = new MsSqlBuilder()
-			.WithPassword("SomeStrong!Password1")
-			.AcceptLicense()
-			.Build();
+		await using var sqlServer = new MsSqlBuilder().WithPassword("SomeStrong!Password1").AcceptLicense().Build();
 
 		await sqlServer.StartAsync();
 

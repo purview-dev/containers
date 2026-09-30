@@ -2,7 +2,7 @@ using MySqlConnector;
 
 namespace Purview.WslContainers.MySql;
 
-class MySqlIntegrationTests
+public class MySqlIntegrationTests
 {
 	[Test]
 	public async Task MySql_ConnectsAndRunsQuery()

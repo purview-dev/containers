@@ -57,5 +57,6 @@ public class AzuriteBuilder : ContainerBuilder<AzuriteBuilder, AzuriteContainer,
 	}
 
 	/// <inheritdoc />
-	protected override AzuriteContainer CreateContainer(AzuriteConfiguration configuration) => new(configuration, Runtime ?? WslContainerRuntime.Instance);
+	protected override AzuriteContainer CreateContainer(AzuriteConfiguration configuration) =>
+		new(configuration, Runtime ?? WslContainerRuntime.Instance);
 }

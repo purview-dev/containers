@@ -72,10 +72,7 @@ public class RabbitMqBuilder : ContainerBuilder<RabbitMqBuilder, RabbitMqContain
 	protected override RabbitMqConfiguration BuildConfiguration()
 	{
 		var configuration = base.BuildConfiguration();
-		Dictionary<string, string> environment = new(
-			configuration.Environment,
-			StringComparer.Ordinal
-		)
+		Dictionary<string, string> environment = new(configuration.Environment, StringComparer.Ordinal)
 		{
 			["RABBITMQ_DEFAULT_USER"] = _username,
 			["RABBITMQ_DEFAULT_PASS"] = _password.Value,

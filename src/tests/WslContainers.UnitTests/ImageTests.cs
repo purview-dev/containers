@@ -2,7 +2,7 @@ using Purview.WslContainers.Images;
 
 namespace Purview.WslContainers;
 
-class ImageTests
+public class ImageTests
 {
 	[Test]
 	public async Task Parse_ShortName_DefaultsToDockerHubLibrary()

@@ -3,7 +3,7 @@ using PurviewContainerState = Purview.WslContainers.Containers.ContainerState;
 
 namespace Purview.WslContainers.PostgreSql;
 
-class PostgreSqlIntegrationTests
+public class PostgreSqlIntegrationTests
 {
 	[Test]
 	public async Task PostgreSql_ConnectsAndRunsQuery()

@@ -2,7 +2,8 @@ using Purview.WslContainers.Containers;
 
 namespace Purview.WslContainers;
 
-class ExecTests
+[Explicit]
+public class ExecTests
 {
 	[Test]
 	public async Task Exec_ReturnsStdoutAndExitCode()

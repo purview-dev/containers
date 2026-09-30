@@ -1,6 +1,6 @@
 namespace Purview.WslContainers.Azurite;
 
-class AzuriteIntegrationTests
+public class AzuriteIntegrationTests
 {
 	[Test]
 	public async Task Azurite_StartsAndExposesEndpoints()

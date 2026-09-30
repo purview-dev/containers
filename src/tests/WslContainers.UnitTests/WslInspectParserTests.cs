@@ -1,8 +1,9 @@
 namespace Purview.WslContainers;
 
-class WslInspectParserTests
+public class WslInspectParserTests
 {
-	const string SampleInspect = /*lang=json,strict*/ """
+	const string SampleInspect = /*lang=json,strict*/
+		"""
 		{
 		  "HostConfig": { "NetworkMode": "bridge" },
 		  "NetworkSettings": {

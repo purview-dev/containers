@@ -2,7 +2,7 @@ using StackExchange.Redis;
 
 namespace Purview.WslContainers.Redis;
 
-class RedisIntegrationTests
+public class RedisIntegrationTests
 {
 	[Test]
 	public async Task Redis_RespondsToPing()
@@ -13,9 +13,7 @@ class RedisIntegrationTests
 
 		await redis.StartAsync();
 
-		await using var connection = await ConnectionMultiplexer.ConnectAsync(
-			redis.GetConnectionString()
-		);
+		await using var connection = await ConnectionMultiplexer.ConnectAsync(redis.GetConnectionString());
 		var db = connection.GetDatabase();
 		var pong = await db.ExecuteAsync("PING");
 

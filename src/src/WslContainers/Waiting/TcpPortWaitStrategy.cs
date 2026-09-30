@@ -6,7 +6,6 @@ namespace Purview.WslContainers.Waiting;
 /// <summary>Waits until a TCP connection to the mapped host port succeeds (IPv4 loopback).</summary>
 public sealed class TcpPortWaitStrategy(ushort containerPort, TimeSpan connectTimeout) : WaitStrategy
 {
-
 	/// <inheritdoc />
 	public override async Task<bool> UntilAsync(WaitContext context, CancellationToken cancellationToken)
 	{
@@ -17,10 +16,7 @@ public sealed class TcpPortWaitStrategy(ushort containerPort, TimeSpan connectTi
 		}
 
 		using CancellationTokenSource timeoutSource = new(connectTimeout);
-		using var linked = CancellationTokenSource.CreateLinkedTokenSource(
-			cancellationToken,
-			timeoutSource.Token
-		);
+		using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSource.Token);
 		try
 		{
 			using TcpClient client = new();

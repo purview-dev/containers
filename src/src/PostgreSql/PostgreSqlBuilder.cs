@@ -65,10 +65,7 @@ public class PostgreSqlBuilder : ContainerBuilder<PostgreSqlBuilder, PostgreSqlC
 	protected override PostgreSqlConfiguration BuildConfiguration()
 	{
 		var configuration = base.BuildConfiguration();
-		Dictionary<string, string> environment = new(
-			configuration.Environment,
-			StringComparer.Ordinal
-		)
+		Dictionary<string, string> environment = new(configuration.Environment, StringComparer.Ordinal)
 		{
 			["POSTGRES_DB"] = _database,
 			["POSTGRES_USER"] = _username,

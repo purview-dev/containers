@@ -2,7 +2,8 @@ using System.Diagnostics;
 
 namespace Purview.WslContainers;
 
-class PerformanceTests
+[Explicit]
+public class PerformanceTests
 {
 	[Test]
 	[NotInParallel]
@@ -12,10 +13,7 @@ class PerformanceTests
 
 		// Warm the image into the shared session store.
 		await using (
-			var warm = new ContainerBuilder()
-				.WithImage("alpine:latest")
-				.WithCommand("/bin/echo", "warm")
-				.Build()
+			var warm = new ContainerBuilder().WithImage("alpine:latest").WithCommand("/bin/echo", "warm").Build()
 		)
 		{
 			await warm.StartAsync(cancellationToken);
@@ -29,7 +27,10 @@ class PerformanceTests
 		await container.StartAsync(cancellationToken);
 		stopwatch.Stop();
 
-		await TestContext.Current!.OutputWriter.WriteLineAsync($"warm container start: {stopwatch.Elapsed}", cancellationToken);
+		await TestContext.Current!.OutputWriter.WriteLineAsync(
+			$"warm container start: {stopwatch.Elapsed}",
+			cancellationToken
+		);
 		await Assert.That(stopwatch.Elapsed).IsLessThan(TimeSpan.FromSeconds(60));
 	}
 }

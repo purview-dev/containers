@@ -4,7 +4,7 @@ using Purview.WslContainers.Waiting;
 
 namespace Purview.WslContainers.PostgreSql;
 
-class PostgreSqlBuilderTests
+public class PostgreSqlBuilderTests
 {
 	[Test]
 	public async Task BuildConfig_AppliesDefaults()

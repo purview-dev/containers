@@ -2,7 +2,7 @@ using Purview.WslContainers.Runtime;
 
 namespace Purview.WslContainers.MySql;
 
-class MySqlBuilderTests
+public class MySqlBuilderTests
 {
 	[Test]
 	public async Task BuildConfig_AppliesDefaults()

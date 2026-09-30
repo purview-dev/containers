@@ -1,6 +1,7 @@
 namespace Purview.WslContainers;
 
-class RuntimeInfoTests
+[Explicit]
+public class RuntimeInfoTests
 {
 	[Test]
 	public async Task GetInfoAsync_ReportsAvailability()

@@ -60,10 +60,7 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 	protected override MsSqlConfiguration BuildConfiguration()
 	{
 		var configuration = base.BuildConfiguration();
-		Dictionary<string, string> environment = new(
-			configuration.Environment,
-			StringComparer.Ordinal
-		)
+		Dictionary<string, string> environment = new(configuration.Environment, StringComparer.Ordinal)
 		{
 			["MSSQL_SA_PASSWORD"] = _password.Value,
 			["MSSQL_PID"] = "Developer",

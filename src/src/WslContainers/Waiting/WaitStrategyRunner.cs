@@ -1,8 +1,8 @@
-using Purview.WslContainers.Diagnostics;
-using Purview.WslContainers.Runtime;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
+using Purview.WslContainers.Diagnostics;
+using Purview.WslContainers.Runtime;
 
 namespace Purview.WslContainers.Waiting;
 
@@ -39,9 +39,7 @@ static class WaitStrategyRunner
 		activity?.SetTag("strategy", strategy.GetType().Name);
 		var timeout = strategy.Timeout ?? defaultTimeout;
 		var interval = strategy.Interval > TimeSpan.Zero ? strategy.Interval : TimeSpan.FromMilliseconds(250);
-		using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(
-			cancellationToken
-		);
+		using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 		timeoutSource.CancelAfter(timeout);
 		var token = timeoutSource.Token;
 
@@ -85,13 +83,19 @@ static class WaitStrategyRunner
 		}
 		cancellationToken.ThrowIfCancellationRequested();
 
-		var diagnostics = await BuildDiagnosticsAsync(context, timeout, lastError, cancellationToken).ConfigureAwait(false);
+		var diagnostics = await BuildDiagnosticsAsync(context, timeout, lastError, cancellationToken)
+			.ConfigureAwait(false);
 		throw new WslContainerTimeoutException(
 			$"Container '{context.Container.Name}' did not become ready within {timeout} for strategy {strategy.GetType().Name}. {diagnostics}"
 		);
 	}
 
-	static async Task<string> BuildDiagnosticsAsync(WaitContext context, TimeSpan timeout, Exception? lastError, CancellationToken cancellationToken)
+	static async Task<string> BuildDiagnosticsAsync(
+		WaitContext context,
+		TimeSpan timeout,
+		Exception? lastError,
+		CancellationToken cancellationToken
+	)
 	{
 		StringBuilder builder = new();
 		builder.Append(
@@ -122,9 +126,7 @@ static class WaitStrategyRunner
 
 		try
 		{
-			var logs = await context
-				.Container.GetLogsAsync(stream: null, cancellationToken)
-				.ConfigureAwait(false);
+			var logs = await context.Container.GetLogsAsync(stream: null, cancellationToken).ConfigureAwait(false);
 			var tail = logs.Length > 2000 ? logs[^2000..] : logs;
 			if (tail.Length > 0)
 			{

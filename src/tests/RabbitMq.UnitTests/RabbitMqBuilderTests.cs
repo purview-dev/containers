@@ -3,7 +3,7 @@ using Purview.WslContainers.Waiting;
 
 namespace Purview.WslContainers.RabbitMq;
 
-class RabbitMqBuilderTests
+public class RabbitMqBuilderTests
 {
 	[Test]
 	public async Task BuildConfig_AppliesDefaults()

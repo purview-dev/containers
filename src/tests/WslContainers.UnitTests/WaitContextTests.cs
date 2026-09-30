@@ -2,12 +2,11 @@ using Purview.WslContainers.Waiting;
 
 namespace Purview.WslContainers;
 
-class WaitContextTests
+public class WaitContextTests
 {
 	static (WaitContext, IAsyncDisposable) Create(IReadOnlyDictionary<ushort, ushort> mappings)
 	{
-		FakeContainer container = new()
-		{ PortMappings = mappings };
+		FakeContainer container = new() { PortMappings = mappings };
 		return (new WaitContext(container, mappings, "172.17.0.9"), container);
 	}
 

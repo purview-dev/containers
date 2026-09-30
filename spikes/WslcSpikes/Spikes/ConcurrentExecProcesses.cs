@@ -36,7 +36,12 @@ static class ConcurrentExecProcesses
 			await Task.Delay(500);
 			for (int i = 0; i < containerCount; i++)
 			{
-				Console.WriteLine("[s19] container s19-{0} state={1} init={2}", i, containers[i].State, containers[i].InitProcess.State);
+				Console.WriteLine(
+					"[s19] container s19-{0} state={1} init={2}",
+					i,
+					containers[i].State,
+					containers[i].InitProcess.State
+				);
 			}
 
 			int failures = 0;
@@ -52,13 +57,14 @@ static class ConcurrentExecProcesses
 					int ei = e;
 					execs[index++] = Task.Run(async () =>
 					{
-						Process process = containers[ci].CreateProcess(
-							new ProcessSettings
-							{
-								CommandLine = new List<string> { "/bin/echo", "hi" },
-								OutputMode = ProcessOutputMode.Event,
-							}
-						);
+						Process process = containers[ci]
+							.CreateProcess(
+								new ProcessSettings
+								{
+									CommandLine = new List<string> { "/bin/echo", "hi" },
+									OutputMode = ProcessOutputMode.Event,
+								}
+							);
 						ProcessCapture capture = SpikeSupport.Capture(process);
 						try
 						{

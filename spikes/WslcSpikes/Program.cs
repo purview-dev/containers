@@ -5,7 +5,9 @@ using WslcSpikes;
 
 if (args.Length == 0)
 {
-	Console.Error.WriteLine("No spike specified. Available: s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s10child s10child-norelease s11 s12 s13 s14 s18 s19 sfull");
+	Console.Error.WriteLine(
+		"No spike specified. Available: s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s10child s10child-norelease s11 s12 s13 s14 s18 s19 sfull"
+	);
 	return 1;
 }
 

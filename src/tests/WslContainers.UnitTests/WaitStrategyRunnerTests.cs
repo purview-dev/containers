@@ -3,13 +3,12 @@ using Purview.WslContainers.Waiting;
 
 namespace Purview.WslContainers;
 
-class WaitStrategyRunnerTests
+public class WaitStrategyRunnerTests
 {
 	[Test]
 	public async Task RunAsync_SucceedsWhenConditionEventuallyTrue(CancellationToken cancellationToken)
 	{
-		await using FakeContainer container = new()
-		{ Name = "runner-test" };
+		await using FakeContainer container = new() { Name = "runner-test" };
 		WaitContext context = new(container, container.PortMappings, networkIp: null);
 		var calls = 0;
 		IWaitStrategy strategy = Wait.ForCustom((_, _) => Task.FromResult(++calls >= 3))
@@ -37,12 +36,7 @@ class WaitStrategyRunnerTests
 		Exception? thrown = null;
 		try
 		{
-			await WaitStrategyRunner.RunAsync(
-				context,
-				new[] { strategy },
-				TimeSpan.FromSeconds(5),
-				cancellationToken
-			);
+			await WaitStrategyRunner.RunAsync(context, new[] { strategy }, TimeSpan.FromSeconds(5), cancellationToken);
 		}
 		catch (WslContainerTimeoutException ex)
 		{

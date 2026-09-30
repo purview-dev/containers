@@ -75,10 +75,7 @@ public class MySqlBuilder : ContainerBuilder<MySqlBuilder, MySqlContainer, MySql
 	protected override MySqlConfiguration BuildConfiguration()
 	{
 		var configuration = base.BuildConfiguration();
-		Dictionary<string, string> environment = new(
-			configuration.Environment,
-			StringComparer.Ordinal
-		)
+		Dictionary<string, string> environment = new(configuration.Environment, StringComparer.Ordinal)
 		{
 			["MYSQL_DATABASE"] = _database,
 			["MYSQL_USER"] = _username,

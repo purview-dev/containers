@@ -3,16 +3,7 @@ namespace Purview.WslContainers.Diagnostics;
 /// <summary>Redacts sensitive values from diagnostics and configuration rendering.</summary>
 static class SecretRedactor
 {
-	static readonly string[] SensitiveKeyMarkers =
-	[
-		"PASSWORD",
-		"PASS",
-		"TOKEN",
-		"SECRET",
-		"PWD",
-		"CREDENTIAL",
-		"KEY",
-	];
+	static readonly string[] SensitiveKeyMarkers = ["PASSWORD", "PASS", "TOKEN", "SECRET", "PWD", "CREDENTIAL", "KEY"];
 
 	public static string RedactEnvironment(IReadOnlyDictionary<string, string> environment)
 	{

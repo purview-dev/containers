@@ -1,11 +1,11 @@
-using Purview.WslContainers.Waiting;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Purview.WslContainers.Waiting;
 
 namespace Purview.WslContainers;
 
-class HttpWaitStrategyTests
+public class HttpWaitStrategyTests
 {
 	[Test]
 	public async Task Http_ReturnsTrueOnExpectedStatus(CancellationToken cancellationToken)
@@ -60,9 +60,7 @@ class HttpWaitStrategyTests
 				PortMappings = new Dictionary<ushort, ushort> { [80] = (ushort)port },
 			};
 			WaitContext context = new(container, container.PortMappings, networkIp: null);
-			var strategy = Wait.ForHttp("/")
-				.ForPort(80)
-				.ForStatusPredicate(status => status is >= 200 and < 300);
+			var strategy = Wait.ForHttp("/").ForPort(80).ForStatusPredicate(status => status is >= 200 and < 300);
 
 			await Assert.That(await strategy.UntilAsync(context, cancellationToken)).IsTrue();
 		}
@@ -82,7 +80,10 @@ class HttpWaitStrategyTests
 		await Assert.That(await strategy.UntilAsync(context, cancellationToken)).IsFalse();
 	}
 
-	static (int Port, HttpListener Listener, Task Handler) StartServer(HttpStatusCode status, CancellationToken cancellationToken)
+	static (int Port, HttpListener Listener, Task Handler) StartServer(
+		HttpStatusCode status,
+		CancellationToken cancellationToken
+	)
 	{
 		using TcpListener probe = new(IPAddress.Loopback, 0);
 		probe.Start();
@@ -93,29 +94,32 @@ class HttpWaitStrategyTests
 		listener.Prefixes.Add($"http://127.0.0.1:{port}/");
 		listener.Start();
 
-		var handler = Task.Run(async () =>
-		{
-			while (listener.IsListening && !cancellationToken.IsCancellationRequested)
+		var handler = Task.Run(
+			async () =>
 			{
-				try
+				while (listener.IsListening && !cancellationToken.IsCancellationRequested)
 				{
-					var ctx = await listener.GetContextAsync();
-					ctx.Response.StatusCode = (int)status;
-					var body = Encoding.UTF8.GetBytes("ok");
-					ctx.Response.ContentLength64 = body.Length;
-					await ctx.Response.OutputStream.WriteAsync(body, cancellationToken);
-					ctx.Response.Close();
+					try
+					{
+						var ctx = await listener.GetContextAsync();
+						ctx.Response.StatusCode = (int)status;
+						var body = Encoding.UTF8.GetBytes("ok");
+						ctx.Response.ContentLength64 = body.Length;
+						await ctx.Response.OutputStream.WriteAsync(body, cancellationToken);
+						ctx.Response.Close();
+					}
+					catch (HttpListenerException)
+					{
+						break;
+					}
+					catch (ObjectDisposedException)
+					{
+						break;
+					}
 				}
-				catch (HttpListenerException)
-				{
-					break;
-				}
-				catch (ObjectDisposedException)
-				{
-					break;
-				}
-			}
-		}, cancellationToken);
+			},
+			cancellationToken
+		);
 
 		return (port, listener, handler);
 	}

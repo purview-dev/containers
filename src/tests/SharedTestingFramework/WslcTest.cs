@@ -21,9 +21,7 @@ public static class WslcTest
 	public static async Task WaitForTcpAsync(int port, TimeSpan timeout)
 	{
 		using System.Net.Sockets.TcpClient client = new();
-		using CancellationTokenSource timeoutSource = new(
-			timeout
-		);
+		using CancellationTokenSource timeoutSource = new(timeout);
 		await client.ConnectAsync(System.Net.IPAddress.Loopback, port, timeoutSource.Token);
 	}
 }

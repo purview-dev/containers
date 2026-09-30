@@ -2,7 +2,8 @@ using Purview.WslContainers.Waiting;
 
 namespace Purview.WslContainers;
 
-class ConcurrencyStressTests
+[Explicit]
+public class ConcurrencyStressTests
 {
 	[Test]
 	public async Task ConcurrentContainers_GetDistinctUsablePorts()

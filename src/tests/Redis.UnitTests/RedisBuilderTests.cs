@@ -2,7 +2,7 @@ using Purview.WslContainers.Waiting;
 
 namespace Purview.WslContainers.Redis;
 
-class RedisBuilderTests
+public class RedisBuilderTests
 {
 	[Test]
 	public async Task BuildConfig_AppliesDefaults()
@@ -28,9 +28,7 @@ class RedisBuilderTests
 	[Test]
 	public async Task BuildConfig_PreservesCustomWaitStrategy()
 	{
-		var configuration = new RedisBuilder()
-			.WithWaitStrategy(Wait.ForTcpPort(6379))
-			.BuildConfigurationForTesting();
+		var configuration = new RedisBuilder().WithWaitStrategy(Wait.ForTcpPort(6379)).BuildConfigurationForTesting();
 
 		await Assert.That(configuration.WaitStrategies.Count).IsEqualTo(1);
 		await Assert.That(configuration.WaitStrategies[0]).IsTypeOf<TcpPortWaitStrategy>();

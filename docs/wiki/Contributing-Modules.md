@@ -65,7 +65,7 @@ public class MyServiceBuilder : ContainerBuilder<MyServiceBuilder, MyServiceCont
 ```
 
 4. **Container** — expose `GetConnectionString()` / endpoints using `GetMappedPublicPort`, built from runtime state (never cached before start).
-5. **Wait strategy** — prefer verifying the service itself (exec a readiness command or a host client connection), not merely that a TCP port is open. See `docs/wait-strategies.md`. Default waits are applied in `BuildConfiguration()` unless the caller supplied their own.
+5. **Wait strategy** — prefer verifying the service itself (exec a readiness command or a host client connection), not merely that a TCP port is open. See [Wait Strategies](Wait-Strategies.md). Default waits are applied in `BuildConfiguration()` unless the caller supplied their own.
 6. **Secrets** — passwords/usernames go into a `Secret`-typed field; configuration `ToString()` redacts sensitive values automatically.
 7. **Tests** — unit tests use `BuildConfigurationForTesting()` (internal test hook on the module builder); integration tests use TUnit, the shared `WslcTest.SkipIfUnavailableAsync()` helper from `tests/SharedTestingFramework`, and the real client.
 

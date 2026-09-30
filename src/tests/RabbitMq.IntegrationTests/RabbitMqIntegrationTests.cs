@@ -3,22 +3,18 @@ using RabbitMQ.Client;
 
 namespace Purview.WslContainers.RabbitMq;
 
-class RabbitMqIntegrationTests
+public class RabbitMqIntegrationTests
 {
 	[Test]
 	public async Task RabbitMq_PublishesAndConsumes()
 	{
 		await WslcTest.SkipIfUnavailableAsync();
 
-		await using var rabbit = new RabbitMqBuilder()
-			.WithUsername("guest")
-			.WithPassword("guest")
-			.Build();
+		await using var rabbit = new RabbitMqBuilder().WithUsername("guest").WithPassword("guest").Build();
 
 		await rabbit.StartAsync();
 
-		ConnectionFactory factory = new()
-		{ Uri = rabbit.GetAmqpEndpoint() };
+		ConnectionFactory factory = new() { Uri = rabbit.GetAmqpEndpoint() };
 		using var connection = await factory.CreateConnectionAsync();
 		using var channel = await connection.CreateChannelAsync();
 

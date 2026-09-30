@@ -2,7 +2,7 @@ using Purview.WslContainers.Containers;
 
 namespace Purview.WslContainers;
 
-sealed class FakeContainer : IContainer
+public sealed class FakeContainer : IContainer
 {
 	public string Id { get; init; } = "fake-id";
 

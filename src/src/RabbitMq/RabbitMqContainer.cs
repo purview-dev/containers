@@ -30,7 +30,7 @@ public sealed class RabbitMqContainer : WslContainer
 			Port = GetMappedPublicPort(RabbitMqBuilder.AmqpPort),
 			UserName = _configuration.Username,
 			Password = _configuration.Password.Value,
-			Path = _configuration.VirtualHost is "/" or "" ? "/" : "/" + _configuration.VirtualHost.TrimStart('/')
+			Path = _configuration.VirtualHost is "/" or "" ? "/" : "/" + _configuration.VirtualHost.TrimStart('/'),
 		};
 		return builder.Uri;
 	}

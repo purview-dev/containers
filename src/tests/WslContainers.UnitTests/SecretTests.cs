@@ -2,7 +2,7 @@ using Purview.WslContainers.Diagnostics;
 
 namespace Purview.WslContainers;
 
-class SecretTests
+public class SecretTests
 {
 	[Test]
 	public async Task ToString_RedactsValue()

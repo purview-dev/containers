@@ -1,6 +1,6 @@
 namespace Purview.WslContainers;
 
-class StorageModeTests
+public class StorageModeTests
 {
 	[Test]
 	public async Task DefaultOptions_UseSharedStorage()

@@ -105,4 +105,4 @@ fallback. Isolated stores are transient and are removed when their session termi
 
 - Public surface deliberately small; WSLC types internal.
 - One opt-in accessor (`IWslContainerAccessor`) exposes `Inspect()` / raw handle for advanced users.
-- Third-party modules subclass the generic builder (see `docs/modules.md`).
+- Third-party modules subclass the generic builder (see [Modules](Modules.md)).

@@ -3,7 +3,8 @@ using Purview.WslContainers.Waiting;
 
 namespace Purview.WslContainers;
 
-class CleanupTests
+[Explicit]
+public class CleanupTests
 {
 	[Test]
 	public async Task Dispose_AfterWaitTimeout_IsIdempotent()
@@ -39,10 +40,7 @@ class CleanupTests
 	{
 		await WslcTest.SkipIfUnavailableAsync();
 
-		var container = new ContainerBuilder()
-			.WithImage("alpine:latest")
-			.WithCommand("/bin/sleep", "300")
-			.Build();
+		var container = new ContainerBuilder().WithImage("alpine:latest").WithCommand("/bin/sleep", "300").Build();
 
 		await container.StartAsync();
 		await container.StopAsync();

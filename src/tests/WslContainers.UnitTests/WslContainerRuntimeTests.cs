@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace Purview.WslContainers;
 
-class WslContainerRuntimeTests
+public class WslContainerRuntimeTests
 {
 	const int ErrorSharingViolation = unchecked((int)0x80070020);
 

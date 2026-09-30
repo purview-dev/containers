@@ -11,10 +11,7 @@ static class WslInspectParser
 		try
 		{
 			using var document = JsonDocument.Parse(inspectJson);
-			if (
-				!document.RootElement.TryGetProperty("Ports", out var ports)
-				|| ports.ValueKind != JsonValueKind.Object
-			)
+			if (!document.RootElement.TryGetProperty("Ports", out var ports) || ports.ValueKind != JsonValueKind.Object)
 			{
 				return result;
 			}

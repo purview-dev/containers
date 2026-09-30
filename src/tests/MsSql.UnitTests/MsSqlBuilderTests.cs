@@ -2,7 +2,7 @@ using Purview.WslContainers.Runtime;
 
 namespace Purview.WslContainers.MsSql;
 
-class MsSqlBuilderTests
+public class MsSqlBuilderTests
 {
 	[Test]
 	public async Task Build_WithoutAcceptLicense_Throws()

@@ -5,12 +5,12 @@
 		<File Path="../global.json" />
 		<File Path="../nuget.config" />
 		<File Path="../package.json" />
+		<File Path="../purview-build.json" />
 		<File Path="Directory.Build.props" />
 		<File Path="Directory.Build.targets" />
 	</Folder>
 	<Folder Name="/src/">
 		<Project Path="src/Azurite/Azurite.csproj" />
-		<Project Path="src/MinIo/MinIo.csproj" DisplayName="MinIO" />
 		<Project Path="src/MsSql/MsSql.csproj" />
 		<Project Path="src/MySql/MySql.csproj" />
 		<Project Path="src/Nats/Nats.csproj" />
@@ -23,8 +23,6 @@
 	<Folder Name="/tests/">
 		<Project Path="tests/Azurite.IntegrationTests/Azurite.IntegrationTests.csproj" />
 		<Project Path="tests/Azurite.UnitTests/Azurite.UnitTests.csproj" />
-		<Project Path="tests/MinIo.IntegrationTests/MinIo.IntegrationTests.csproj" DisplayName="MinIO.IntegrationTests" />
-		<Project Path="tests/MinIo.UnitTests/MinIo.UnitTests.csproj" DisplayName="MinIO.UnitTests" />
 		<Project Path="tests/MsSql.IntegrationTests/MsSql.IntegrationTests.csproj" />
 		<Project Path="tests/MsSql.UnitTests/MsSql.UnitTests.csproj" />
 		<Project Path="tests/MySql.IntegrationTests/MySql.IntegrationTests.csproj" />

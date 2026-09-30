@@ -129,10 +129,9 @@ public sealed class PostgreSqlContainer : WslContainer
 | Azurite | `mcr.microsoft.com/azure-storage/azurite` | log `"successfully listening"` | Azure.Storage.* | ✅ implemented — blob/queue/table endpoints; the well-known `devstoreaccount1` key is a placeholder in `AzuriteAccount.Key` until the consuming repo supplies it |
 | NATS | `nats:2` | log `"Listening for client connections"` | NATS.Client.Core | ✅ implemented — client + monitoring endpoints |
 | MySQL | `mysql:8` | host `MySqlConnector` connection | MySqlConnector | ✅ implemented — uses a real connection poll (the image logs `"ready for connections"` during its temporary init server) |
-| MinIO | `quay.io/minio/minio` | log `"Console:"` | S3 SDK | ✅ implemented — S3 API + console endpoints; note MinIO's official image is on Quay.io (not Docker Hub) |
 
 Note on RabbitMQ readiness: the default wait uses the canonical **`Server startup complete`** log signal rather than `rabbitmq-diagnostics ping` — under WSLC the exec-based probe races with the Erlang cookie setup and can trigger a startup failure (`eacces` reading `.erlang.cookie`). WSLC auto-provisions image `VOLUME` declarations on an ext4 device by default; bind-mounting a Windows directory onto one replaces it with drvfs, which ignores Unix `chown` and breaks permission-sensitive images — do not bind-mount onto image volumes unless you intend that.
 
 ## Custom modules (third-party)
 
-See `docs/contributing-modules.md`.
+See [Contributing Modules](Contributing-Modules.md).

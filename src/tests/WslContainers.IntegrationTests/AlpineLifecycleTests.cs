@@ -2,7 +2,8 @@ using Purview.WslContainers.Containers;
 
 namespace Purview.WslContainers;
 
-class AlpineLifecycleTests
+[Explicit]
+public class AlpineLifecycleTests
 {
 	[Test]
 	public async Task EchoContainer_ProducesOutputAndCleansUp()
@@ -43,10 +44,7 @@ class AlpineLifecycleTests
 	{
 		await WslcTest.SkipIfUnavailableAsync();
 
-		var container = new ContainerBuilder()
-			.WithImage("alpine:latest")
-			.WithCommand("/bin/sleep", "300")
-			.Build();
+		var container = new ContainerBuilder().WithImage("alpine:latest").WithCommand("/bin/sleep", "300").Build();
 
 		await container.StartAsync();
 		await Assert.That(container.State).IsEqualTo(ContainerState.Running);
