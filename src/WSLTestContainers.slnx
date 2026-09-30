@@ -1,35 +1,44 @@
 <Solution>
+	<Folder Name="/Solution Items/">
+		<File Path="../.editorconfig" />
+		<File Path="../Directory.Packages.props" />
+		<File Path="../global.json" />
+		<File Path="../nuget.config" />
+		<File Path="../package.json" />
+		<File Path="Directory.Build.props" />
+		<File Path="Directory.Build.targets" />
+	</Folder>
 	<Folder Name="/src/">
-		<Project Path="WslContainers/WslContainers.csproj" />
-		<Project Path="WslContainers.PostgreSql/WslContainers.PostgreSql.csproj" />
-		<Project Path="WslContainers.Redis/WslContainers.Redis.csproj" />
-		<Project Path="WslContainers.MsSql/WslContainers.MsSql.csproj" />
-		<Project Path="WslContainers.RabbitMq/WslContainers.RabbitMq.csproj" />
-		<Project Path="WslContainers.Azurite/WslContainers.Azurite.csproj" />
-		<Project Path="WslContainers.Nats/WslContainers.Nats.csproj" />
-		<Project Path="WslContainers.MySql/WslContainers.MySql.csproj" />
-		<Project Path="WslContainers.MinIo/WslContainers.MinIo.csproj" />
+		<Project Path="src/Azurite/Azurite.csproj" />
+		<Project Path="src/MinIo/MinIo.csproj" DisplayName="MinIO" />
+		<Project Path="src/MsSql/MsSql.csproj" />
+		<Project Path="src/MySql/MySql.csproj" />
+		<Project Path="src/Nats/Nats.csproj" />
+		<Project Path="src/PostgreSql/PostgreSql.csproj" />
+		<Project Path="src/RabbitMq/RabbitMq.csproj" />
+		<Project Path="src/Redis/Redis.csproj" />
+		<Project Path="src/WslContainers/WslContainers.csproj" />
 	</Folder>
 
 	<Folder Name="/tests/">
-		<Project Path="../tests/SharedTestingFramework/SharedTestingFramework.csproj" />
-		<Project Path="../tests/WslContainers.UnitTests/WslContainers.UnitTests.csproj" />
-		<Project Path="../tests/WslContainers.IntegrationTests/WslContainers.IntegrationTests.csproj" />
-		<Project Path="../tests/WslContainers.PostgreSql.UnitTests/WslContainers.PostgreSql.UnitTests.csproj" />
-		<Project Path="../tests/WslContainers.PostgreSql.IntegrationTests/WslContainers.PostgreSql.IntegrationTests.csproj" />
-		<Project Path="../tests/WslContainers.Redis.UnitTests/WslContainers.Redis.UnitTests.csproj" />
-		<Project Path="../tests/WslContainers.Redis.IntegrationTests/WslContainers.Redis.IntegrationTests.csproj" />
-		<Project Path="../tests/WslContainers.MsSql.UnitTests/WslContainers.MsSql.UnitTests.csproj" />
-		<Project Path="../tests/WslContainers.MsSql.IntegrationTests/WslContainers.MsSql.IntegrationTests.csproj" />
-		<Project Path="../tests/WslContainers.RabbitMq.UnitTests/WslContainers.RabbitMq.UnitTests.csproj" />
-		<Project Path="../tests/WslContainers.RabbitMq.IntegrationTests/WslContainers.RabbitMq.IntegrationTests.csproj" />
-		<Project Path="../tests/WslContainers.Azurite.UnitTests/WslContainers.Azurite.UnitTests.csproj" />
-		<Project Path="../tests/WslContainers.Azurite.IntegrationTests/WslContainers.Azurite.IntegrationTests.csproj" />
-		<Project Path="../tests/WslContainers.Nats.UnitTests/WslContainers.Nats.UnitTests.csproj" />
-		<Project Path="../tests/WslContainers.Nats.IntegrationTests/WslContainers.Nats.IntegrationTests.csproj" />
-		<Project Path="../tests/WslContainers.MySql.UnitTests/WslContainers.MySql.UnitTests.csproj" />
-		<Project Path="../tests/WslContainers.MySql.IntegrationTests/WslContainers.MySql.IntegrationTests.csproj" />
-		<Project Path="../tests/WslContainers.MinIo.UnitTests/WslContainers.MinIo.UnitTests.csproj" />
-		<Project Path="../tests/WslContainers.MinIo.IntegrationTests/WslContainers.MinIo.IntegrationTests.csproj" />
+		<Project Path="tests/Azurite.IntegrationTests/Azurite.IntegrationTests.csproj" />
+		<Project Path="tests/Azurite.UnitTests/Azurite.UnitTests.csproj" />
+		<Project Path="tests/MinIo.IntegrationTests/MinIo.IntegrationTests.csproj" DisplayName="MinIO.IntegrationTests" />
+		<Project Path="tests/MinIo.UnitTests/MinIo.UnitTests.csproj" DisplayName="MinIO.UnitTests" />
+		<Project Path="tests/MsSql.IntegrationTests/MsSql.IntegrationTests.csproj" />
+		<Project Path="tests/MsSql.UnitTests/MsSql.UnitTests.csproj" />
+		<Project Path="tests/MySql.IntegrationTests/MySql.IntegrationTests.csproj" />
+		<Project Path="tests/MySql.UnitTests/MySql.UnitTests.csproj" />
+		<Project Path="tests/Nats.IntegrationTests/Nats.IntegrationTests.csproj" />
+		<Project Path="tests/Nats.UnitTests/Nats.UnitTests.csproj" />
+		<Project Path="tests/PostgreSql.IntegrationTests/PostgreSql.IntegrationTests.csproj" />
+		<Project Path="tests/PostgreSql.UnitTests/PostgreSql.UnitTests.csproj" />
+		<Project Path="tests/RabbitMq.IntegrationTests/RabbitMq.IntegrationTests.csproj" />
+		<Project Path="tests/RabbitMq.UnitTests/RabbitMq.UnitTests.csproj" />
+		<Project Path="tests/Redis.IntegrationTests/Redis.IntegrationTests.csproj" />
+		<Project Path="tests/Redis.UnitTests/Redis.UnitTests.csproj" />
+		<Project Path="tests/SharedTestingFramework/SharedTestingFramework.csproj" />
+		<Project Path="tests/WslContainers.IntegrationTests/WslContainers.IntegrationTests.csproj" />
+		<Project Path="tests/WslContainers.UnitTests/WslContainers.UnitTests.csproj" />
 	</Folder>
 </Solution>

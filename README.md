@@ -180,6 +180,31 @@ string connectionString = azurite.GetConnectionString();
 Uri blob = azurite.GetBlobEndpoint();
 ```
 
+## Running the tests
+
+Every test process owns a single shared WSLC session and, by default, uses the shared image store
+(`%LOCALAPPDATA%\Purview\WslContainers\images`). A WSLC session **exclusively locks its
+`storage.vhdx`**, and the lock is taken lazily on the first store access — so running test assemblies
+in parallel makes the losers fail with `0x80070020`:
+
+```
+The process cannot access the file because it is being used by another process.
+```
+
+The runtime now verifies the store on first use and transparently falls back to an isolated
+per-process store (removed when that process's session terminates), but running test modules serially
+keeps the warm shared image cache (no per-process re-pull) and is the fastest option:
+
+```powershell
+just test                     # dotnet test, one test module at a time
+
+# Visual Studio: Test > Options > untick "Run Tests in Parallel" (or set
+# "Maximum Parallel Test Projects" to 1) before running the WSLC integration tests.
+```
+
+> The `WslContainers.IntegrationTests` module runs 27 real containers in one session and takes ~4
+> minutes because WSLC serialises container operations; expect slow-test warnings while it runs.
+
 ## Running the Phase 0 spikes
 
 ```powershell

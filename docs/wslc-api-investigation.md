@@ -100,6 +100,7 @@ Enums (SRC): `ContainerState{Invalid=0,Created,Running,Exited,Deleted}` · `Proc
 - `Session.Dispose()` alone removes the session from the session manager and frees the name while the process is still alive. `EXP (S14)`
 - **If a process exits without disposing its session, the session is orphaned** — it remains in `wslc info` with a dead `Creator PID` and the name stays reserved. It does **not** block other session names, nor reuse of the same storage path. `EXP (S10, S13)`
 - `Container.Stop(signal, timeout)` is **idempotent** (stopping an already-stopped container succeeds). `EXP`
+- `Container.Stop(signal, timeout)` can **block far longer than the `timeout` argument** (observed: minutes with `SIGTERM`/10 s while the session held several containers). Because the library serialises session operations, a single slow `Stop` stalls every other container operation in that process. `EXP`
 - `Container.Delete(...)` on an already-deleted container throws `COMException 0x80010108` (`RPC_E_DISCONNECTED`). `EXP`
 - `OpenContainer` on a missing container throws `COMException` with `HResult == (int)Error.ContainerNotFound` (`0x80040603`, i.e. `-2147219965`). `EXP` — matches docs.
 - `Delete(DeleteContainerOption.Force)` works on a running container (state → `Deleted`). `EXP`
@@ -178,7 +179,7 @@ The library parses this for `GetMappedPublicPort` and container IP.
 
 ### A session exclusively locks its storage VHD (EXP, S18)
 
-- Each session's image store lives in `{storagePath}\storage.vhdx`. A running session locks that VHD; a **concurrent** session on the same path fails reads with `0x80070020` (`ERROR_SHARING_VIOLATION`, "file is being used by another process").
+- Each session's image store lives in `{storagePath}\storage.vhdx`. A running session locks that VHD; a **concurrent** session on the same path fails reads with `0x80070020` (`ERROR_SHARING_VIOLATION`, "file is being used by another process"). The VHD is opened **lazily on the first store access** (e.g. the first `GetImages()` call), not at session creation or `Session.Start()`, so the violation can surface well after `Session.Start()` succeeded. `EXP`
 - **Sequential** reuse works: after a session ends, a new session on the same path sees the previous session's images (EXP S2/S13). There is no global/shared image cache in WSLC, so sharing images across sessions requires a shared storage path — safe only when sessions do not overlap. The library defaults to a shared store and falls back to an isolated per-process store on contention.
 
 ## Known gaps in the C# projection (DOC)

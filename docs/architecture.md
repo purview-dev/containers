@@ -49,8 +49,9 @@ Design rules:
   process runs. Set `StorageMode.PerSession` (or an explicit `StoragePath` / `WSL_CONTAINERS_STORAGE_PATH`)
   for isolation. Session names stay unique per process; only the path is shared.
 - **Concurrent sharing is not possible**: a running session exclusively locks its `storage.vhdx`
-  (a second session on the same path fails with `0x80070020` — EXP S18). When the default shared store is
-  contended by a concurrent process, the runtime automatically falls back to an isolated per-process store.
+  (a second session on the same path fails with `0x80070020` — EXP S18). The lock is taken lazily on the
+  first store access, so contention can surface on `GetImages()` rather than at session start; the runtime
+  detects it there too and falls back to an isolated per-process store.
   Sequential reuse works (EXP S2/S13): after a session ends, a new session on the same path sees its images.
 - Cleanup: normal shutdown terminates+disposes the session (frees the name, EXP S14). Orphaned sessions from crashed processes block only their own name (EXP S13); they do not block other sessions or storage-path reuse.
 
@@ -72,8 +73,18 @@ Design rules:
 ## Concurrency
 
 - All session-mutating operations (`Pull`, `CreateContainer`, `Start`, `Stop`, `Delete`, `Tag`, `DeleteImage`, VHD ops) go through a per-session `SemaphoreSlim`. This avoids the racy `0x8000FFFF` observed with concurrent `Start`.
-- Read-only ops (`Inspect`, `GetImages`, `Exec`?) are allowed concurrently once the container is running; `Exec` still funnels through the lock because it creates a process on the container.
+- `GetImages()` reads (and locks) `storage.vhdx`, so it is **not** side-effect-free and goes through the same gate. Container-handle reads (`Inspect`) are allowed concurrently once the container is running; `Exec` also funnels through the lock because it creates a process on the container.
 - Bounded per-container output buffers prevent runaway memory.
+
+### Shared-store contention (cross-process)
+
+`storage.vhdx` is opened lazily on the **first store access**, not at session start, so a second process
+on the same path can start its session successfully and only fail later on its first read
+(`GetImages()`) with `0x80070020`. The runtime therefore verifies the store once, under a gate, on the
+first `GetSessionAsync`; when a concurrent process holds the default shared store, that session is
+discarded and the runtime transparently switches to an isolated per-process store. Explicit
+`StoragePath`/`WSL_CONTAINERS_STORAGE_PATH`/`StorageMode.PerSession` configuration opts out of the
+fallback. Isolated stores are transient and are removed when their session terminates.
 
 ## Cleanup & reaper decision
 
@@ -87,6 +98,7 @@ Design rules:
 ## Observability
 
 - `System.Diagnostics.ActivitySource("Purview.WslContainers")` emits `wslcontainer.session.start`, `wslcontainer.image.pull`, `wslcontainer.container.create/start/stop/delete`, `wslcontainer.exec.create`, and `wslcontainer.wait`. Tags carry container name/id/image and strategy — never credentials.
+- Tailing `GetLogsAsync(CancellationToken)` ends when the container's init process exits: the log buffer is flushed and its channel completed on process exit (and on container disposal), so an `await foreach` over the stream terminates instead of waiting forever. The string overload (`GetLogsAsync(stream, ct)`) reads the accumulated buffer only.
 - `Microsoft.Extensions.Logging` integration is optional/future; the core works without a host or DI.
 
 ## Extensibility
