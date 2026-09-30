@@ -23,7 +23,7 @@ installation, plus the service modules (`PostgreSql`, `Redis`, `MsSql`, `RabbitM
 | `src/WSLTestContainers.slnx` | Canonical solution for restore, build, test and pack |
 | `src/src/WslContainers` | Core runtime (`Purview.WslContainers`): `ContainerBuilder`, `WslContainer`, runtime, sessions, images, networking, mounts, wait strategies, diagnostics |
 | `src/src/<Module>` | Service modules; each is a thin layer over the core and carries a bespoke `Sdk/README.md` |
-| `src/src/<Project>/Sdk` | Package-only assets. `Sdk/README.md` is packed as the package README (suppressing the repo-root README); `Sdk/buildTransitive/**` would ship MSBuild assets |
+| `src/src/<Project>/Sdk` | Package-only assets. `Sdk/README.md` is packed as the package README (suppressing the repo-root README); `Sdk/buildTransitive/**` ships MSBuild assets to consumers (the core package's consumer defaults and guards) |
 | `src/tests` | TUnit unit (`*.UnitTests`) and WSLC integration (`*.IntegrationTests`) projects |
 | `spikes/WslcSpikes` | Phase 0 investigation harness (`s1`..`s14` probes); not part of the test run |
 | `docs/wiki` | User-facing documentation wiki, aggregated by the purview-dev website |
@@ -62,6 +62,23 @@ installation, plus the service modules (`PostgreSql`, `Redis`, `MsSql`, `RabbitM
   session so its name is released.
 - **Secrets use `Secret`** and must never reach logs, names, `ToString()` or diagnostics (they are redacted).
 
+## Consumer requirements and compatibility
+
+- The packages are **.NET 11, Windows-only**: every project under `src/` targets
+  `net11.0-windows10.0.19041.0` (`src/Directory.Build.props`) and a consumer must match. The contract,
+  the failures that enforce it and the CI workarounds are documented in
+  [Consumer Requirements](docs/wiki/Consumer-Requirements.md); update that page whenever the target
+  framework, the `buildTransitive` defaults or the `PWC0001`/`PWC0002` guards change.
+- `Purview.WslContainers` ships `Sdk/buildTransitive/Purview.WslContainers.{props,targets}` so consumers
+  inherit `WindowsSdkPackageVersion`/`PlatformTarget` defaults and a clear error for an unsupported
+  target framework (`PWC0001`) or a 32-bit consumer (`PWC0002`). Those assets are framework-agnostic, so
+  NuGet no longer raises `NU1202` at restore time — the guards are the fail-fast path. Keep them, and
+  keep the `RequiredContent` entries that declare them.
+- `src/Directory.Build.props` sets `EnableWindowsTargeting=true` because the shared CI agent is
+  `ubuntu-latest`; removing it fails the pipeline with `NETSDK1100`.
+- The project is **experimental**: keep the experimental notice in `README.md`, `docs/wiki/Home.md` and
+  the package READMEs, and keep versions on a `-prerelease.N` suffix.
+
 ## Module rules
 
 - A module supplies only defaults: image, ports, environment, module configuration (`WithXxx`), a readiness
@@ -79,7 +96,9 @@ installation, plus the service modules (`PostgreSql`, `Redis`, `MsSql`, `RabbitM
   resolves `IsPackable` by scanning the project file, and the package metadata/icon conditions in
   `src/Directory.Build.props` depend on it.
 - Each package ships `lib/$(TFM)/<Assembly>.{dll,xml}`, `README.md` (from `Sdk/README.md`) and
-  `purview-logo-light.png`. PDBs ship only in the `.snupkg`.
+  `purview-logo-light.png`. PDBs ship only in the `.snupkg`. The core package additionally ships
+  `buildTransitive/Purview.WslContainers.{props,targets}` (see
+  [Consumer requirements and compatibility](#consumer-requirements-and-compatibility)).
 - `PackValidation.RequireExplicitContent` defaults to `true`, so `purview-build.json`'s `RequiredContent` is
   the **exhaustive** manifest: a produced package with no rule, or a packed entry matched by no glob, fails
   validation. Adding or removing packaged content means updating that map.
@@ -94,6 +113,12 @@ installation, plus the service modules (`PostgreSql`, `Redis`, `MsSql`, `RabbitM
   exclusively locks its image-store VHD, so parallel modules fail with `0x80070020`.
 - Use the shared `WslcTest` helper in `src/tests/SharedTestingFramework` for integration skip/availability
   checks. Unit tests may use the modules' `BuildConfigurationForTesting()` internal hook.
+- `WslContainers.UnitTests/ConsumerRequirementsTests.cs` guards the published target framework
+  (`.NETCoreApp,Version=v11.0` plus `Windows10.0.19041.0`); keep it in step with
+  [Consumer Requirements](docs/wiki/Consumer-Requirements.md).
+- `just verify-consumers` packs and then builds throwaway consumer projects to assert the documented
+  guard errors and workarounds. It restores from nuget.org, so it stays out of the `[Category=Unit]`
+  filter and is a local/explicit step.
 
 ## Local commands
 
@@ -102,6 +127,7 @@ just build                            # dotnet build (Debug)
 just test '/*/*/*/*[Category=Unit]'   # unit tests only
 just lint-check / just lint-fix       # CSharpier check / format
 just pack                             # build + dotnet pack into ./artifacts
+just verify-consumers                 # build throwaway consumers against the packed packages
 just pipeline-pack-validate           # restore, build, lint, test, pack, validate
 just scrub                            # reset bin/obj, clean, forced restore, build-server shutdown
 ```
@@ -117,7 +143,8 @@ Commit messages follow Conventional Commits enforced by the `commit-msg` lefthoo
 - `.github/workflows/release.yml` runs the shared release pipeline with `release-mode: NuGet` on a push to
   `main`.
 - Both workflows pin `dotnet-version` to `global.json`'s `sdk.version`; keep them in sync, and keep
-  `purview-build.json` pointing at `src/WSLTestContainers.slnx`.
+  `purview-build.json` pointing at `src/WSLTestContainers.slnx`. The shared workflow runs on
+  `ubuntu-latest`, which is why `EnableWindowsTargeting=true` must stay in `src/Directory.Build.props`.
 
 ## Completion checklist
 
@@ -127,6 +154,8 @@ Before handing work back:
 - Review public API, package-content and dependency-direction implications.
 - Update the affected package `Sdk/README.md`, the root `README.md`, `docs/wiki` (plus `_Sidebar.md` and
   `mkdocs.yml` for new pages), `AGENTS.md` and `purview-build.json` when the change affects them.
+  `docs/wiki/Consumer-Requirements.md` is the contract every consumer-facing change has to keep
+  accurate, and `just verify-consumers` is the check that proves it.
 - Watch for the packaging traps: a new packable project missing `<IsPackable>true</IsPackable>` or a
   `RequiredContent` entry, and a new `Sdk/README.md` that does not describe its own package.
 - Run the appropriate build, test, formatting and pack checks in proportion to risk.

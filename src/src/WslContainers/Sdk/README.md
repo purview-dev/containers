@@ -10,10 +10,20 @@ dotnet add package Purview.WslContainers
 
 ## Requirements
 
-- Windows 10/11 with **WSL ≥ 2.9.3** including WSL Containers (`wsl --install --no-distribution`).
-- .NET 11 SDK or later (`net11.0-windows10.0.19041.0`).
-- Verify with `wsl --version` (needs 2.9.3+) and `wslc version`. The library never installs or updates WSL
+- Windows 10/11 with **WSL Containers** (`wsl --install --no-distribution`), verified against WSL 3.0.1.0.
+- **A .NET 11 project targeting Windows specifically** — `net11.0-windows10.0.19041.0`, x64 or arm64.
+  A consuming project that targets anything else fails the build with `PWC0001` (target framework) or
+  `PWC0002` (platform), and without the packages' MSBuild defaults a stale
+  `WindowsSdkPackageVersion` fails with `CS1705`.
+- This package supplies the `buildTransitive` defaults for `WindowsSdkPackageVersion` and
+  `PlatformTarget` that every module package inherits, so a consumer usually only chooses a target
+  framework. The full contract, the error reference and the `EnableWindowsTargeting` workaround for
+  non-Windows CI agents are in the
+  [consumer requirements](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Consumer-Requirements.md).
+- Verify the host with `wsl --version` and `wslc version`. The library never installs or updates WSL
   itself; `WslContainerRuntime.GetInfoAsync()` reports what is missing.
+- **Experimental:** this is an experiment in driving WSL Containers. The public API, defaults and
+  packaging rules can change between prereleases, and there is no production support guarantee.
 
 ## Quick start
 
@@ -94,11 +104,11 @@ and diagnostics.
 
 ## Documentation
 
-See the [project wiki](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Home.md):
-[Getting Started](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Getting-Started.md),
-[Architecture](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Architecture.md),
-[Lifecycle](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Lifecycle.md),
-[Networking](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Networking.md) and
-[Wait Strategies](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Wait-Strategies.md).
+See the [project wiki](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Home.md):
+[Getting Started](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Getting-Started.md),
+[Architecture](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Architecture.md),
+[Lifecycle](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Lifecycle.md),
+[Networking](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Networking.md) and
+[Wait Strategies](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Wait-Strategies.md).
 Ready-made service modules ship as `Purview.WslContainers.PostgreSql`, `Redis`, `MsSql`, `RabbitMq`,
 `Azurite`, `Nats` and `MySql`.

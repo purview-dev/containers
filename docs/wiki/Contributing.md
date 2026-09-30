@@ -5,8 +5,12 @@ request.
 
 ## Prerequisites
 
-- Windows with **WSL ≥ 2.9.3** (WSL Containers) for integration tests; see [Getting Started](Getting-Started.md).
+- Windows with **WSL Containers** for integration tests; see [Getting Started](Getting-Started.md).
 - .NET SDK 11 (pinned in `global.json` as `11.0.100-rc.1.26425.128`).
+- Every project targets `net11.0-windows10.0.19041.0` with `EnableWindowsTargeting=true` (set in
+  `src/Directory.Build.props`) so the solution also builds on the Linux CI agent. Do not remove that
+  property: without it the shared pipeline fails with `NETSDK1100`. See
+  [Consumer Requirements](Consumer-Requirements.md).
 - [just](https://github.com/casey/just) for the repository recipes, and `dotnet tool restore` for the pinned
   local tools (CSharpier, dotnet-inspect).
 - [Bun](https://bun.sh) only for `just version` and the commit hook tooling; the commit hook runs
@@ -26,6 +30,7 @@ just build                      # fast compile check
 just test '/*/*/*/*[Category=Unit]'   # unit tests (no WSLC host needed)
 just lint-fix                   # CSharpier format (just lint-check to verify only)
 just pack                       # build + pack into ./artifacts
+just verify-consumers           # build throwaway consumers against the packed packages
 just pipeline-pack-validate     # full local gate: restore, build, lint, test, pack, validate
 ```
 
@@ -46,9 +51,10 @@ A change is not complete until the affected documentation matches:
 - **`src/src/<Project>/Sdk/README.md`** — the package's own README, shipped inside the `.nupkg`. Update it
   whenever a module's public API, defaults, readiness or endpoints change.
 - **`docs/wiki`** — the user-facing wiki aggregated by the purview-dev website. Update the topic page
-  ([Architecture](Architecture.md), [Lifecycle](Lifecycle.md), [Networking](Networking.md),
-  [Wait Strategies](Wait-Strategies.md), [Modules](Modules.md), [Testing](Testing.md),
-  [Packaging](Packaging.md), [Release Flow](Release-Flow.md)) and `_Sidebar.md` when adding a page.
+  ([Consumer Requirements](Consumer-Requirements.md), [Architecture](Architecture.md),
+  [Lifecycle](Lifecycle.md), [Networking](Networking.md), [Wait Strategies](Wait-Strategies.md),
+  [Modules](Modules.md), [Testing](Testing.md), [Packaging](Packaging.md), [Release Flow](Release-Flow.md))
+  and `_Sidebar.md` when adding a page.
 - **`purview-build.json`** — the exhaustive `PackValidation.RequiredContent` manifest has to keep matching
   what the packages actually contain; see [Packaging](Packaging.md).
 - **`README.md`** — the repository front page, when the shape of the project changes.

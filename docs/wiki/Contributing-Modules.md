@@ -74,4 +74,5 @@ public class MyServiceBuilder : ContainerBuilder<MyServiceBuilder, MyServiceCont
 - Package ID `Purview.WslContainers.MyService` (namespace prefix `Purview`).
 - Module is thin: no session management, no port allocation logic, no output buffering.
 - Default networking is `Bridged` (from the core defaults); ports use native random allocation unless a fixed host port is explicitly requested.
+- The module inherits the core package's consumer requirements (a .NET 11 Windows target framework, x64/arm64) and its `buildTransitive` MSBuild defaults. See [Consumer Requirements](Consumer-Requirements.md).
 - If a Testcontainers capability has no WSLC equivalent (e.g. UDP, TTY, `--user`), throw `WslContainerNotSupportedException` at build/validation rather than silently ignoring it.

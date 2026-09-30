@@ -14,6 +14,12 @@ Test projects are discovered under `src/tests` and the SDK stamps every test ass
 `purview-build.json` filters the pipeline run to `/*/*/*/*[Category=Unit]`, so the shared pipeline never
 starts containers. Run integration projects explicitly when you have a WSLC host.
 
+> The shared `purview-dev/build` workflow runs on **`ubuntu-latest`**, so the pipeline builds these
+> `net11.0-windows…` projects on Linux. That works because `src/Directory.Build.props` sets
+> `EnableWindowsTargeting=true`; without it the SDK reports `NETSDK1100`. See
+> [Consumer Requirements](Consumer-Requirements.md) for what that workaround does and does not
+> cover.
+
 ```powershell
 just test                              # every discovered test project
 just test '/*/*/*/*[Category=Unit]'     # unit tests only
@@ -45,6 +51,24 @@ running the WSLC integration suites.
   without WSLC can still run the unit suites.
 - `spikes/WslcSpikes` is a manual investigation harness (`dotnet run --project spikes/WslcSpikes -- sfull`,
   or `s1`..`s14` for individual behaviour probes); it is not part of the test run.
+
+## Verifying the consumer contract
+
+`WslContainers.UnitTests/ConsumerRequirementsTests.cs` guards the shape of the shipped library inside
+the normal unit run: the assembly targets `.NETCoreApp,Version=v11.0`, targets `Windows10.0.19041.0`
+and declares only that OS platform. If the target framework ever drifts, that test fails — and
+[Consumer Requirements](Consumer-Requirements.md), the package READMEs and the shipped
+`buildTransitive` defaults all have to move with it.
+
+The behavioural side is covered by `just verify-consumers`, which packs the packages and builds
+throwaway consumer projects for every documented outcome (see
+[Consumer Requirements](Consumer-Requirements.md#verifying-these-requirements)). It is deliberately
+outside the `[Category=Unit]` filter because it packs and restores from nuget.org:
+
+```powershell
+just verify-consumers          # 12 consumer projects, all assertions
+just verify-consumers -Keep    # same, keeping the generated projects for inspection
+```
 
 ## Related
 

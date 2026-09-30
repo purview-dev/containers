@@ -10,6 +10,16 @@ dotnet add package Purview.WslContainers.MsSql
 Depends on `Purview.WslContainers` (the core runtime) and brings `Microsoft.Data.SqlClient` for
 connection-string generation and readiness probing.
 
+## Requirements
+
+- Windows 10/11 with **WSL Containers** (`wsl --install --no-distribution`).
+- **A .NET 11 project targeting Windows specifically** (`net11.0-windows10.0.19041.0`, x64 or arm64).
+  `Purview.WslContainers` supplies `buildTransitive` defaults for `WindowsSdkPackageVersion` and
+  `PlatformTarget`, and rejects an unsupported consumer with `PWC0001`/`PWC0002` — see the
+  [consumer requirements](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Consumer-Requirements.md).
+- **Experimental:** the API, defaults and packaging can change between prereleases; there is no
+  production support guarantee.
+
 ## Quick start
 
 ```csharp
@@ -37,7 +47,7 @@ await connection.OpenAsync();
 | `AcceptLicense()` | Sets `ACCEPT_EULA=Y`. Required — the library never accepts licensing terms on your behalf. |
 | `MsSqlContainer.GetConnectionString()` | `SqlConnectionStringBuilder` connection string for the mapped host port. |
 
-## Requirements and behaviour
+## Behaviour and constraints
 
 - **Memory:** SQL Server refuses to start below 2000 MB. The default session VM is capped at 4096 MB
   (`WslContainerRuntimeOptions.Default`), so it works out of the box; override with
@@ -51,5 +61,5 @@ await connection.OpenAsync();
 
 ## Documentation
 
-- [Modules](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Modules.md) — the module contract and readiness choices.
-- [Getting Started](https://github.com/purview-dev/wsl-testcontainers/blob/main/docs/wiki/Getting-Started.md) — prerequisites and first-container walkthrough.
+- [Modules](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Modules.md) — the module contract and readiness choices.
+- [Getting Started](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Getting-Started.md) — prerequisites and first-container walkthrough.

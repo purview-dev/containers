@@ -8,9 +8,15 @@ It is built directly against the `Microsoft.WSL.Containers` managed package — 
 This wiki is the project documentation hub. The packages are published under the
 `Purview.WslContainers.*` package IDs.
 
+> **Experimental.** This project is an experiment in running throwaway containers through Microsoft
+> WSL Containers. The public API, defaults and packaging rules can change between prereleases, and
+> there is no production support guarantee. Pin the exact package version you build against and read
+> [Consumer Requirements](Consumer-Requirements.md) before adopting it.
+
 ## Start here
 
 - [Getting Started](Getting-Started.md)
+- [Consumer Requirements](Consumer-Requirements.md)
 - [Architecture](Architecture.md)
 - [Lifecycle](Lifecycle.md)
 - [Networking](Networking.md)
@@ -49,13 +55,19 @@ This wiki is the project documentation hub. The packages are published under the
 
 ## Requirements
 
-- Windows 10/11.
-- **WSL ≥ 2.9.3** with WSL Containers, installed via `wsl --install --no-distribution`.
-- .NET SDK 11 (the repository pins `11.0.100-rc.1.26425.128`).
+- Windows 10/11 with **WSL Containers**, installed via `wsl --install --no-distribution`. The library
+  is verified against WSL **3.0.1.0**; `wsl --version` and `wslc version` should both report 3.0.1.0
+  or later.
+- .NET SDK 11 to build (the repository pins `11.0.100-rc.1.26425.128` in `global.json`).
+- A consuming project must be a **.NET 11 project targeting Windows specifically**:
+  `net11.0-windows10.0.19041.0`, built for x64 or arm64, with `WindowsSdkPackageVersion`
+  `10.0.26100.80` or later. See [Consumer Requirements](Consumer-Requirements.md) for the full
+  contract, the exact errors raised when it is not met, and the `EnableWindowsTargeting` workaround
+  for non-Windows CI agents.
 
 ```powershell
-wsl --version     # needs 2.9.3+
-wslc version      # prints e.g. 3.0.1.0
+wsl --version     # WSL Containers installed (verified against 3.0.1.0)
+wslc version      # e.g. 3.0.1.0
 ```
 
 The library reports missing prerequisites through `WslContainerRuntime.GetInfoAsync()`; it never installs or

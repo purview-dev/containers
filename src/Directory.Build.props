@@ -17,6 +17,10 @@
 	<PropertyGroup Label="NuGet package metadata" Condition="'$(IsPackable)' == 'true'">
 		<PackageIcon>purview-logo-light.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<!-- The nuget.org "Project Site" link. The rendered documentation wiki lives in this
+		     repository, so the repository URL is the most useful target until the aggregated
+		     purview.dev project page exists. RepositoryUrl/RepositoryType come from SourceLink. -->
+		<PackageProjectUrl>https://github.com/purview-dev/wsl-containers</PackageProjectUrl>
 	</PropertyGroup>
 
 	<ItemGroup Label="NuGet package assets" Condition="'$(IsPackable)' == 'true'">

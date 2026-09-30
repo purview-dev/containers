@@ -111,6 +111,16 @@ pack *args:
     echo "Packing {{ BLUE }}{{ solution_file }}{{ NORMAL }} with {{ YELLOW }}{{ build_configuration }}{{ NORMAL }}..."
     dotnet pack "{{ solution_file }}" --configuration "{{ build_configuration }}" --no-restore --output "{{ artifact_folder }}" {{ args }}
 
+# Verifies the documented consumer requirements and workarounds (docs/wiki/Consumer-Requirements.md)
+# by packing and then building throwaway consumer projects against the produced packages: the
+# "just reference the package from a .NET 11 Windows project" path, the shipped buildTransitive
+# defaults, the guard errors for unsupported target frameworks, and the non-.NET-11 escape hatch
+# that deliberately does not work. Slower than unit tests (packs and restores from nuget.org).
+[group('Build and Test')]
+verify-consumers *args:
+    just pack
+    pwsh -NoProfile -File scripts/verify-consumers.ps1 {{ args }}
+
 # -----------------------------------------------------------------------------
 # Formatting
 # -----------------------------------------------------------------------------

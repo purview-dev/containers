@@ -1,5 +1,6 @@
 - [Home](Home.md)
 - [Getting Started](Getting-Started.md)
+- [Consumer Requirements](Consumer-Requirements.md)
 - [Architecture](Architecture.md)
 - [Lifecycle](Lifecycle.md)
 - [Networking](Networking.md)
