@@ -1,6 +1,6 @@
 # Purview.Containers
 
-[![NuGet version](https://img.shields.io/nuget/v/Purview.Containers.Wsl.svg)](https://www.nuget.org/packages/Purview.Containers.Wsl)
+[![NuGet version](https://img.shields.io/nuget/v/Purview.Containers.svg)](https://www.nuget.org/packages/Purview.Containers)
 [![Release](https://github.com/purview-dev/containers/actions/workflows/release.yml/badge.svg)](https://github.com/purview-dev/containers/actions/workflows/release.yml)
 
 A Testcontainers-style library for .NET that runs throwaway Linux containers for integration testing — on **Microsoft WSL Containers (WSLC)** with no Docker installation, or on **Docker** through Testcontainers.
