@@ -1,6 +1,6 @@
 # Purview.Containers.Docker
 
-The **Docker backend** for [`Purview.Containers`](https://www.nuget.org/packages/Purview.Containers):
+The **Docker backend** for [`Purview.Containers.Core`](https://www.nuget.org/packages/Purview.Containers.Core):
 throwaway containers for integration testing on any Docker daemon reachable from the test host — Docker
 Desktop, Docker Engine inside WSL2, a remote daemon, Docker-in-Docker, or the daemon a CI runner
 provides. It drives the daemon through [Testcontainers for .NET](https://dotnet.testcontainers.org/).

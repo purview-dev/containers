@@ -1,6 +1,6 @@
 # Purview.Containers.Wsl
 
-The **WSL Containers (WSLC) backend** for [`Purview.Containers`](https://www.nuget.org/packages/Purview.Containers):
+The **WSL Containers (WSLC) backend** for [`Purview.Containers.Core`](https://www.nuget.org/packages/Purview.Containers.Core):
 throwaway Linux containers for .NET integration testing built directly on the `Microsoft.WSL.Containers`
 managed API, with **no Docker installation** and no `wslc.exe`/`wsl.exe`/`docker` CLI, Docker.DotNet or
 Testcontainers dependency.

@@ -6,7 +6,7 @@ Throwaway PostgreSQL databases for .NET integration testing on **WSL Containers 
 dotnet add package Purview.Containers.PostgreSql
 ```
 
-Backend-neutral: depends on `Purview.Containers` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`) and brings `Npgsql` for connection-string generation.
+Backend-neutral: depends on `Purview.Containers.Core` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`) and brings `Npgsql` for connection-string generation.
 See the [Getting Started guide](https://github.com/purview-dev/containers/blob/main/docs/wiki/Getting-Started.md).
 
 ## Requirements

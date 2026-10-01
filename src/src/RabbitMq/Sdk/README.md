@@ -6,7 +6,7 @@ Throwaway RabbitMQ brokers for .NET integration testing on **WSL Containers (WSL
 dotnet add package Purview.Containers.RabbitMq
 ```
 
-Backend-neutral: depends on `Purview.Containers` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`). `RabbitMQ.Client` is not referenced by this package —
+Backend-neutral: depends on `Purview.Containers.Core` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`). `RabbitMQ.Client` is not referenced by this package —
 bring your own client.
 
 ## Requirements

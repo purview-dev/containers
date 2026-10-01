@@ -6,7 +6,7 @@ Throwaway Microsoft SQL Server databases for .NET integration testing on **WSL C
 dotnet add package Purview.Containers.MsSql
 ```
 
-Backend-neutral: depends on `Purview.Containers` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`) and brings `Microsoft.Data.SqlClient` for
+Backend-neutral: depends on `Purview.Containers.Core` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`) and brings `Microsoft.Data.SqlClient` for
 connection-string generation and readiness probing.
 
 ## Requirements

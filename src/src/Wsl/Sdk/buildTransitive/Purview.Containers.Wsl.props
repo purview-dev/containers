@@ -20,8 +20,8 @@
 			>10.0.26100.80</WindowsSdkPackageVersion>
 
 		<!-- Registers the WSL Containers backend inside the consuming assembly. The generated module
-		     initializer is produced by Purview.Containers.targets (shipped by the
-		     Purview.Containers package, which always flows here transitively). -->
+		     initializer is produced by Purview.Containers.Core.targets (shipped by the
+		     Purview.Containers.Core package, which always flows here transitively). -->
 		<PurviewContainersBackends>$(PurviewContainersBackends);Purview.Containers.Wsl.WslContainerBackend</PurviewContainersBackends>
 	</PropertyGroup>
 </Project>

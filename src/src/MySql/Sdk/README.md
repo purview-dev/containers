@@ -6,7 +6,7 @@ Throwaway MySQL databases for .NET integration testing on **WSL Containers (WSLC
 dotnet add package Purview.Containers.MySql
 ```
 
-Backend-neutral: depends on `Purview.Containers` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`) and brings `MySqlConnector` for readiness probing and
+Backend-neutral: depends on `Purview.Containers.Core` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`) and brings `MySqlConnector` for readiness probing and
 connection-string generation.
 
 ## Requirements

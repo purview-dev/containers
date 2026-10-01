@@ -7,13 +7,14 @@ Design for a Testcontainers-style .NET library with pluggable container backends
 The library is split into a backend-neutral abstraction assembly and one assembly per backend:
 
 ```
-Purview.Containers                       (net10.0, portable)
- ├─ IContainer / IContainerConfiguration / ContainerConfiguration   the container contract
- ├─ ContainerBuilder<TBuilder, TContainer, TConfiguration>          fluent configuration + validation
- ├─ ContainerBase                                                   typed module container (delegates to the backend)
- ├─ ContainerBackends + IContainerBackend                           backend registry and selection
- ├─ Waiting / Images / Mounts / Networking / Diagnostics            readiness, model, secrets
- └─ Runtime/ContainerException                                      neutral error taxonomy
+Purview.Containers                       (net10.0)   umbrella: references Core, Wsl and Docker
+ └─ Purview.Containers.Core              (net10.0, portable)   the backend-neutral abstractions
+     ├─ IContainer / IContainerConfiguration / ContainerConfiguration   the container contract
+     ├─ ContainerBuilder<TBuilder, TContainer, TConfiguration>          fluent configuration + validation
+     ├─ ContainerBase                                                   typed module container (delegates to the backend)
+     ├─ ContainerBackends + IContainerBackend                           backend registry and selection
+     ├─ Waiting / Images / Mounts / Networking / Diagnostics            readiness, model, secrets
+     └─ Runtime/ContainerException                                      neutral error taxonomy
 
 Purview.Containers.Wsl                   (net10.0 facade + net10.0-windows10.0.19041.0 implementation)
  ├─ WslContainerBackend : IContainerBackend  registers itself as "wsl"
@@ -32,8 +33,10 @@ IContainer : IAsyncDisposable
 ```
 
 A module (`Purview.Containers.PostgreSql`, `Purview.Containers.Redis`, …) derives its container from
-`ContainerBase` and references `Purview.Containers` only. The backend is resolved at run time through
-`ContainerBackends`, so the same module package works on WSLC or Docker.
+`ContainerBase` and references `Purview.Containers.Core` only. The backend is resolved at run time through
+`ContainerBackends`, so the same module package works on WSLC or Docker. `Purview.Containers` is the
+umbrella package: it carries no code of its own and simply references `Core` plus both backends, so one
+reference gives a consumer the whole "auto" setup.
 
 Microsoft types (`Session`, `Container`, `Process`, `ContainerSettings`, …) are **runtime implementation details** kept behind the public interfaces. They are not exposed through the public API surface (an opt-in accessor is the only escape hatch).
 
@@ -56,7 +59,7 @@ precedence:
 
 Resolution is cached per process, so probes run once; `Reset()` (tests) and `Register`/`Use` invalidate the
 cache. Package consumers get registration from the generated module initializer in
-`Purview.Containers.targets`; project-reference consumers register explicitly with
+`Purview.Containers.Core.targets`; project-reference consumers register explicitly with
 `Register(...)`. Consumer-facing guidance (including the CI example) is in
 [Backends: WSLC or Docker](Backends.md).
 

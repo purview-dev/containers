@@ -6,7 +6,7 @@ Throwaway Redis-compatible instances for .NET integration testing on **WSL Conta
 dotnet add package Purview.Containers.Redis
 ```
 
-Backend-neutral: depends on `Purview.Containers` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`). `StackExchange.Redis` is not referenced by this
+Backend-neutral: depends on `Purview.Containers.Core` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`). `StackExchange.Redis` is not referenced by this
 package — bring your own client.
 
 ## Requirements

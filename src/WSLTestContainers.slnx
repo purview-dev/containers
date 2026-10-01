@@ -12,6 +12,7 @@
 	<Folder Name="/src/">
 		<Project Path="src/Azurite/Azurite.csproj" />
 		<Project Path="src/Containers/Containers.csproj" />
+		<Project Path="src/Core/Core.csproj" />
 		<Project Path="src/Docker/Docker.csproj" />
 		<Project Path="src/MsSql/MsSql.csproj" />
 		<Project Path="src/MySql/MySql.csproj" />

@@ -5,7 +5,7 @@ Module architecture for `Purview.Containers`.
 ## Principle
 
 Modules are thin packages layered on the backend-neutral abstractions
-([`Purview.Containers`](Architecture.md)). A module supplies only:
+([`Purview.Containers.Core`](Architecture.md)). A module supplies only:
 
 - default image
 - default ports

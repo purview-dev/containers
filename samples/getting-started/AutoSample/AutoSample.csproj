@@ -19,16 +19,16 @@
 	<ItemGroup>
 		<ProjectReference Include="../../../src/src/Redis/Redis.csproj" />
 		<ProjectReference Include="../../../src/src/PostgreSql/PostgreSql.csproj" />
-		<ProjectReference Include="../../../src/src/Wsl/Wsl.csproj" />
-		<ProjectReference Include="../../../src/src/Docker/Docker.csproj" />
+		<ProjectReference Include="../../../src/src/Containers/Containers.csproj" />
 	</ItemGroup>
 
 	<!--
 	  A package consumer gets the WSLC implementation payload from Purview.Containers.Wsl's buildTransitive
-	  targets automatically. This sample references the backend as a project instead (so it builds from a
-	  clone), so it assembles the same "wslc/" payload by hand: on a Windows build host, the facade loads
-	  the implementation from there and the sample can run on WSLC. On other hosts there is no payload and
-	  auto-selection uses Docker, which is the point of the sample.
+	  targets automatically. This sample references the projects instead (so it builds from a clone), and the
+	  umbrella project reference does not carry buildTransitive assets, so it assembles the same "wslc/"
+	  payload by hand: on a Windows build host, the facade loads the implementation from there and the sample
+	  can run on WSLC. On other hosts there is no payload and auto-selection uses Docker, which is the point
+	  of the sample.
 	-->
 	<PropertyGroup>
 		<WslWindowsOutput>$(MSBuildThisFileDirectory)../../../src/src/Wsl/bin/$(Configuration)/net10.0-windows10.0.19041.0/</WslWindowsOutput>

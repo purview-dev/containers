@@ -42,9 +42,10 @@ dotnet add package Purview.Containers.PostgreSql
 dotnet add package Purview.Containers.Wsl      # ...or Purview.Containers.Docker
 ```
 
-> **Want it to just work without choosing a backend?** Reference **both** backends from a platform-neutral
-> `net10.0` project and let automatic selection decide — WSLC on a Windows machine, Docker everywhere else,
-> with no code or configuration change. See [Using it in your tests](Using-in-Your-Tests.md).
+> **Want it to just work without choosing a backend?** Add `Purview.Containers` (the umbrella — it brings
+> the abstractions and both backends) to a platform-neutral `net10.0` project and let automatic selection
+> decide — WSLC on a Windows machine, Docker everywhere else, with no code or configuration change. See
+> [Using it in your tests](Using-in-Your-Tests.md).
 
 ## 2. Run a generic container
 

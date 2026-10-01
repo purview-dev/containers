@@ -5,14 +5,16 @@
 
 A Testcontainers-style library for .NET that runs throwaway Linux containers for integration testing — on **Microsoft WSL Containers (WSLC)** with no Docker installation, or on **Docker** through Testcontainers.
 
-> **Two backends, one API.** Containers are created through the backend-neutral `Purview.Containers`
-> abstractions, so the same test suite runs on **WSL Containers** (`Purview.Containers.Wsl`) or
-> **Docker** (`Purview.Containers.Docker`, driven by Testcontainers). Selection is automatic by default
-> and can be pinned with `PURVIEW_CONTAINERS_BACKEND`. A plain `net10.0` project — no Windows target
-> framework needed — references `Purview.Containers.Wsl` and gets WSLC on a Windows developer machine
-> and Docker on a Linux CI runner **without changing a line of test code or configuration**: the package
-> is multi-target and its `net10.0` facade loads the WSLC implementation at run time on Windows and
-> reports `wsl` as unavailable everywhere else.
+> **Two backends, one API — one reference.** Containers are created through the backend-neutral
+> `Purview.Containers.Core` abstractions, so the same test suite runs on **WSL Containers**
+> (`Purview.Containers.Wsl`) or **Docker** (`Purview.Containers.Docker`, driven by Testcontainers). Add the
+> umbrella package `Purview.Containers` to a plain `net10.0` project — no Windows target framework needed —
+> and it brings the abstractions plus both backends, gets WSLC on a Windows developer machine and Docker on
+> a Linux CI runner **without changing a line of test code or configuration**, and can be pinned with
+> `PURVIEW_CONTAINERS_BACKEND`. The `Purview.Containers.Wsl` package is multi-target: its `net10.0` facade
+> loads the WSLC implementation at run time on Windows and reports `wsl` as unavailable everywhere else.
+>
+> **[Using it in your tests (auto)](docs/wiki/Using-in-Your-Tests.md)** — the copy-paste zero-config shape.
 >
 > **[Backends: WSLC or Docker](docs/wiki/Backends.md)** — comparison, side-by-side project setup, CI
 > example and troubleshooting.

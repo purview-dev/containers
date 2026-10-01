@@ -15,9 +15,8 @@ a Mac) — nothing changes between them.
 		<!-- the services you want -->
 		<PackageReference Include="Purview.Containers.Redis" Version="1.0.0-prerelease.2" />
 		<PackageReference Include="Purview.Containers.PostgreSql" Version="1.0.0-prerelease.2" />
-		<!-- both backends: WSLC where it works, Docker everywhere else -->
-		<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.2" />
-		<PackageReference Include="Purview.Containers.Docker" Version="1.0.0-prerelease.2" />
+		<!-- one backend reference: the umbrella brings the abstractions and both backends -->
+		<PackageReference Include="Purview.Containers" Version="1.0.0-prerelease.2" />
 	</ItemGroup>
 </Project>
 ```
@@ -28,12 +27,14 @@ Three things make this work, and nothing else is required:
   `net10.0` project binds its portable facade, which runs the WSLC implementation on Windows and reports
   `wsl` unavailable everywhere else. (A Windows target framework still works — it binds the
   implementation directly — but it cannot run on a Linux CI runner.)
-- **Both backend packages.** WSLC is preferred where it is usable and Docker is the fallback, so the one
-  project runs everywhere. Referencing only the WSL backend leaves a Docker-only machine with nothing to
-  fall back to.
+- **The umbrella package** (`Purview.Containers`), which brings `Purview.Containers.Core` (the
+  abstractions) and both backends. WSLC is preferred where it is usable and Docker is the fallback, so the
+  one project runs everywhere. Prefer to be explicit? Reference `Purview.Containers.Core` plus
+  `Purview.Containers.Wsl` and/or `Purview.Containers.Docker` individually — a Linux-only CI job can skip
+  the WSL backend and its ~19 MB payload with `Core` + `.Docker` only.
 - **No registration line, no environment variable.** Each backend package ships `buildTransitive` assets
-  that generate a module initializer in your assembly, so the process discovers `wsl` and `docker` by
-  itself.
+  that generate a module initializer in your assembly, so the process discovers the registered backends by
+  itself. Those assets flow transitively through the umbrella.
 
 ## The test
 

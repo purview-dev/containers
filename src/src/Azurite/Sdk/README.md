@@ -7,7 +7,7 @@ integration testing on **WSL Containers (WSLC)** or **Docker**.
 dotnet add package Purview.Containers.Azurite
 ```
 
-Backend-neutral: depends on `Purview.Containers` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`).
+Backend-neutral: depends on `Purview.Containers.Core` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`).
 See the [Getting Started guide](https://github.com/purview-dev/containers/blob/main/docs/wiki/Getting-Started.md).
 
 ## Requirements

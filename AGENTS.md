@@ -23,7 +23,8 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 | Path | Purpose |
 | --- | --- |
 | `src/WSLTestContainers.slnx` | Canonical solution for restore, build, test and pack |
-| `src/src/Containers` | Backend-neutral abstractions (`Purview.Containers`, `net10.0`): `IContainer`/`ContainerConfiguration`, `ContainerBuilder`, `ContainerBase`, `IContainerBackend`/`ContainerBackends`, wait strategies, images, networking, mounts, diagnostics |
+| `src/src/Containers` | Umbrella package (`Purview.Containers`, `net10.0`): references `Core` and both backends; no code of its own |
+| `src/src/Core` | Backend-neutral abstractions (`Purview.Containers.Core`, `net10.0`, namespace `Purview.Containers`): `IContainer`/`ContainerConfiguration`, `ContainerBuilder`, `ContainerBase`, `IContainerBackend`/`ContainerBackends`, wait strategies, images, networking, mounts, diagnostics |
 | `src/src/Wsl` | WSL Containers backend (`Purview.Containers.Wsl`, multi-target `net10.0` facade + `net10.0-windows10.0.19041.0` implementation): `WslContainerBackend`, the shared session runtime, `WslContainer`, `WslContainerSession`, and the portable facade (`WslPayload`, `*.Facade.cs`) that loads the implementation at run time |
 | `src/src/Docker` | Docker backend (`Purview.Containers.Docker`, `net10.0`): `DockerContainerBackend` + `DockerContainer` over Testcontainers |
 | `src/src/<Module>` | Service modules (`Purview.Containers.<Module>`, `net10.0`); each is a thin layer over the abstractions and carries a bespoke `Sdk/README.md` |
@@ -78,7 +79,7 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 
 ## Consumer requirements and compatibility
 
-- The packages split by framework: `Purview.Containers` (abstractions) and the service modules target
+- The packages split by framework: `Purview.Containers.Core` (abstractions) and the service modules target
   **`net10.0`** on any platform. `Purview.Containers.Wsl` is **multi-target**: `net10.0` (a portable
   facade) and `net10.0-windows10.0.19041.0` (the WSLC implementation). `src/src/Directory.Build.props`
   sets the `net10.0` subtree default and `Wsl.csproj` adds the Windows build; the WSLC tests keep the
@@ -94,7 +95,7 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   loads at run time. Those assets are framework-agnostic, so NuGet never raises `NU1202` at restore time;
   the guards are the fail-fast path. Keep them, and keep the `RequiredContent` entries (including
   `payload/**`) that declare them. They belong to the WSL backend package only.
-- `Purview.Containers` ships `Sdk/buildTransitive/Purview.Containers.{props,targets}`, which turn
+- `Purview.Containers.Core` ships `Sdk/buildTransitive/Purview.Containers.Core.{props,targets}`, which turn
   the `PurviewContainersBackends` list (each backend package appends its own entry) into a generated
   module initializer in the consuming assembly. That is how a package consumer's process discovers its
   backend without reflection or assembly scanning. A project-reference consumer (this repository's own
@@ -126,11 +127,13 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   `src/Directory.Build.props` depend on it.
 - Each package ships `lib/$(TFM)/<Assembly>.{dll,xml}`, `README.md` (from `Sdk/README.md`) and
   `purview-logo-light.png`. PDBs ship only in the `.snupkg`. MSBuild assets are per package and must be
-  named after their own package id for NuGet to import them: `Purview.Containers` ships
-  `buildTransitive/Purview.Containers.{props,targets}` (backend registration),
+  named after their own package id for NuGet to import them: `Purview.Containers.Core` ships
+  `buildTransitive/Purview.Containers.Core.{props,targets}` (backend registration),
   `Purview.Containers.Wsl` ships `buildTransitive/Purview.Containers.Wsl.{props,targets}` (consumer
   defaults and guards) and `Purview.Containers.Docker` ships
-  `buildTransitive/Purview.Containers.Docker.props` (its registration entry). See
+  `buildTransitive/Purview.Containers.Docker.props` (its registration entry). The umbrella
+  `Purview.Containers` ships none of its own; `Core`'s and the backends' assets reach its consumers
+  transitively. See
   [Consumer requirements and compatibility](#consumer-requirements-and-compatibility).
 - `PackValidation.RequireExplicitContent` defaults to `true`, so `purview-build.json`'s `RequiredContent` is
   the **exhaustive** manifest: a produced package with no rule, or a packed entry matched by no glob, fails

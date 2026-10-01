@@ -28,7 +28,8 @@ This wiki is the project documentation hub. The packages are published under the
 
 | Package | Purpose |
 | --- | --- |
-| `Purview.Containers` | Backend-neutral abstractions: the container contract, builders, wait strategies, images, networking, mounts, diagnostics, backend selection. |
+| `Purview.Containers` | The umbrella: references `Purview.Containers.Core` and both backends, so one reference runs the same tests on WSLC on Windows and Docker elsewhere. No code of its own. |
+| `Purview.Containers.Core` | Backend-neutral abstractions: the container contract, builders, wait strategies, images, networking, mounts, diagnostics, backend selection (namespace `Purview.Containers`). |
 | `Purview.Containers.Wsl` | The WSL Containers backend: sessions, images, ports, mounts, wait strategies, logs/exec, diagnostics for WSLC. |
 | `Purview.Containers.Docker` | The Docker backend: the same containers on any reachable Docker daemon, driven by Testcontainers. |
 | `Purview.Containers.PostgreSql` | PostgreSQL container (`postgres:17`), `pg_isready` readiness, Npgsql connection string. |
@@ -107,7 +108,8 @@ example and the troubleshooting reference.
 | Path | Purpose |
 | --- | --- |
 | `src/WSLTestContainers.slnx` | Canonical solution for restore, build, test and pack. |
-| `src/src/Containers` | Backend-neutral abstractions (`Purview.Containers`): the container contract, builders and backend selection. |
+| `src/src/Containers` | Umbrella package (`Purview.Containers`): references Core and both backends; no code of its own. |
+| `src/src/Core` | Backend-neutral abstractions (`Purview.Containers.Core`, namespace `Purview.Containers`): the container contract, builders and backend selection. |
 | `src/src/Wsl` | WSL Containers backend (`Purview.Containers.Wsl`): containers, images, runtime, networking, mounts, diagnostics. |
 | `src/src/Docker` | Docker backend (`Purview.Containers.Docker`): the same containers on a Docker daemon, via Testcontainers. |
 | `src/src/<Module>` | Service modules; each carries a bespoke `Sdk/README.md` that ships as the package README. |

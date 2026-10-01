@@ -24,14 +24,15 @@
 	  10  the net11.0-windows shorthand TFM (no OS version)           -> PCC0001
 	  11  multi-targeting with a conditional PackageReference          -> builds
 	  12  multi-targeting with an unconditional PackageReference       -> builds (both inner builds supported)
-	  13  net10.0 + portable abstractions                             -> builds
+	  13  net10.0 + core abstractions                                 -> builds
 	  14  net10.0 + Docker backend                                    -> builds, backend registration generated
 	  15  net10.0 + service module (no backend package)               -> builds
 	  16  net11.0 windows + both backends (auto detection)            -> builds, both registrations generated
 	  17  the documented backend example, on WSL Containers          -> builds
 	  18  the documented backend example, on Docker (net10.0)         -> builds
-	  19  plain net10.0 + WSL backend (portable facade, auto) -> builds, wsl registration generated
-	  20  net10.0 + Redis/PostgreSql + both backends (auto)   -> builds, both registrations generated
+	  19  plain net10.0 + WSL backend (portable facade, auto)         -> builds, wsl registration generated
+	  20  net10.0 + Redis/PostgreSql + both backends (auto)           -> builds, both registrations generated
+	  21  net10.0 + umbrella Purview.Containers + modules (one ref)   -> builds, both registrations generated
 
 .PARAMETER FeedPath
 	Folder holding the packed .nupkg files. Defaults to <repo>/artifacts.
@@ -229,6 +230,15 @@ $bothBackendsItems = @'
 	</ItemGroup>
 '@
 
+# The umbrella shape: one backend reference (Purview.Containers, which brings Core + WSL + Docker) plus the
+# service modules. This is the "one reference" story documented in docs/wiki/Using-in-Your-Tests.md.
+$umbrellaItems = @'
+	<ItemGroup>
+		<PackageReference Include="Purview.Containers.Redis" Version="{{VERSION}}" />
+		<PackageReference Include="Purview.Containers.PostgreSql" Version="{{VERSION}}" />
+	</ItemGroup>
+'@
+
 # The realistic Windows consumer shape: a service module plus the WSL Containers backend. The module is
 # backend-neutral, so the backend package is what supplies the WSL build defaults and the guards.
 $wslBackendItems = @'
@@ -375,9 +385,9 @@ $cases = @(
 		-Items $multiTargetItems `
 		-Sources @{ 'Smoke.Windows.cs' = $apiSource; 'Smoke.Portable.cs' = $portableSource }
 
-	New-ConsumerCase -Id '13' -Name 'net10 + portable abstractions' `
+	New-ConsumerCase -Id '13' -Name 'net10 + core abstractions' `
 		-Framework '<TargetFramework>net10.0</TargetFramework>' `
-		-Package 'Purview.Containers' `
+		-Package 'Purview.Containers.Core' `
 		-Sources @{ 'Smoke.Portable.cs' = $portableSource }
 
 	New-ConsumerCase -Id '14' -Name 'net10 + docker backend (generated registration)' `
@@ -415,6 +425,13 @@ $cases = @(
 		-Framework '<TargetFramework>net10.0</TargetFramework>' `
 		-Package $modulePackage `
 		-Items $autoItems `
+		-Sources @{ 'Smoke.Auto.cs' = $autoSource } `
+		-RequireText @('WslContainerBackend.Create()', 'DockerContainerBackend.Create()')
+
+	New-ConsumerCase -Id '21' -Name 'net10.0 + umbrella Purview.Containers + modules (one reference, auto)' `
+		-Framework '<TargetFramework>net10.0</TargetFramework>' `
+		-Package 'Purview.Containers' `
+		-Items $umbrellaItems `
 		-Sources @{ 'Smoke.Auto.cs' = $autoSource } `
 		-RequireText @('WslContainerBackend.Create()', 'DockerContainerBackend.Create()')
 )

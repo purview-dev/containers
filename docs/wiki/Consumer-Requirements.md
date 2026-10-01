@@ -18,7 +18,8 @@ that exist for it, and of how each of them is verified.
 
 | Package | Target framework | Notes |
 | --- | --- | --- |
-| `Purview.Containers` | `net10.0`, any platform | Backend-neutral abstractions. |
+| `Purview.Containers` | `net10.0`, any platform | The umbrella: brings `Purview.Containers.Core` plus both backends. One reference; no target-framework requirement beyond .NET 10. |
+| `Purview.Containers.Core` | `net10.0`, any platform | Backend-neutral abstractions (namespace `Purview.Containers`). |
 | `Purview.Containers.<Module>` | `net10.0`, any platform | Service modules. Restore anywhere; needs a backend package to actually run. |
 | `Purview.Containers.Wsl` | `net10.0` and `net10.0-windows10.0.19041.0` | The WSL Containers backend: a portable facade plus the Windows implementation. **The requirements on this page are its contract.** |
 | `Purview.Containers.Docker` | `net10.0`, any platform | The Docker backend (Testcontainers). Needs a reachable Docker daemon, not a Windows target framework. |
@@ -238,7 +239,7 @@ because the package keeps a `net10.0-windows10.0.19041` build, but the condition
 
 ## Verifying these requirements
 
-`just verify-consumers` packs the solution and builds twenty throwaway consumer projects against the
+`just verify-consumers` packs the solution and builds twenty-one throwaway consumer projects against the
 produced packages, asserting every claim on this page:
 
 | Case | Consumer | Expected outcome |
@@ -263,6 +264,7 @@ produced packages, asserting every claim on this page:
 | 18 | the documented backend example on Docker (`net10.0`) | builds |
 | 19 | a plain `net10.0` consumer of the WSL Containers backend | builds; the `wsl` registration is generated (the portable facade) |
 | 20 | a `net10.0` consumer of two modules with **both** backends (the auto shape) | builds; both registrations are generated |
+| 21 | a `net10.0` consumer of modules with only the umbrella `Purview.Containers` | builds; both registrations are generated (one reference) |
 
 The script is `scripts/verify-consumers.ps1` and it only writes to the temp folder. It needs network
 access (it restores transitive dependencies from nuget.org), so it is a local/CI-explicit step
