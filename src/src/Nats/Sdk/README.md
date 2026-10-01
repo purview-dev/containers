@@ -18,7 +18,7 @@ package — bring your own client.
   `Purview.Containers.Wsl` package supplies `buildTransitive` defaults for
   `WindowsSdkPackageVersion`/`PlatformTarget` and (for a platform-neutral consumer on a Windows build
   host) the implementation payload, rejecting an unsupported consumer with `PCC0001`/`PCC0002` — see the
-  [consumer requirements](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Consumer-Requirements.md).
+  [consumer requirements](https://github.com/purview-dev/containers/blob/main/docs/wiki/Consumer-Requirements.md).
 - **Docker backend:** any reachable Docker daemon (`docker info`), with a `net10.0` or later project on any
   platform. No Windows target framework and no `PCC` guards apply.
 - **Experimental:** the API, defaults and packaging can change between prereleases; there is no
@@ -54,6 +54,6 @@ with `WithWaitStrategy(...)`. Endpoint accessors resolve the mapped host ports, 
 
 ## Documentation
 
-- [Backends: WSLC or Docker](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Backends.md) — choosing and configuring the runtime.
-- [Modules](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Modules.md) — the module contract and readiness choices.
-- [Wait Strategies](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Wait-Strategies.md) — overriding readiness checks.
+- [Backends: WSLC or Docker](https://github.com/purview-dev/containers/blob/main/docs/wiki/Backends.md) — choosing and configuring the runtime.
+- [Modules](https://github.com/purview-dev/containers/blob/main/docs/wiki/Modules.md) — the module contract and readiness choices.
+- [Wait Strategies](https://github.com/purview-dev/containers/blob/main/docs/wiki/Wait-Strategies.md) — overriding readiness checks.

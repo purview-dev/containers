@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<IsPackable>true</IsPackable>
-		<Description>Azurite module for Purview.Containers: throwaway Azure Storage emulators (blob/queue/table) on WSL Containers.</Description>
-		<PackageTags>wsl;containers;azurite;azure;storage;testing;integration</PackageTags>
+		<Description>Azurite module for Purview.Containers: throwaway Azure Storage emulators (blob/queue/table) on WSL Containers or Docker.</Description>
+		<PackageTags>wsl;containers;docker;azurite;azure;storage;testing;integration</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<Authors>Purview</Authors>
 	</PropertyGroup>

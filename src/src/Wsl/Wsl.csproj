@@ -19,8 +19,8 @@
 		-->
 		<TargetFramework></TargetFramework>
 		<TargetFrameworks>net10.0;net10.0-windows10.0.19041.0</TargetFrameworks>
-		<Description>WSL Containers backend for Purview.Containers: WSLC-native throwaway Linux containers for .NET integration testing.</Description>
-		<PackageTags>wsl;containers;linux;windows;testing;integration</PackageTags>
+		<Description>WSL Containers (WSLC) backend for Purview.Containers: run WSLC-native throwaway Linux containers from any .NET 10 project, with automatic Docker fallback.</Description>
+		<PackageTags>wsl;wslc;containers;linux;windows;testing;integration;testcontainers</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<Authors>Purview</Authors>
 		<!-- The pack payload ships implementation assemblies under payload/<rid>/ (not lib/) on purpose:

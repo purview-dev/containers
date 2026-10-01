@@ -62,7 +62,7 @@ callers that want to apply their own policy.
 ## Related
 
 - [Purview.Containers.Wsl](https://www.nuget.org/packages/Purview.Containers.Wsl) — WSL Containers backend.
-- Documentation wiki: <https://github.com/purview-dev/wsl-containers/tree/main/docs/wiki>.
+- Documentation wiki: <https://github.com/purview-dev/containers/tree/main/docs/wiki>.
 
 > **Experimental.** The public API, defaults and packaging rules can change between prereleases, and
 > there is no production support guarantee. Pin the exact package version you build against.

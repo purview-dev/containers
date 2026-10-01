@@ -36,7 +36,7 @@ Metadata is split by where its source of truth lives:
 | `version`, `repository`, `bugs` | `package.json` (applied by `Purview.BuildSdk`) |
 | icon, package README, **project site** | `src/Directory.Build.props`, for every packable project |
 
-The **project site** (`PackageProjectUrl`) is `https://github.com/purview-dev/wsl-containers`, the
+The **project site** (`PackageProjectUrl`) is `https://github.com/purview-dev/containers`, the
 repository that hosts this documentation wiki; it shows as *Project Site* on nuget.org. Repository and
 commit metadata come from SourceLink, so the `repository` entry in a locally packed `.nupkg` points at
 the branch and commit that produced it.

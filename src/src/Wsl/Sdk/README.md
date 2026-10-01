@@ -20,7 +20,7 @@ with no configuration change. It registers itself as the `wsl` backend in the co
 > **Running in CI, or on a machine without WSL Containers?** With `auto` (the default) the backend is
 > reported unavailable and selection falls through to Docker. Pin instead with
 > `PURVIEW_CONTAINERS_BACKEND=wsl|docker` or `ContainerBackends.Use(...)` — see
-> [Backends: WSLC or Docker](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Backends.md).
+> [Backends: WSLC or Docker](https://github.com/purview-dev/containers/blob/main/docs/wiki/Backends.md).
 
 ## Requirements
 
@@ -35,7 +35,7 @@ with no configuration change. It registers itself as the `wsl` backend in the co
   `PlatformTarget` that every module package inherits, and (for a platform-neutral consumer on a Windows
   build host) copies the Windows implementation payload next to the output. The full contract, the error
   reference and the `EnableWindowsTargeting` workaround for non-Windows CI agents are in the
-  [consumer requirements](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Consumer-Requirements.md).
+  [consumer requirements](https://github.com/purview-dev/containers/blob/main/docs/wiki/Consumer-Requirements.md).
 - Verify the host with `wsl --version` and `wslc version`. The library never installs or updates WSL
   itself; `WslContainerRuntime.GetInfoAsync()` reports what is missing.
 - **Experimental:** this is an experiment in driving WSL Containers. The public API, defaults and
@@ -120,11 +120,11 @@ and diagnostics.
 
 ## Documentation
 
-See the [project wiki](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Home.md):
-[Getting Started](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Getting-Started.md),
-[Architecture](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Architecture.md),
-[Lifecycle](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Lifecycle.md),
-[Networking](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Networking.md) and
-[Wait Strategies](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Wait-Strategies.md).
+See the [project wiki](https://github.com/purview-dev/containers/blob/main/docs/wiki/Home.md):
+[Getting Started](https://github.com/purview-dev/containers/blob/main/docs/wiki/Getting-Started.md),
+[Architecture](https://github.com/purview-dev/containers/blob/main/docs/wiki/Architecture.md),
+[Lifecycle](https://github.com/purview-dev/containers/blob/main/docs/wiki/Lifecycle.md),
+[Networking](https://github.com/purview-dev/containers/blob/main/docs/wiki/Networking.md) and
+[Wait Strategies](https://github.com/purview-dev/containers/blob/main/docs/wiki/Wait-Strategies.md).
 Ready-made service modules ship as `Purview.Containers.PostgreSql`, `Redis`, `MsSql`, `RabbitMq`,
 `Azurite`, `Nats` and `MySql`.

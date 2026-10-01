@@ -1,4 +1,4 @@
-# Purview WSL Test Containers
+# Purview Containers
 
 Throwaway Linux containers for .NET integration testing — Testcontainers-style APIs for **Microsoft WSL
 Containers (WSLC)** with no Docker installation, and for **Docker** through Testcontainers. The same test

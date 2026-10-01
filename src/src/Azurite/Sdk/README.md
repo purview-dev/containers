@@ -8,7 +8,7 @@ dotnet add package Purview.Containers.Azurite
 ```
 
 Backend-neutral: depends on `Purview.Containers` and needs a backend package (`Purview.Containers.Wsl` or `Purview.Containers.Docker`).
-See the [Getting Started guide](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Getting-Started.md).
+See the [Getting Started guide](https://github.com/purview-dev/containers/blob/main/docs/wiki/Getting-Started.md).
 
 ## Requirements
 
@@ -19,7 +19,7 @@ See the [Getting Started guide](https://github.com/purview-dev/wsl-containers/bl
   `Purview.Containers.Wsl` package supplies `buildTransitive` defaults for
   `WindowsSdkPackageVersion`/`PlatformTarget` and (for a platform-neutral consumer on a Windows build
   host) the implementation payload, rejecting an unsupported consumer with `PCC0001`/`PCC0002` — see the
-  [consumer requirements](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Consumer-Requirements.md).
+  [consumer requirements](https://github.com/purview-dev/containers/blob/main/docs/wiki/Consumer-Requirements.md).
 - **Docker backend:** any reachable Docker daemon (`docker info`), with a `net10.0` or later project on any
   platform. No Windows target framework and no `PCC` guards apply.
 - **Experimental:** the API, defaults and packaging can change between prereleases; there is no
@@ -57,5 +57,5 @@ for the `successfully listening` log signal. Endpoints and the connection string
 The well-known `devstoreaccount1` key is a published constant of the emulator, but this library does not
 embed it: `AzuriteAccount.Key` holds a placeholder. Supply the real key in your test infrastructure before
 exercising authenticated operations (anonymous/local development paths are unaffected when the client does
-not require the key). See [Modules](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Modules.md)
+not require the key). See [Modules](https://github.com/purview-dev/containers/blob/main/docs/wiki/Modules.md)
 for the module contract.
