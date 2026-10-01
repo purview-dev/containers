@@ -81,8 +81,9 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 - The packages split by framework: `Purview.Containers` (abstractions) and the service modules target
   **`net10.0`** on any platform. `Purview.Containers.Wsl` is **multi-target**: `net10.0` (a portable
   facade) and `net10.0-windows10.0.19041.0` (the WSLC implementation). `src/src/Directory.Build.props`
-  sets the `net10.0` subtree default and `Wsl.csproj` adds the Windows build; `src/tests` keeps the
-  Windows target because the tests drive WSLC and therefore bind the implementation. The contract, the
+  sets the `net10.0` subtree default and `Wsl.csproj` adds the Windows build; the WSLC tests keep the
+  Windows target because they drive WSLC and therefore bind the implementation, while the Docker
+  integration projects override to `net10.0` so they run on Linux. The contract, the
   failures that enforce it and the CI workarounds are documented in
   [Consumer Requirements](docs/wiki/Consumer-Requirements.md); update that page whenever a target
   framework, the `buildTransitive` defaults, the payload layout or the `PCC0001`/`PCC0002` guards change.
@@ -139,12 +140,17 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 ## Testing
 
 - Test assemblies are categorised by the SDK: `*.UnitTests` → `Unit`, `*.IntegrationTests` → `Integration`.
-- `purview-build.json` filters pipeline runs to `[Category=Unit]`, so the shared pipeline never needs a WSLC
-  host; keep it that way unless the task requires real containers.
+- `purview-build.json` filters the shared pipeline to `[Category=Unit]`, so it never needs a WSLC host. The
+  **Docker** integration suites (`Docker.IntegrationTests`, `Modules.DockerIntegrationTests`) are the one
+  exception: they target `net10.0` and run in the `.github/workflows/pr.yml` `integration-docker` job on
+  `ubuntu-latest`, which is the standing proof that the library and modules work off Windows/WSL. Keep
+  them portable; they remove the SDK's automatic `SharedTestingFramework` reference because that helper is
+  WSLC/Windows-only. The **WSLC** suites still never run in the shared pipeline.
 - WSLC integration tests run **serially** (`--max-parallel-test-modules 1` in the `Justfile`): a session
   exclusively locks its image-store VHD, so parallel modules fail with `0x80070020`.
-- Use the shared `WslcTest` helper in `src/tests/SharedTestingFramework` for integration skip/availability
-  checks. Unit tests may use the modules' `BuildConfigurationForTesting()` internal hook.
+- Use the shared `WslcTest` helper in `src/tests/SharedTestingFramework` for WSLC integration
+  skip/availability checks; the Docker suites use their own `DockerTest` helper. Unit tests may use the
+  modules' `BuildConfigurationForTesting()` internal hook.
 - `Wsl.UnitTests/ConsumerRequirementsTests.cs` guards the published target framework of the Windows
   build (`.NETCoreApp,Version=v10.0` plus `Windows10.0.19041.0`), which the test project binds; keep it
   in step with [Consumer Requirements](docs/wiki/Consumer-Requirements.md).

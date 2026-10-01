@@ -6,13 +6,18 @@ How the test suite is organised, why it runs serially, and how to run a subset.
 
 Test projects are discovered under `src/tests` and the SDK stamps every test assembly with a TUnit category:
 
-| Project suffix | Category | Needs WSLC |
+| Project | Category | Runtime needed |
 | --- | --- | --- |
-| `*.UnitTests` | `Unit` | No — pure logic, parsing, configuration and wait-strategy units, some with in-process fakes. |
-| `*.IntegrationTests` | `Integration` | Yes — real containers on a shared WSLC session. |
+| `*.UnitTests` | `Unit` | none — pure logic, parsing, configuration and wait-strategy units, some with in-process fakes. |
+| `Wsl.*` and module `*.IntegrationTests` | `Integration` | a **WSLC host** — real containers on a shared WSLC session. |
+| `Docker.IntegrationTests`, `Modules.DockerIntegrationTests` | `Integration` | any **Docker daemon** — these target `net10.0`, so they also run on Linux. |
 
-`purview-build.json` filters the pipeline run to `/*/*/*/*[Category=Unit]`, so the shared pipeline never
-starts containers. Run integration projects explicitly when you have a WSLC host.
+`purview-build.json` filters the shared pipeline run to `/*/*/*/*[Category=Unit]`, so the standard pipeline
+never starts a container. The Docker integration suites are the exception: the PR workflow
+(`.github/workflows/pr.yml`) adds an **`integration-docker`** job that runs them explicitly on
+`ubuntu-latest`, where a Docker daemon is available. That job is the standing proof that the library and
+every service module work off Windows/WSL — the same modules a developer runs on WSLC locally. The WSLC
+suites still run only on a WSLC host.
 
 > The shared `purview-dev/build` workflow runs on **`ubuntu-latest`**, so the pipeline builds the portable
 > `net10.0` projects and the `net11.0-windows…` test projects on Linux. That works because
@@ -33,6 +38,11 @@ to Docker, so a WSLC host runs the WSLC suites and a Docker-only host runs the D
 service modules) skip themselves when no daemon is reachable, and the WSLC suites skip themselves when the
 host lacks the WSL Containers components. See [Backends: WSLC or Docker](Backends.md) for consumer-facing
 setup and CI examples.
+
+```powershell
+just test src/tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj                            # Docker contract
+just test src/tests/Modules.DockerIntegrationTests/Modules.DockerIntegrationTests.csproj             # the seven modules on Docker
+```
 
 ## Why test modules run serially
 
@@ -63,7 +73,7 @@ running the WSLC integration suites.
 ## Verifying the consumer contract
 
 `Wsl.UnitTests/ConsumerRequirementsTests.cs` guards the shape of the shipped library inside
-the normal unit run: the assembly targets `.NETCoreApp,Version=v11.0`, targets `Windows10.0.19041.0`
+the normal unit run: the Windows build targets `.NETCoreApp,Version=v10.0`, targets `Windows10.0.19041.0`
 and declares only that OS platform. If the target framework ever drifts, that test fails — and
 [Consumer Requirements](Consumer-Requirements.md), the package READMEs and the shipped
 `buildTransitive` defaults all have to move with it.
@@ -74,7 +84,7 @@ throwaway consumer projects for every documented outcome (see
 outside the `[Category=Unit]` filter because it packs and restores from nuget.org:
 
 ```powershell
-just verify-consumers          # 16 consumer projects, all assertions
+just verify-consumers          # 19 consumer projects, all assertions
 just verify-consumers -Keep    # same, keeping the generated projects for inspection
 ```
 
