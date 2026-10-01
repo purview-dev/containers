@@ -20,9 +20,11 @@ public class DockerBackendSelectionTests
 			ContainerBackends.Register(DockerContainerBackend.Create());
 			ContainerBackends.Use(ContainerBackendSelection.Named("docker"));
 
+			// A long-lived command: with a bare `/bin/echo` the container can exit before the state is
+			// read, making the Running assertion below a race.
 			await using var container = new ContainerBuilder()
 				.WithImage("alpine:3.19")
-				.WithCommand("/bin/echo", "selected")
+				.WithCommand("/bin/sh", "-c", "echo selected && sleep 60")
 				.Build();
 
 			await container.StartAsync();
