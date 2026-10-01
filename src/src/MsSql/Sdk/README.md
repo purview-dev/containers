@@ -18,7 +18,7 @@ connection-string generation and readiness probing.
   `Purview.Containers.Wsl` package supplies `buildTransitive` defaults for
   `WindowsSdkPackageVersion`/`PlatformTarget` and (for a platform-neutral consumer on a Windows build
   host) the implementation payload, rejecting an unsupported consumer with `PCC0001`/`PCC0002` — see the
-  [consumer requirements](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Consumer-Requirements.md).
+  [consumer requirements](https://github.com/purview-dev/containers/blob/main/docs/wiki/Consumer-Requirements.md).
 - **Docker backend:** any reachable Docker daemon (`docker info`), with a `net10.0` or later project on any
   platform. No Windows target framework and no `PCC` guards apply.
 - **Experimental:** the API, defaults and packaging can change between prereleases; there is no
@@ -48,8 +48,9 @@ await connection.OpenAsync();
 | `MsSqlBuilder()` / `MsSqlBuilder(string image)` | Default image `mcr.microsoft.com/mssql/server:2022-latest`, or a custom image. |
 | `MsSqlBuilder.MsSqlPort` (1433) | Container port, mapped to a random host port. |
 | `WithPassword(string)` | Sets `MSSQL_SA_PASSWORD` (default `YourStrong!Passw0rd`); stored as a redacted `Secret`. |
+| `WithDatabase(string)` | Sets the initial catalog the connection string points at (default `master`, matching Testcontainers). The database must already exist. |
 | `AcceptLicense()` | Sets `ACCEPT_EULA=Y`. Required — the library never accepts licensing terms on your behalf. |
-| `MsSqlContainer.GetConnectionString()` | `SqlConnectionStringBuilder` connection string for the mapped host port. |
+| `MsSqlContainer.GetConnectionString()` | `SqlConnectionStringBuilder` connection string for the mapped host port (`Database=master` by default, `TrustServerCertificate=True`). |
 
 ## Behaviour and constraints
 
@@ -65,6 +66,6 @@ await connection.OpenAsync();
 
 ## Documentation
 
-- [Backends: WSLC or Docker](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Backends.md) — choosing and configuring the runtime.
-- [Modules](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Modules.md) — the module contract and readiness choices.
-- [Getting Started](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Getting-Started.md) — prerequisites and first-container walkthrough.
+- [Backends: WSLC or Docker](https://github.com/purview-dev/containers/blob/main/docs/wiki/Backends.md) — choosing and configuring the runtime.
+- [Modules](https://github.com/purview-dev/containers/blob/main/docs/wiki/Modules.md) — the module contract and readiness choices.
+- [Getting Started](https://github.com/purview-dev/containers/blob/main/docs/wiki/Getting-Started.md) — prerequisites and first-container walkthrough.

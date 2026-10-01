@@ -15,6 +15,7 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 	public const string MsSqlImage = "mcr.microsoft.com/mssql/server:2022-latest";
 
 	Secret _password = Secret.From("YourStrong!Passw0rd");
+	string _database = "master";
 	bool _acceptLicense;
 
 	/// <summary>Creates a builder with the default image.</summary>
@@ -39,6 +40,17 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 	{
 		_password = Secret.From(password);
 		WithEnvironment("MSSQL_SA_PASSWORD", password);
+		return this;
+	}
+
+	/// <summary>
+	/// Sets the initial catalog the generated connection string points at (default <c>master</c>). The
+	/// database is not created by the module; it must already exist on the server.
+	/// </summary>
+	public MsSqlBuilder WithDatabase(string database)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(database);
+		_database = database;
 		return this;
 	}
 
@@ -75,6 +87,7 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 		return configuration with
 		{
 			Password = _password,
+			Database = _database,
 			AcceptLicense = _acceptLicense,
 			Environment = environment,
 			WaitStrategies = waitStrategies,
@@ -121,6 +134,7 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 						// 127.0.0.1 is required: WSLC maps IPv4 loopback only, and Microsoft.Data.SqlClient
 						// hangs on the IPv6 ::1 address that 'localhost' resolves to.
 						DataSource = $"127.0.0.1,{hostPort}",
+						InitialCatalog = _database,
 						UserID = "sa",
 						Password = _password.Value,
 						TrustServerCertificate = true,

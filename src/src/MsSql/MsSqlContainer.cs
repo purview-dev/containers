@@ -21,6 +21,7 @@ public sealed class MsSqlContainer : ContainerBase
 			// 127.0.0.1 is required: WSLC maps IPv4 loopback only, and Microsoft.Data.SqlClient
 			// hangs on the IPv6 ::1 address that 'localhost' resolves to.
 			DataSource = $"127.0.0.1,{GetMappedPublicPort(MsSqlBuilder.MsSqlPort)}",
+			InitialCatalog = _configuration.Database,
 			UserID = "sa",
 			Password = _configuration.Password.Value,
 			TrustServerCertificate = true,
