@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<ItemGroup>
-		<ProjectReference Include="../../src/WslContainers/WslContainers.csproj" />
+		<ProjectReference Include="../../src/Wsl/Wsl.csproj" />
 	</ItemGroup>
 </Project>

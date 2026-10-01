@@ -1,6 +1,6 @@
-using Purview.WslContainers.Runtime;
+using Purview.Containers.Runtime;
 
-namespace Purview.WslContainers.MySql;
+namespace Purview.Containers.MySql;
 
 public class MySqlBuilderTests
 {
@@ -26,6 +26,6 @@ public class MySqlBuilderTests
 	{
 		var builder = new MySqlBuilder().WithPassword(string.Empty);
 
-		await Assert.That(() => builder.Build()).Throws<WslContainerConfigurationException>();
+		await Assert.That(() => builder.Build()).Throws<ContainerConfigurationException>();
 	}
 }

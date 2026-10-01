@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<IsPackable>true</IsPackable>
-		<Description>Redis module for Purview.WslContainers: throwaway Redis instances on WSL Containers.</Description>
-		<PackageTags>wsl;containers;redis;testing;integration</PackageTags>
+		<Description>Redis module for Purview.Containers: throwaway Redis instances on WSL Containers or Docker.</Description>
+		<PackageTags>wsl;containers;docker;redis;testing;integration</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<Authors>Purview</Authors>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="../WslContainers/WslContainers.csproj" />
+		<ProjectReference Include="../Core/Core.csproj" />
 	</ItemGroup>
 </Project>

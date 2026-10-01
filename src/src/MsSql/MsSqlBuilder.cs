@@ -1,9 +1,9 @@
 using Microsoft.Data.SqlClient;
-using Purview.WslContainers.Diagnostics;
-using Purview.WslContainers.Runtime;
-using Purview.WslContainers.Waiting;
+using Purview.Containers.Diagnostics;
+using Purview.Containers.Runtime;
+using Purview.Containers.Waiting;
 
-namespace Purview.WslContainers.MsSql;
+namespace Purview.Containers.MsSql;
 
 /// <summary>Fluent builder for a Microsoft SQL Server test container.</summary>
 public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSqlConfiguration>
@@ -15,6 +15,7 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 	public const string MsSqlImage = "mcr.microsoft.com/mssql/server:2022-latest";
 
 	Secret _password = Secret.From("YourStrong!Passw0rd");
+	string _database = "master";
 	bool _acceptLicense;
 
 	/// <summary>Creates a builder with the default image.</summary>
@@ -28,8 +29,8 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
-	public MsSqlBuilder(IContainerRuntime runtime)
-		: base(runtime)
+	public MsSqlBuilder(IContainerBackend backend)
+		: base(backend)
 	{
 		WithImage(MsSqlImage).WithPortBinding(MsSqlPort, assignRandomHostPort: true);
 	}
@@ -39,6 +40,17 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 	{
 		_password = Secret.From(password);
 		WithEnvironment("MSSQL_SA_PASSWORD", password);
+		return this;
+	}
+
+	/// <summary>
+	/// Sets the initial catalog the generated connection string points at (default <c>master</c>). The
+	/// database is not created by the module; it must already exist on the server.
+	/// </summary>
+	public MsSqlBuilder WithDatabase(string database)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(database);
+		_database = database;
 		return this;
 	}
 
@@ -75,6 +87,7 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 		return configuration with
 		{
 			Password = _password,
+			Database = _database,
 			AcceptLicense = _acceptLicense,
 			Environment = environment,
 			WaitStrategies = waitStrategies,
@@ -87,23 +100,21 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 		base.Validate(configuration);
 		if (!_acceptLicense)
 		{
-			throw new WslContainerConfigurationException(
+			throw new ContainerConfigurationException(
 				"The SQL Server image requires accepting the EULA. Call AcceptLicense() explicitly before Build()."
 			);
 		}
 
 		if (_password.Value.Length < 8)
 		{
-			throw new WslContainerConfigurationException(
-				"The SQL Server SA password must be at least 8 characters long."
-			);
+			throw new ContainerConfigurationException("The SQL Server SA password must be at least 8 characters long.");
 		}
 	}
 
 	/// <inheritdoc />
 	protected override MsSqlContainer CreateContainer(MsSqlConfiguration configuration)
 	{
-		return new MsSqlContainer(configuration, Runtime ?? WslContainerRuntime.Instance);
+		return new MsSqlContainer(configuration, Backend);
 	}
 
 	WaitStrategy BuildReadinessWait()
@@ -123,6 +134,7 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 						// 127.0.0.1 is required: WSLC maps IPv4 loopback only, and Microsoft.Data.SqlClient
 						// hangs on the IPv6 ::1 address that 'localhost' resolves to.
 						DataSource = $"127.0.0.1,{hostPort}",
+						InitialCatalog = _database,
 						UserID = "sa",
 						Password = _password.Value,
 						TrustServerCertificate = true,

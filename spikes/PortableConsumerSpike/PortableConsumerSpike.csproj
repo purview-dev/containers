@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<!--
+	  Phase 1 acceptance probe: a *platform-neutral* net10.0 project references Purview.Containers.Wsl and
+	  runs a real WSLC container through the portable facade. The facade binds because a net10.0 project
+	  selects the package's net10.0 build; the Windows implementation is supplied as a "wslc/" payload
+	  (exactly the layout the package's buildTransitive targets produce for a portable consumer).
+
+	  Run (the Windows implementation must be built first - `just build`):
+	    dotnet run (project: spikes/PortableConsumerSpike)
+	-->
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<IsPackable>false</IsPackable>
+		<TargetFramework>net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<PlatformTarget>x64</PlatformTarget>
+		<EnableWindowsTargeting>true</EnableWindowsTargeting>
+		<NoWarn>$(NoWarn);CA1031;CA1304;CA1305;CA1307;CA1310;CA1849;CA2000;CA2027;CA1707;CA1822;CA1062;CA1515;CA1861;CA1819;IDE0040;IDE0060;IDE0074;IDE0007;IDE0305;CS4014</NoWarn>
+	</PropertyGroup>
+
+	<!-- Binds the portable facade (net10.0 build of the multi-target project). -->
+	<ItemGroup>
+		<ProjectReference Include="../../src/src/Wsl/Wsl.csproj" />
+	</ItemGroup>
+
+	<!--
+	  Assemble the "wslc/" payload from the Windows implementation output and the WSLC package, the way
+	  the real package will. Versions mirror Directory.Packages.props / Wsl.csproj.
+	-->
+	<PropertyGroup>
+		<WslWindowsOutput>$(MSBuildThisFileDirectory)../../src/src/Wsl/bin/$(Configuration)/net10.0-windows10.0.19041.0/</WslWindowsOutput>
+		<WslcPayloadSource>$(NuGetPackageRoot)microsoft.wsl.containers/3.0.1</WslcPayloadSource>
+		<WindowsSdkPayloadSource>$(NuGetPackageRoot)microsoft.windows.sdk.net.ref/10.0.26100.80</WindowsSdkPayloadSource>
+	</PropertyGroup>
+
+	<Target Name="CopyWslcPayload" AfterTargets="Build">
+		<ItemGroup>
+			<WslcPayload Include="$(WslWindowsOutput)Purview.Containers.Wsl.dll" />
+			<WslcPayload Include="$(WslcPayloadSource)/lib/net8.0-windows10.0.19041.0/wslcsdkcs.dll" />
+			<WslcPayload Include="$(WslcPayloadSource)/runtimes/win-x64/native/wslcsdk.dll" />
+			<WslcPayload Include="$(WindowsSdkPayloadSource)/lib/net8.0/Microsoft.Windows.SDK.NET.dll" />
+			<WslcPayload Include="$(WindowsSdkPayloadSource)/lib/net8.0/WinRT.Runtime.dll" />
+		</ItemGroup>
+		<Error
+			Condition="!Exists('$(WslWindowsOutput)Purview.Containers.Wsl.dll')"
+			Text="The Windows implementation is not built. Run 'just build' (or build src/src/Wsl/Wsl.csproj) first."
+		/>
+		<Copy SourceFiles="@(WslcPayload)" DestinationFolder="$(OutDir)wslc" SkipUnchangedFiles="true" />
+		<Message Importance="high" Text="WSL Containers payload copied to $(OutDir)wslc" />
+	</Target>
+</Project>

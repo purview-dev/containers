@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<IsPackable>true</IsPackable>
+		<!--
+		  The umbrella package. A thin bundle: it has no behaviour of its own and simply brings the
+		  abstractions (Purview.Containers.Core) and both backends (WSL Containers and Docker), so a single
+		  reference lets automatic selection run the same tests on WSLC on Windows and Docker everywhere
+		  else. The backends' buildTransitive assets flow transitively, so a consumer of this package still
+		  gets the generated backend registration with no code.
+		-->
+		<Description>Purview.Containers: the umbrella package. Brings the abstractions (Purview.Containers.Core) and both backends (WSL Containers and Docker), so one reference runs the same tests on WSLC on Windows and Docker everywhere else.</Description>
+		<PackageTags>containers;testing;integration;testcontainers;docker;wsl;wslc;bundle</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Authors>Purview</Authors>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../Core/Core.csproj" />
+		<ProjectReference Include="../Wsl/Wsl.csproj" />
+		<ProjectReference Include="../Docker/Docker.csproj" />
+	</ItemGroup>
+</Project>

@@ -1,10 +1,10 @@
-namespace Purview.WslContainers.Nats;
+namespace Purview.Containers.Nats;
 
 /// <summary>A throwaway NATS broker running on WSL Containers.</summary>
-public sealed class NatsContainer : WslContainer
+public sealed class NatsContainer : ContainerBase
 {
-	internal NatsContainer(NatsConfiguration configuration, IContainerRuntime runtime)
-		: base(configuration, runtime) { }
+	internal NatsContainer(NatsConfiguration configuration, IContainerBackend? backend)
+		: base(configuration, backend) { }
 
 	/// <summary>Client endpoint (<c>nats://127.0.0.1:{port}</c>). Safe to call after <see cref="IContainer.StartAsync" />.</summary>
 	public Uri GetClientEndpoint()

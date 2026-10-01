@@ -56,4 +56,4 @@ Legend: **Implemented** = planned in this library; **Mapped** = native WSLC API 
 5. Per-container CPU/memory limits — session-level only.
 6. TTY, `--user`, labels, DNS options, tmpfs/shm/ulimit in `ContainerSettings`/`ProcessSettings`.
 
-Where a Testcontainers feature has no WSLC equivalent, the library must either (a) provide the closest supported behaviour and document it, or (b) fail fast with a clear `WslContainerNotSupportedException`.
+Where a Testcontainers feature has no WSLC equivalent, the library must either (a) provide the closest supported behaviour and document it, or (b) fail fast with a clear `ContainerNotSupportedException`.

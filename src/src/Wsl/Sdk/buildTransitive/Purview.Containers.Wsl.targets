@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Purview.Containers.Wsl consumer defaults and guard rails (targets).
+
+  Imported by NuGet for direct and transitive references, after the consumer's own project body
+  has been evaluated, so an explicit PlatformTarget or RuntimeIdentifier always wins. The values
+  set here are defaults only.
+
+  PlatformTarget: wslcsdk.dll (the native WSL Containers SDK) ships for win-x64 and win-arm64
+  only. A consumer left on the default AnyCPU is corrected to x64 here; an explicit x86 (32-bit)
+  consumer fails with PCC0002 instead of failing later at runtime with a load error.
+
+  Target framework: because build and buildTransitive assets are framework-agnostic, NuGet does
+  not reject an incompatible target framework at restore time with NU1202 - it silently
+  contributes no compile assets, which surfaces as a confusing CS0246 in user code. The guard
+  target below turns that into a deliberate, actionable error (PCC0001).
+
+  Note that Microsoft.WSL.Containers' own build assets do not flow transitively, so its native
+  copy/validation targets never run in a consumer: wslcsdk.dll reaches the output through the
+  package's runtimes/win-*/native assets instead, and these guards are the only build-time
+  protection a consumer gets.
+  NOTE: NuGet only auto-imports buildTransitive/<PackageId>.props and buildTransitive/<PackageId>.targets.
+-->
+<Project>
+	<!--
+	  PlatformTarget default. wslcsdk.dll (the native WSL Containers SDK) ships for win-x64 and win-arm64
+	  only, so a Windows consumer left on the default AnyCPU is corrected to x64 here; a 32-bit consumer
+	  fails with PCC0002 rather than a load error at run time. A platform-neutral consumer (the facade) is
+	  left alone: it may run on any architecture, and only the Windows host needs the native bit.
+	-->
+	<PropertyGroup Condition="'$(RuntimeIdentifier)' == '' AND '$(TargetPlatformIdentifier)' == 'Windows'">
+		<PlatformTarget Condition="'$(PlatformTarget)' == '' OR '$(PlatformTarget)' == 'AnyCPU'">x64</PlatformTarget>
+	</PropertyGroup>
+
+	<!--
+	  Target-framework guard. The package is multi-target, so two consumer shapes are supported:
+
+	    * Windows target framework (net10.0-windows10.0.19041.0 or later) binds the implementation
+	      directly; it must be .NET 10+ and target Windows 10 19041+.
+	    * Platform-neutral target framework (net10.0 or later) binds the portable facade. It builds on
+	      any OS; on a Windows host the facade loads the implementation from the payload, and elsewhere
+	      the backend reports itself unavailable so auto-selection falls through to Docker.
+
+	  This replaces the pre-multi-target rule that rejected everything except a .NET 11 Windows project.
+	  The version comparisons short-circuit on 'AND', so they are safe when TargetFrameworkVersion or
+	  TargetPlatformVersion is empty.
+	-->
+	<Target
+		Name="PurviewContainersWslValidateTargetFramework"
+		BeforeTargets="PrepareForBuild"
+		Condition="'$(TargetFramework)' != ''"
+	>
+		<PropertyGroup>
+			<_PurviewContainersWslIsWindows Condition="'$(TargetPlatformIdentifier)' == 'Windows'"
+				>true</_PurviewContainersWslIsWindows>
+			<_PurviewContainersWslWindowsPlatformOk
+				Condition="'$(TargetPlatformVersion)' != '' AND $([MSBuild]::VersionGreaterThanOrEquals($(TargetPlatformVersion), '10.0.19041.0'))"
+				>true</_PurviewContainersWslWindowsPlatformOk>
+			<_PurviewContainersWslWindowsOk
+				Condition="'$(_PurviewContainersWslIsWindows)' == 'true' AND '$(TargetFrameworkIdentifier)' == '.NETCoreApp' AND $([MSBuild]::VersionGreaterThanOrEquals($(TargetFrameworkVersion), '10.0')) AND '$(_PurviewContainersWslWindowsPlatformOk)' == 'true'"
+				>true</_PurviewContainersWslWindowsOk>
+			<_PurviewContainersWslPortableOk
+				Condition="'$(_PurviewContainersWslIsWindows)' != 'true' AND '$(TargetFrameworkIdentifier)' == '.NETCoreApp' AND $([MSBuild]::VersionGreaterThanOrEquals($(TargetFrameworkVersion), '10.0'))"
+				>true</_PurviewContainersWslPortableOk>
+			<_PurviewContainersWslSupported
+				Condition="'$(_PurviewContainersWslWindowsOk)' == 'true' OR '$(_PurviewContainersWslPortableOk)' == 'true'"
+				>true</_PurviewContainersWslSupported>
+		</PropertyGroup>
+
+		<Error
+			Code="PCC0001"
+			Condition="'$(_PurviewContainersWslSupported)' != 'true'"
+			Text="Purview.Containers.Wsl requires a .NET 10 (or later) project. Use a Windows target framework (net10.0-windows10.0.19041.0 or later) for the WSLC implementation, or a platform-neutral one (net10.0 or later) for the portable facade that loads the implementation at run time on Windows. '$(TargetFramework)' is not supported (a Windows TFM also needs Windows 10.0.19041.0 or later). See docs/wiki/Consumer-Requirements.md."
+		/>
+	</Target>
+
+	<Target
+		Name="PurviewContainersWslValidatePlatformTarget"
+		BeforeTargets="PrepareForBuild"
+		Condition="'$(TargetFramework)' != ''"
+	>
+		<PropertyGroup>
+			<_PurviewContainersWslIsWindows Condition="'$(TargetPlatformIdentifier)' == 'Windows'"
+				>true</_PurviewContainersWslIsWindows>
+			<_PurviewContainersWslPlatformTargetSupported
+				Condition="'$(_PurviewContainersWslIsWindows)' != 'true' OR '$(PlatformTarget)' == 'x64' OR '$(PlatformTarget)' == 'arm64' OR ('$(PlatformTarget)' == '' AND '$(RuntimeIdentifier)' != '')"
+				>true</_PurviewContainersWslPlatformTargetSupported>
+		</PropertyGroup>
+
+		<Error
+			Code="PCC0002"
+			Condition="'$(_PurviewContainersWslPlatformTargetSupported)' != 'true'"
+			Text="Purview.Containers.Wsl requires a 64-bit (x64 or arm64) consumer on a Windows target framework: wslcsdk.dll ships for win-x64 and win-arm64 only. PlatformTarget is '$(PlatformTarget)'. Remove the PlatformTarget property to accept the x64 default, set it to x64 or arm64, or select a matching RuntimeIdentifier. See docs/wiki/Consumer-Requirements.md."
+		/>
+	</Target>
+
+	<!--
+	  Payload deployment for the portable facade. A platform-neutral consumer needs the Windows
+	  implementation (and the WSLC projection + native SDK it depends on) next to the app so the facade
+	  can load it on a Windows host. It is copied under 'wslc/' - the folder the facade probes - only
+	  when the build host is Windows and the consumer is not already a Windows target framework (which
+	  binds the implementation directly and needs no payload).
+	-->
+	<Target
+		Name="PurviewContainersWslCopyPayload"
+		AfterTargets="Build"
+		Condition="'$(TargetFramework)' != '' AND '$(OS)' == 'Windows_NT' AND '$(TargetPlatformIdentifier)' != 'Windows'"
+	>
+		<PropertyGroup>
+			<_PurviewContainersWslPayloadRid
+				Condition="'$(RuntimeIdentifier)' == 'win-arm64' OR '$(PlatformTarget)' == 'arm64'"
+				>win-arm64</_PurviewContainersWslPayloadRid>
+			<_PurviewContainersWslPayloadRid Condition="'$(_PurviewContainersWslPayloadRid)' == ''"
+				>win-x64</_PurviewContainersWslPayloadRid>
+			<_PurviewContainersWslPayloadSource>$(MSBuildThisFileDirectory)..\payload\$(_PurviewContainersWslPayloadRid)\</_PurviewContainersWslPayloadSource>
+		</PropertyGroup>
+
+		<ItemGroup Condition="Exists('$(_PurviewContainersWslPayloadSource)')">
+			<_PurviewContainersWslPayload Include="$(_PurviewContainersWslPayloadSource)*.*" />
+		</ItemGroup>
+
+		<Copy
+			Condition="'@(_PurviewContainersWslPayload)' != ''"
+			SourceFiles="@(_PurviewContainersWslPayload)"
+			DestinationFolder="$(OutDir)wslc"
+			SkipUnchangedFiles="true"
+		/>
+	</Target>
+</Project>

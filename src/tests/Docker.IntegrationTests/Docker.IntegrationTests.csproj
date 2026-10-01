@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<!--
+		  Portable on purpose: this suite needs only a Docker daemon, not WSLC, so a platform-neutral TFM
+		  lets it run on the Linux CI runner (the shared pipeline filters to [Category=Unit], so the
+		  integration-docker job in .github/workflows/pr.yml runs it explicitly). Do not retarget to a
+		  Windows-specific framework - that would make the suite unrunnable off Windows.
+		-->
+		<TargetFramework>net10.0</TargetFramework>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../../src/Docker/Docker.csproj" />
+	</ItemGroup>
+
+	<!--
+	  The SDK auto-adds a ProjectReference to the sibling SharedTestingFramework for every test project.
+	  That helper is WSLC/Windows-only (it holds WslcTest), and this suite deliberately targets a portable
+	  framework, so the auto-reference is removed. Nothing here uses it; DockerTest is self-contained.
+	-->
+	<ItemGroup>
+		<ProjectReference Remove="../SharedTesting*/SharedTesting*.csproj" />
+	</ItemGroup>
+</Project>

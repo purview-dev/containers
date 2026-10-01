@@ -1,14 +1,14 @@
 using Npgsql;
 
-namespace Purview.WslContainers.PostgreSql;
+namespace Purview.Containers.PostgreSql;
 
 /// <summary>A throwaway PostgreSQL database running on WSL Containers.</summary>
-public sealed class PostgreSqlContainer : WslContainer
+public sealed class PostgreSqlContainer : ContainerBase
 {
 	readonly PostgreSqlConfiguration _configuration;
 
-	internal PostgreSqlContainer(PostgreSqlConfiguration configuration, IContainerRuntime runtime)
-		: base(configuration, runtime)
+	internal PostgreSqlContainer(PostgreSqlConfiguration configuration, IContainerBackend? backend)
+		: base(configuration, backend)
 	{
 		_configuration = configuration;
 	}

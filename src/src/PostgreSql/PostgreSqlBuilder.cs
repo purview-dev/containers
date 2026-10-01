@@ -1,8 +1,8 @@
-using Purview.WslContainers.Diagnostics;
-using Purview.WslContainers.Runtime;
-using Purview.WslContainers.Waiting;
+using Purview.Containers.Diagnostics;
+using Purview.Containers.Runtime;
+using Purview.Containers.Waiting;
 
-namespace Purview.WslContainers.PostgreSql;
+namespace Purview.Containers.PostgreSql;
 
 /// <summary>Fluent builder for a PostgreSQL test container.</summary>
 public class PostgreSqlBuilder : ContainerBuilder<PostgreSqlBuilder, PostgreSqlContainer, PostgreSqlConfiguration>
@@ -28,8 +28,8 @@ public class PostgreSqlBuilder : ContainerBuilder<PostgreSqlBuilder, PostgreSqlC
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
-	public PostgreSqlBuilder(IContainerRuntime runtime)
-		: base(runtime)
+	public PostgreSqlBuilder(IContainerBackend backend)
+		: base(backend)
 	{
 		WithImage(PostgreSqlImage).WithPortBinding(PostgreSqlPort, assignRandomHostPort: true);
 	}
@@ -91,23 +91,23 @@ public class PostgreSqlBuilder : ContainerBuilder<PostgreSqlBuilder, PostgreSqlC
 		base.Validate(configuration);
 		if (string.IsNullOrWhiteSpace(_database))
 		{
-			throw new WslContainerConfigurationException("PostgreSQL database cannot be empty.");
+			throw new ContainerConfigurationException("PostgreSQL database cannot be empty.");
 		}
 
 		if (string.IsNullOrWhiteSpace(_username))
 		{
-			throw new WslContainerConfigurationException("PostgreSQL username cannot be empty.");
+			throw new ContainerConfigurationException("PostgreSQL username cannot be empty.");
 		}
 
 		if (string.IsNullOrEmpty(_password.Value))
 		{
-			throw new WslContainerConfigurationException("PostgreSQL password cannot be empty.");
+			throw new ContainerConfigurationException("PostgreSQL password cannot be empty.");
 		}
 	}
 
 	/// <inheritdoc />
 	protected override PostgreSqlContainer CreateContainer(PostgreSqlConfiguration configuration)
 	{
-		return new PostgreSqlContainer(configuration, Runtime ?? WslContainerRuntime.Instance);
+		return new PostgreSqlContainer(configuration, Backend);
 	}
 }

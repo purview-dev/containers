@@ -1,33 +1,57 @@
-# Purview.WslContainers
+# Purview.Containers
 
-[![NuGet version](https://img.shields.io/nuget/v/Purview.WslContainers.svg)](https://www.nuget.org/packages/Purview.WslContainers)
-[![Release](https://github.com/purview-dev/wsl-containers/actions/workflows/release.yml/badge.svg)](https://github.com/purview-dev/wsl-containers/actions/workflows/release.yml)
+[![NuGet version](https://img.shields.io/nuget/v/Purview.Containers.svg)](https://www.nuget.org/packages/Purview.Containers)
+[![Release](https://github.com/purview-dev/containers/actions/workflows/release.yml/badge.svg)](https://github.com/purview-dev/containers/actions/workflows/release.yml)
 
-A **WSLC-native** Testcontainers-style library for .NET that runs throwaway Linux containers for integration testing on **Microsoft WSL Containers (WSLC)** — with no Docker installation.
+A Testcontainers-style library for .NET that runs throwaway Linux containers for integration testing — on **Microsoft WSL Containers (WSLC)** with no Docker installation, or on **Docker** through Testcontainers.
 
-Built directly against the `Microsoft.WSL.Containers` NuGet package (the WSLC managed C# API). No `wslc.exe`/`wsl.exe`/`docker` CLI, no Docker.DotNet, no Testcontainers internally.
+> **Two backends, one API — one reference.** Containers are created through the backend-neutral
+> `Purview.Containers.Core` abstractions, so the same test suite runs on **WSL Containers**
+> (`Purview.Containers.Wsl`) or **Docker** (`Purview.Containers.Docker`, driven by Testcontainers). Add the
+> umbrella package `Purview.Containers` to a plain `net10.0` project — no Windows target framework needed —
+> and it brings the abstractions plus both backends, gets WSLC on a Windows developer machine and Docker on
+> a Linux CI runner **without changing a line of test code or configuration**, and can be pinned with
+> `PURVIEW_CONTAINERS_BACKEND`. The `Purview.Containers.Wsl` package is multi-target: its `net10.0` facade
+> loads the WSLC implementation at run time on Windows and reports `wsl` as unavailable everywhere else.
+>
+> **[Using it in your tests (auto)](docs/wiki/Using-in-Your-Tests.md)** — the copy-paste zero-config shape.
+>
+> **[Backends: WSLC or Docker](docs/wiki/Backends.md)** — comparison, side-by-side project setup, CI
+> example and troubleshooting.
+
+The WSLC backend is built directly against the `Microsoft.WSL.Containers` NuGet package (the WSLC managed C# API) — no `wslc.exe`/`wsl.exe`/`docker` CLI. The Docker backend is built on [Testcontainers for .NET](https://dotnet.testcontainers.org/).
 
 > **Experimental.** This project is an experiment in running throwaway containers through Microsoft
 > WSL Containers. The public API, defaults and packaging rules can change between prereleases, and
 > there is no production support guarantee. Pin the exact package version you build against, and read
 > [Consumer Requirements](docs/wiki/Consumer-Requirements.md) before adopting it.
 
-> **Status: Phase 8 in progress.** Core runtime, wait strategies, the `Image`/`Tag` parser, registry auth,
-> observability, hardening, and **seven service modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite,
-> NATS, MySQL). **Images are shared by default** (`StorageMode.Shared`): sessions reuse a stable
-> image store (`%LOCALAPPDATA%\Purview\WslContainers\images`) so images are pulled once, not per session;
-> `StorageMode.PerSession` provides isolation. 76 unit tests pass across all modules.
+> **Status: preview.** Backend-neutral abstractions, two backends (WSL Containers and Docker), wait
+> strategies, the `Image`/`Tag` parser, registry auth, observability, hardening, and **seven service
+> modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite, NATS, MySQL). On WSLC, **images are shared
+> by default** (`StorageMode.Shared`): sessions reuse a stable image store
+> (`%LOCALAPPDATA%\Purview\WslContainers\images`) so images are pulled once, not per session;
+> `StorageMode.PerSession` provides isolation. Runnable samples live in `samples/getting-started`.
 
 ## Prerequisites
 
-- Windows 10/11.
-- **WSL Containers**, installed via `wsl --install --no-distribution` (verified against WSL 3.0.1.0).
-- .NET SDK 11 (the repo pins `11.0.100-rc.1`).
-- A **consuming project must be a .NET 11 project that targets Windows specifically** —
-  `net11.0-windows10.0.19041.0`, x64 or arm64. The packages ship MSBuild defaults for the supporting
-  settings; the full contract, the exact errors raised when it is not met, and the
-  `EnableWindowsTargeting` workaround for non-Windows CI agents are documented in
-  [Consumer Requirements](docs/wiki/Consumer-Requirements.md).
+Pick a backend — see [Backends: WSLC or Docker](docs/wiki/Backends.md) for the comparison.
+
+**WSL Containers backend**
+
+- Windows 10/11 with **WSL Containers**, installed via `wsl --install --no-distribution` (verified against
+  WSL 3.0.1.0).
+- A consuming project that is **.NET 10 or later**. A platform-neutral `net10.0` project binds the
+  portable facade and gets automatic WSLC-or-Docker selection; a Windows target framework
+  (`net10.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. The
+  `Purview.Containers.Wsl` package ships MSBuild defaults for the supporting settings.
+
+**Docker backend**
+
+- Any reachable Docker daemon, and a `net10.0` (or later) project on any platform.
+
+.NET SDK 11 is required to build this repository (it pins `11.0.100-rc.1`); SDK 10 is enough for a Docker
+consumer.
 
 Verify:
 
@@ -36,11 +60,21 @@ wsl --version     # WSL Containers installed (verified against 3.0.1.0)
 wslc version      # e.g. 3.0.1.0
 ```
 
-The library reports missing prerequisites via `WslContainerRuntime.GetInfoAsync()`; it never installs or updates WSL on its own.
+```bash
+docker info       # a Docker daemon the tests can reach
+```
+
+The library reports missing prerequisites via `WslContainerRuntime.GetInfoAsync()` (WSLC) or
+`DockerContainerBackend.GetInfoAsync()` (Docker); it never installs a runtime on its own.
+
+The full consumer contract, the exact errors raised when it is not met, and the `EnableWindowsTargeting`
+workaround for non-Windows CI agents are documented in
+[Consumer Requirements](docs/wiki/Consumer-Requirements.md).
 
 ## Target developer experience
 
-The generic container API below is **implemented and working**:
+The generic container API below is **implemented and working** — and the identical code runs on either
+backend (see [Backends: WSLC or Docker](docs/wiki/Backends.md)):
 
 ```csharp
 await using var container = new ContainerBuilder()
@@ -104,28 +138,28 @@ string amqp = rabbitMq.GetConnectionString();
 
 ```
 src/
-  WslContainers/            core runtime (Containers, Images, Runtime, Networking, Mounts, Diagnostics)
-  WslContainers.PostgreSql/ PostgreSQL module (builder, container, Npgsql connection string)
-  WslContainers.Redis/      Redis module (builder, container, StackExchange.Redis connection string)
-  WslContainers.MsSql/      SQL Server module (builder, container, SqlClient connection string)
-  WslContainers.RabbitMq/   RabbitMQ module (builder, container, AMQP + management endpoints)
-  WslContainers.Azurite/    Azurite module (builder, container, blob/queue/table endpoints)
-  WslContainers.Nats/       NATS module (builder, container, client + monitoring endpoints)
-  WslContainers.MySql/      MySQL module (builder, container, MySqlConnector connection string)
+  Wsl/          core runtime + WSL Containers backend (package Purview.Containers.Wsl)
+  PostgreSql/   PostgreSQL module (builder, container, Npgsql connection string)
+  Redis/        Redis module (builder, container, StackExchange.Redis connection string)
+  MsSql/        SQL Server module (builder, container, SqlClient connection string)
+  RabbitMq/     RabbitMQ module (builder, container, AMQP + management endpoints)
+  Azurite/      Azurite module (builder, container, blob/queue/table endpoints)
+  Nats/         NATS module (builder, container, client + monitoring endpoints)
+  MySql/        MySQL module (builder, container, MySqlConnector connection string)
 tests/
   SharedTestingFramework/   shared WSLC skip/helper for integration tests
-  WslContainers.UnitTests/
-  WslContainers.IntegrationTests/
-  WslContainers.PostgreSql.UnitTests/
-  WslContainers.PostgreSql.IntegrationTests/
-  WslContainers.Redis.UnitTests/
-  WslContainers.Redis.IntegrationTests/
-  WslContainers.MsSql.UnitTests/
-  WslContainers.MsSql.IntegrationTests/
-  WslContainers.RabbitMq.UnitTests/
-  WslContainers.RabbitMq.IntegrationTests/
-  WslContainers.Azurite.UnitTests/
-  WslContainers.Azurite.IntegrationTests/
+  Wsl.UnitTests/
+  Wsl.IntegrationTests/
+  PostgreSql.UnitTests/
+  PostgreSql.IntegrationTests/
+  Redis.UnitTests/
+  Redis.IntegrationTests/
+  MsSql.UnitTests/
+  MsSql.IntegrationTests/
+  RabbitMq.UnitTests/
+  RabbitMq.IntegrationTests/
+  Azurite.UnitTests/
+  Azurite.IntegrationTests/
 spikes/
   WslcSpikes/               Phase 0 investigation harness (run: see below)
 docs/
@@ -142,7 +176,8 @@ The project documentation lives in [`docs/wiki`](docs/wiki/Home.md) and is publi
 (`mkdocs.yml`, `docs_dir: docs/wiki`, aggregated by the purview-dev website):
 
 - [Getting Started](docs/wiki/Getting-Started.md) — prerequisites, first container, first module.
-- [Consumer Requirements](docs/wiki/Consumer-Requirements.md) — the .NET 11 + Windows target framework contract, the `PWC0001`/`PWC0002` guards, and the CI workarounds.
+- [Backends: WSLC or Docker](docs/wiki/Backends.md) — how to choose, side-by-side project setup, CI example, troubleshooting.
+- [Consumer Requirements](docs/wiki/Consumer-Requirements.md) — the target-framework contract, the `PCC0001`/`PCC0002` guards, and the CI workarounds.
 - [Architecture](docs/wiki/Architecture.md) — the shared session model, concurrency and cleanup decisions.
 - [Lifecycle](docs/wiki/Lifecycle.md), [Networking](docs/wiki/Networking.md), [Wait Strategies](docs/wiki/Wait-Strategies.md).
 - [Modules](docs/wiki/Modules.md) — the module contract and every shipped module.
@@ -151,7 +186,7 @@ The project documentation lives in [`docs/wiki`](docs/wiki/Home.md) and is publi
 - [Contributing](docs/wiki/Contributing.md) and [Contributing Modules](docs/wiki/Contributing-Modules.md).
 
 Every package also ships its own `README.md` (from `src/src/<Project>/Sdk/README.md`), so
-`dotnet add package Purview.WslContainers.<Module>` brings documentation specific to that package.
+`dotnet add package Purview.Containers.<Module>` brings documentation specific to that package.
 
 The PostgreSQL, Redis, SQL Server and RabbitMQ modules work today:
 
@@ -233,18 +268,25 @@ just test                     # dotnet test, one test module at a time
 # "Maximum Parallel Test Projects" to 1) before running the WSLC integration tests.
 ```
 
-> The `WslContainers.IntegrationTests` module runs 27 real containers in one session and takes ~4
+To watch a container start end to end, run a sample — the same code, on either backend:
+
+```powershell
+just sample-wsl               # needs WSL Containers
+just sample-docker            # needs a Docker daemon
+```
+
+> The `Wsl.IntegrationTests` module runs 27 real containers in one session and takes ~4
 > minutes because WSLC serialises container operations; expect slow-test warnings while it runs.
 
 ### Verifying the consumer contract
 
 ```powershell
-just verify-consumers          # pack, then build 12 throwaway consumer projects against ./artifacts
+just verify-consumers          # pack, then build 16 throwaway consumer projects against ./artifacts
 just verify-consumers -Keep    # same, keeping the generated projects for inspection
 ```
 
 `just verify-consumers` asserts every claim in [Consumer Requirements](docs/wiki/Consumer-Requirements.md):
-the happy path, the shipped `buildTransitive` defaults, the `PWC0001`/`PWC0002` guards, and the
+the happy path, the shipped `buildTransitive` defaults, the `PCC0001`/`PCC0002` guards, and the
 non-.NET-11 escape hatch that deliberately does not work. It needs network access and is therefore a
 local step rather than part of the `[Category=Unit]` pipeline filter.
 

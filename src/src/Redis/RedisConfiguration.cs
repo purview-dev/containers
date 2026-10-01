@@ -1,4 +1,4 @@
-namespace Purview.WslContainers.Redis;
+namespace Purview.Containers.Redis;
 
 /// <summary>Immutable configuration for a Redis-compatible test container.</summary>
 public sealed record RedisConfiguration : ContainerConfiguration { }

@@ -28,3 +28,22 @@ jobs:
       run-pack: true
       validate-pack: true
     secrets: inherit
+
+  # The shared pipeline filters to [Category=Unit] because the WSLC integration suites need a Windows
+  # host. The Docker integration suites need only a Docker daemon, so they run here on the same Linux
+  # runner a consumer would use - the standing proof that the library and every service module work off
+  # Windows/WSL. The suites skip themselves when no daemon is reachable, so a non-zero result is a real
+  # failure, not a missing runtime.
+  integration-docker:
+    name: Integration (Docker)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          # Keep in sync with `sdk.version` in global.json.
+          dotnet-version: "11.0.100-rc.1.26425.128"
+      - name: Docker backend
+        run: dotnet test src/tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*'
+      - name: Service modules on Docker
+        run: dotnet test src/tests/Modules.DockerIntegrationTests/Modules.DockerIntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*'

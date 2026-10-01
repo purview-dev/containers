@@ -1,4 +1,4 @@
-namespace Purview.WslContainers.Azurite;
+namespace Purview.Containers.Azurite;
 
 /// <summary>Well-known Azurite emulator account details.</summary>
 public static class AzuriteAccount

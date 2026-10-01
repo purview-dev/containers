@@ -1,6 +1,6 @@
 # Lifecycle
 
-Container lifecycle semantics for `Purview.WslContainers`, derived from the Phase 0 spikes.
+Container lifecycle semantics for `Purview.Containers`, derived from the Phase 0 spikes.
 
 ## Public API
 

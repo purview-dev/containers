@@ -1,6 +1,6 @@
-site_name: Purview WSL Test Containers
-site_description: Developer documentation for Purview WSL Test Containers
-repo_url: https://github.com/purview-dev/wsl-containers
+site_name: Purview Containers
+site_description: Developer documentation for Purview Containers
+repo_url: https://github.com/purview-dev/containers
 edit_uri: edit/main/docs/wiki/
 docs_dir: docs/wiki
 

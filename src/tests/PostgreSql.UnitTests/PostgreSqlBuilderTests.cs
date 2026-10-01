@@ -1,8 +1,8 @@
-using Purview.WslContainers.Diagnostics;
-using Purview.WslContainers.Runtime;
-using Purview.WslContainers.Waiting;
+using Purview.Containers.Diagnostics;
+using Purview.Containers.Runtime;
+using Purview.Containers.Waiting;
 
-namespace Purview.WslContainers.PostgreSql;
+namespace Purview.Containers.PostgreSql;
 
 public class PostgreSqlBuilderTests
 {
@@ -47,7 +47,7 @@ public class PostgreSqlBuilderTests
 	{
 		var builder = new PostgreSqlBuilder().WithPassword(string.Empty);
 
-		await Assert.That(() => builder.Build()).Throws<WslContainerConfigurationException>();
+		await Assert.That(() => builder.Build()).Throws<ContainerConfigurationException>();
 	}
 
 	[Test]

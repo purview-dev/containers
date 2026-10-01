@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<!--
+		  Portable on purpose: these modules only need a Docker daemon, not WSLC, so a platform-neutral TFM
+		  lets the suite run on the Linux CI runner (the integration-docker job in .github/workflows/pr.yml
+		  runs it explicitly, because the shared pipeline filters to [Category=Unit]). Do not retarget to a
+		  Windows-specific framework - that would make the suite unrunnable off Windows.
+		-->
+		<TargetFramework>net10.0</TargetFramework>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../../src/Docker/Docker.csproj" />
+		<ProjectReference Include="../../src/Azurite/Azurite.csproj" />
+		<ProjectReference Include="../../src/MsSql/MsSql.csproj" />
+		<ProjectReference Include="../../src/MySql/MySql.csproj" />
+		<ProjectReference Include="../../src/Nats/Nats.csproj" />
+		<ProjectReference Include="../../src/PostgreSql/PostgreSql.csproj" />
+		<ProjectReference Include="../../src/RabbitMq/RabbitMq.csproj" />
+		<ProjectReference Include="../../src/Redis/Redis.csproj" />
+	</ItemGroup>
+
+	<!--
+	  The SDK auto-adds a ProjectReference to the sibling SharedTestingFramework for every test project.
+	  That helper is WSLC/Windows-only (it holds WslcTest), and this suite deliberately targets a portable
+	  framework, so the auto-reference is removed. Nothing here uses it; the readiness checks are the
+	  modules' own.
+	-->
+	<ItemGroup>
+		<ProjectReference Remove="../SharedTesting*/SharedTesting*.csproj" />
+	</ItemGroup>
+</Project>

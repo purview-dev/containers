@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Purview.Containers.Core backend registration (targets).
+
+  Turns the PurviewContainersBackends list (appended by each backend package's props) into a generated
+  module initializer in the consuming assembly. Registration is therefore deterministic and
+  compile-time: no reflection, no assembly scanning, no trimming or single-file surprises, and no
+  reliance on which assemblies the runtime happens to load before the first container is built.
+
+  A project that references Purview.Containers.Core without a backend package gets no generated file and
+  ContainerBackends.ResolveAsync() fails with ContainerBackendUnavailableException naming the missing package.
+  NOTE: NuGet only auto-imports buildTransitive/<PackageId>.props and buildTransitive/<PackageId>.targets.
+-->
+<Project>
+	<Target
+		Name="PurviewContainersGenerateBackendRegistration"
+		BeforeTargets="CoreCompile"
+		Condition="'$(PurviewContainersBackends)' != ''"
+	>
+		<ItemGroup>
+			<_PurviewContainersBackendType Include="$(PurviewContainersBackends)" />
+			<_PurviewContainersRegistrationLine Include="// &lt;auto-generated/&gt;" />
+			<_PurviewContainersRegistrationLine Include="// Registers the container backends referenced by this project." />
+			<_PurviewContainersRegistrationLine Include="internal static class PurviewContainersBackendRegistration" />
+			<_PurviewContainersRegistrationLine Include="{" />
+			<_PurviewContainersRegistrationLine Include="&#9;[global::System.Runtime.CompilerServices.ModuleInitializer]" />
+			<_PurviewContainersRegistrationLine Include="&#9;internal static void Initialize()" />
+			<_PurviewContainersRegistrationLine Include="&#9;{" />
+			<_PurviewContainersRegistrationLine Include="@(_PurviewContainersBackendType->'&#9;&#9;global::Purview.Containers.ContainerBackends.Register(global::%(Identity).Create());')" />
+			<_PurviewContainersRegistrationLine Include="&#9;}" />
+			<_PurviewContainersRegistrationLine Include="}" />
+		</ItemGroup>
+
+		<PropertyGroup>
+			<_PurviewContainersRegistrationFile>$(IntermediateOutputPath)Purview.Containers.Backends.g.cs</_PurviewContainersRegistrationFile>
+		</PropertyGroup>
+
+		<WriteLinesToFile
+			File="$(_PurviewContainersRegistrationFile)"
+			Lines="@(_PurviewContainersRegistrationLine)"
+			Overwrite="true"
+			WriteOnlyWhenDifferent="true"
+		/>
+
+		<ItemGroup>
+			<Compile Include="$(_PurviewContainersRegistrationFile)" Visible="false" />
+			<FileWrites Include="$(_PurviewContainersRegistrationFile)" />
+		</ItemGroup>
+	</Target>
+</Project>

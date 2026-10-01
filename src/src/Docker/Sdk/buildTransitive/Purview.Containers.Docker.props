@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Purview.Containers.Docker backend registration (props).
+
+  Appends the Docker backend to the PurviewContainersBackends list, which
+  Purview.Containers.Core.targets (shipped by the Purview.Containers.Core package) turns into a generated
+  module initializer in the consuming assembly. Referencing this package is therefore all a consumer
+  needs to make "docker" selectable.
+  NOTE: NuGet only auto-imports buildTransitive/<PackageId>.props and buildTransitive/<PackageId>.targets.
+-->
+<Project>
+	<PropertyGroup>
+		<PurviewContainersBackends>$(PurviewContainersBackends);Purview.Containers.Docker.DockerContainerBackend</PurviewContainersBackends>
+	</PropertyGroup>
+</Project>

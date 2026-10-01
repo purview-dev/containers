@@ -1,14 +1,14 @@
 using Microsoft.Data.SqlClient;
 
-namespace Purview.WslContainers.MsSql;
+namespace Purview.Containers.MsSql;
 
 /// <summary>A throwaway Microsoft SQL Server instance running on WSL Containers.</summary>
-public sealed class MsSqlContainer : WslContainer
+public sealed class MsSqlContainer : ContainerBase
 {
 	readonly MsSqlConfiguration _configuration;
 
-	internal MsSqlContainer(MsSqlConfiguration configuration, IContainerRuntime runtime)
-		: base(configuration, runtime)
+	internal MsSqlContainer(MsSqlConfiguration configuration, IContainerBackend? backend)
+		: base(configuration, backend)
 	{
 		_configuration = configuration;
 	}
@@ -21,6 +21,7 @@ public sealed class MsSqlContainer : WslContainer
 			// 127.0.0.1 is required: WSLC maps IPv4 loopback only, and Microsoft.Data.SqlClient
 			// hangs on the IPv6 ::1 address that 'localhost' resolves to.
 			DataSource = $"127.0.0.1,{GetMappedPublicPort(MsSqlBuilder.MsSqlPort)}",
+			InitialCatalog = _configuration.Database,
 			UserID = "sa",
 			Password = _configuration.Password.Value,
 			TrustServerCertificate = true,

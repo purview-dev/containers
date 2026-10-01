@@ -1,6 +1,6 @@
 # Networking
 
-WSLC networking behaviour (verified in Phase 0) and how `Purview.WslContainers` models it.
+WSLC networking behaviour (verified in Phase 0) and how `Purview.Containers` models it.
 
 ## Verified behaviour
 

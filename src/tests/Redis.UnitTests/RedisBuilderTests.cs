@@ -1,6 +1,6 @@
-using Purview.WslContainers.Waiting;
+using Purview.Containers.Waiting;
 
-namespace Purview.WslContainers.Redis;
+namespace Purview.Containers.Redis;
 
 public class RedisBuilderTests
 {

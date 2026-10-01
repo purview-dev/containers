@@ -1,6 +1,6 @@
 using Microsoft.Data.SqlClient;
 
-namespace Purview.WslContainers.MsSql;
+namespace Purview.Containers.MsSql;
 
 public class MsSqlIntegrationTests
 {

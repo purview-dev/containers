@@ -14,16 +14,25 @@
 	Expectations and their documentation:
 	  01  .NET 11 + Windows with the documented settings              -> builds, wslcsdk.dll copied
 	  02  ...with a stale WindowsSdkPackageVersion                    -> CS1705
-	  03  ...with PlatformTarget=x86                                  -> fails PWC0002
+	  03  ...with PlatformTarget=x86                                  -> fails PCC0002
 	  04  ...with no settings at all (buildTransitive defaults)       -> builds, wslcsdk.dll copied
 	  05  a module package with no settings (defaults are transitive)  -> builds
-	  06  net8.0-windows + AssetTargetFallback escape hatch           -> PWC0001 (the hatch does not work)
-	  07  net8.0-windows without the escape hatch                     -> PWC0001
-	  08  plain net11.0 (not Windows-specific)                        -> PWC0001
+	  06  net8.0-windows + AssetTargetFallback escape hatch           -> PCC0001 (the hatch does not work)
+	  07  net8.0-windows without the escape hatch                     -> PCC0001
+	  08  plain net11.0 (platform-neutral facade)                     -> builds, wsl registration generated
 	  09  ...with PlatformTarget=AnyCPU (corrected to x64)            -> builds, wslcsdk.dll copied
-	  10  the net11.0-windows shorthand TFM (no OS version)           -> PWC0001
+	  10  the net11.0-windows shorthand TFM (no OS version)           -> PCC0001
 	  11  multi-targeting with a conditional PackageReference          -> builds
-	  12  multi-targeting with an unconditional PackageReference       -> PWC0001
+	  12  multi-targeting with an unconditional PackageReference       -> builds (both inner builds supported)
+	  13  net10.0 + core abstractions                                 -> builds
+	  14  net10.0 + Docker backend                                    -> builds, backend registration generated
+	  15  net10.0 + service module (no backend package)               -> builds
+	  16  net11.0 windows + both backends (auto detection)            -> builds, both registrations generated
+	  17  the documented backend example, on WSL Containers          -> builds
+	  18  the documented backend example, on Docker (net10.0)         -> builds
+	  19  plain net10.0 + WSL backend (portable facade, auto)         -> builds, wsl registration generated
+	  20  net10.0 + Redis/PostgreSql + both backends (auto)           -> builds, both registrations generated
+	  21  net10.0 + umbrella Purview.Containers + modules (one ref)   -> builds, both registrations generated
 
 .PARAMETER FeedPath
 	Folder holding the packed .nupkg files. Defaults to <repo>/artifacts.
@@ -34,6 +43,9 @@
 .PARAMETER WorkPath
 	Scratch folder for the generated consumers. Defaults to
 	%TEMP%/wslc-consumer-verification.
+
+.PARAMETER Only
+	Runs only the cases with these ids, e.g. -Only 13,14. Defaults to every case.
 
 .PARAMETER Keep
 	Keep the generated consumer projects for inspection instead of deleting them.
@@ -49,6 +61,7 @@ param(
 	[string] $FeedPath,
 	[string] $PackageVersion,
 	[string] $WorkPath = (Join-Path ([System.IO.Path]::GetTempPath()) 'wslc-consumer-verification'),
+	[string[]] $Only = @(),
 	[switch] $Keep
 )
 
@@ -67,7 +80,7 @@ if (-not (Test-Path $FeedPath)) {
 	throw "Package feed '$FeedPath' does not exist. Run 'just pack' first."
 }
 
-$corePackage = Join-Path $FeedPath "Purview.WslContainers.$PackageVersion.nupkg"
+$corePackage = Join-Path $FeedPath "Purview.Containers.Wsl.$PackageVersion.nupkg"
 if (-not (Test-Path $corePackage)) {
 	throw "Package '$corePackage' was not found. Run 'just pack' (or pass -FeedPath) first."
 }
@@ -76,10 +89,10 @@ $globalPackagesLine = & dotnet nuget locals global-packages --list | Select-Obje
 $globalPackages = ($globalPackagesLine -replace '^global-packages:\s*', '').Trim()
 
 # The packages keep the same version between local packs, so a stale extraction in the global
-# packages folder would silently test the previous build. Drop it before consuming the feed.
-foreach ($packageId in 'purview.wslcontainers', 'purview.wslcontainers.postgresql') {
-	$packageFolder = Join-Path $globalPackages $packageId
-	$versioned = Join-Path $packageFolder $PackageVersion
+# packages folder would silently test the previous build. Drop the extracted version of every
+# Purview.Containers package before consuming the feed.
+foreach ($packageFolder in @(Get-ChildItem -Path $globalPackages -Directory -Filter 'purview.containers*' -ErrorAction SilentlyContinue)) {
+	$versioned = Join-Path $packageFolder.FullName $PackageVersion
 
 	if (Test-Path $versioned) {
 		Remove-Item $versioned -Recurse -Force
@@ -116,7 +129,8 @@ Set-Content -Path (Join-Path $WorkPath 'nuget.config') -Value $nugetConfig
 # OutputType=Exe so the runtime assets (wslcsdk.dll) are copied to the output for inspection.
 $apiSource = @'
 using Microsoft.WSL.Containers;
-using Purview.WslContainers;
+using Purview.Containers;
+using Purview.Containers.Wsl;
 
 namespace Consumer;
 
@@ -124,7 +138,7 @@ public static class Program
 {
 	public static SessionSettings Session() => new("consumer-session", @"C:\temp\wslc");
 
-	public static WslContainer Container() =>
+	public static IContainer Container() =>
 		new ContainerBuilder().WithImage("docker.io/library/alpine:3.19").Build();
 
 	public static void Main() { }
@@ -162,8 +176,8 @@ $projectTemplate = @'
 
 $net11Windows = 'net11.0-windows10.0.19041.0'
 $net8Windows = 'net8.0-windows10.0.19041.0'
-$sdkPackage = 'Purview.WslContainers'
-$modulePackage = 'Purview.WslContainers.PostgreSql'
+$sdkPackage = 'Purview.Containers.Wsl'
+$modulePackage = 'Purview.Containers.PostgreSql'
 $sdkVersion = '<WindowsSdkPackageVersion>10.0.26100.80</WindowsSdkPackageVersion>'
 $staleSdkVersion = '<WindowsSdkPackageVersion>10.0.19041.38</WindowsSdkPackageVersion>'
 $x64 = '<PlatformTarget>x64</PlatformTarget>'
@@ -178,6 +192,118 @@ $multiTargetItems = @'
 	</ItemGroup>
 '@
 
+# A consumer that touches the Docker backend. Nothing registers the backend here: the generated module
+# initializer arrives from the package's buildTransitive assets, which is what case 14 asserts.
+$dockerSource = @'
+using Purview.Containers;
+using Purview.Containers.Docker;
+
+namespace Consumer;
+
+public static class Program
+{
+	public static async Task<string> BackendName() => (await ContainerBackends.ResolveAsync()).Name;
+
+	public static void Main() { }
+}
+'@
+
+# A consumer that only references a service module: no backend package, so it restores and builds anywhere.
+$portableModuleSource = @'
+using Purview.Containers.PostgreSql;
+
+namespace Consumer;
+
+public static class Program
+{
+	public static PostgreSqlBuilder Builder() => new PostgreSqlBuilder().WithDatabase("tests");
+
+	public static void Main() { }
+}
+'@
+
+# A second backend package alongside the first: the developer-machine shape (WSLC plus Docker present, so
+# automatic detection picks WSLC and the environment can pin Docker).
+$bothBackendsItems = @'
+	<ItemGroup>
+		<PackageReference Include="Purview.Containers.Docker" Version="{{VERSION}}" />
+	</ItemGroup>
+'@
+
+# The umbrella shape: one backend reference (Purview.Containers, which brings Core + WSL + Docker) plus the
+# service modules. This is the "one reference" story documented in docs/wiki/Using-in-Your-Tests.md.
+$umbrellaItems = @'
+	<ItemGroup>
+		<PackageReference Include="Purview.Containers.Redis" Version="{{VERSION}}" />
+		<PackageReference Include="Purview.Containers.PostgreSql" Version="{{VERSION}}" />
+	</ItemGroup>
+'@
+
+# The realistic Windows consumer shape: a service module plus the WSL Containers backend. The module is
+# backend-neutral, so the backend package is what supplies the WSL build defaults and the guards.
+$wslBackendItems = @'
+	<ItemGroup>
+		<PackageReference Include="Purview.Containers.Wsl" Version="{{VERSION}}" />
+	</ItemGroup>
+'@
+
+# The "auto" shape documented in docs/wiki/Using-in-Your-Tests.md: a platform-neutral consumer with two
+# service modules and BOTH backends, so the one project runs on WSLC (Windows) and Docker (everywhere else).
+$autoItems = @'
+	<ItemGroup>
+		<PackageReference Include="Purview.Containers.Redis" Version="{{VERSION}}" />
+		<PackageReference Include="Purview.Containers.Wsl" Version="{{VERSION}}" />
+		<PackageReference Include="Purview.Containers.Docker" Version="{{VERSION}}" />
+	</ItemGroup>
+'@
+
+$autoSource = @'
+using Purview.Containers;
+using Purview.Containers.PostgreSql;
+using Purview.Containers.Redis;
+
+namespace Consumer;
+
+public static class Program
+{
+	public static async Task<string> SelectedBackendAsync() => (await ContainerBackends.ResolveAsync()).Name;
+
+	public static RedisBuilder Cache() => new RedisBuilder();
+
+	public static PostgreSqlBuilder Database() => new PostgreSqlBuilder().WithDatabase("app");
+
+	public static void Main() { }
+}
+'@
+
+# Mirrors the container code in the "The same test, either backend" example of docs/wiki/Backends.md, so
+# the documented example is compiled against both backend packages on every run. The test assertion is
+# omitted because the generated consumer project has no test framework.
+$documentedBackendSource = @'
+using Purview.Containers;
+using Purview.Containers.Waiting;
+
+namespace Consumer;
+
+public static class Program
+{
+	public static async Task<ushort> MappedPortAsync()
+	{
+		await using var container = new ContainerBuilder()
+			.WithImage("redis:7")
+			.WithPortBinding(6379, assignRandomHostPort: true)
+			.WithWaitStrategy(Wait.ForTcpPort(6379))
+			.Build();
+
+		await container.StartAsync();
+
+		return container.GetMappedPublicPort(6379);
+	}
+
+	public static void Main() { }
+}
+'@
+
 function New-ConsumerCase {
 	param(
 		[string] $Id,
@@ -189,7 +315,8 @@ function New-ConsumerCase {
 		[string] $Items = '',
 		[hashtable] $Sources = @{ 'Smoke.cs' = $apiSource },
 		[string] $Expect = 'Builds',
-		[string] $RequireFile = ''
+		[string] $RequireFile = '',
+		[string[]] $RequireText = @()
 	)
 
 	[pscustomobject]@{
@@ -203,6 +330,7 @@ function New-ConsumerCase {
 		Sources = $Sources
 		Expect = $Expect
 		RequireFile = $RequireFile
+		RequireText = $RequireText
 	}
 }
 
@@ -214,32 +342,35 @@ $cases = @(
 		-Properties "$staleSdkVersion$x64" -Expect 'CS1705'
 
 	New-ConsumerCase -Id '03' -Name 'net11 windows + PlatformTarget=x86' `
-		-Properties "$sdkVersion<PlatformTarget>x86</PlatformTarget>" -Expect 'PWC0002'
+		-Properties "$sdkVersion<PlatformTarget>x86</PlatformTarget>" -Expect 'PCC0002'
 
 	New-ConsumerCase -Id '04' -Name 'net11 windows + buildTransitive defaults only' `
 		-RequireFile 'wslcsdk.dll'
 
-	New-ConsumerCase -Id '05' -Name 'module package + transitive defaults only' `
-		-Package $modulePackage
+	New-ConsumerCase -Id '05' -Name 'module package + WSL backend (defaults are transitive)' `
+		-Package $modulePackage `
+		-Items $wslBackendItems `
+		-RequireFile 'wslcsdk.dll'
 
 	New-ConsumerCase -Id '06' -Name 'net8 windows + AssetTargetFallback escape hatch' `
 		-Framework "<TargetFramework>$net8Windows</TargetFramework>" `
-		-Properties "$escapeHatch$sdkVersion$x64" -Expect 'PWC0001'
+		-Properties "$escapeHatch$sdkVersion$x64" -Expect 'PCC0001'
 
 	New-ConsumerCase -Id '07' -Name 'net8 windows without the escape hatch' `
 		-Framework "<TargetFramework>$net8Windows</TargetFramework>" `
-		-Properties "$sdkVersion$x64" -Expect 'PWC0001'
+		-Properties "$sdkVersion$x64" -Expect 'PCC0001'
 
-	New-ConsumerCase -Id '08' -Name 'plain net11.0 (not Windows-specific)' `
+	New-ConsumerCase -Id '08' -Name 'plain net11.0 (platform-neutral facade)' `
 		-Framework '<TargetFramework>net11.0</TargetFramework>' `
-		-Properties "$sdkVersion$x64" -Expect 'PWC0001'
+		-Sources @{ 'Smoke.Portable.cs' = $portableSource } `
+		-RequireText 'WslContainerBackend.Create()'
 
 	New-ConsumerCase -Id '09' -Name 'net11 windows + PlatformTarget=AnyCPU' `
 		-Properties "$sdkVersion<PlatformTarget>AnyCPU</PlatformTarget>" -RequireFile 'wslcsdk.dll'
 
 	New-ConsumerCase -Id '10' -Name 'net11.0-windows shorthand TFM (no OS version)' `
 		-Framework '<TargetFramework>net11.0-windows</TargetFramework>' `
-		-Properties "$sdkVersion$x64" -Expect 'PWC0001'
+		-Properties "$sdkVersion$x64" -Expect 'PCC0001'
 
 	New-ConsumerCase -Id '11' -Name 'multi-targeting + conditional PackageReference' `
 		-Framework "<TargetFrameworks>net11.0;$net11Windows</TargetFrameworks>" `
@@ -252,19 +383,84 @@ $cases = @(
 		-Framework "<TargetFrameworks>net11.0;$net11Windows</TargetFrameworks>" `
 		-Properties '<EnableDefaultCompileItems>false</EnableDefaultCompileItems>' `
 		-Items $multiTargetItems `
-		-Sources @{ 'Smoke.Windows.cs' = $apiSource; 'Smoke.Portable.cs' = $portableSource } `
-		-Expect 'PWC0001'
+		-Sources @{ 'Smoke.Windows.cs' = $apiSource; 'Smoke.Portable.cs' = $portableSource }
+
+	New-ConsumerCase -Id '13' -Name 'net10 + core abstractions' `
+		-Framework '<TargetFramework>net10.0</TargetFramework>' `
+		-Package 'Purview.Containers.Core' `
+		-Sources @{ 'Smoke.Portable.cs' = $portableSource }
+
+	New-ConsumerCase -Id '14' -Name 'net10 + docker backend (generated registration)' `
+		-Framework '<TargetFramework>net10.0</TargetFramework>' `
+		-Package 'Purview.Containers.Docker' `
+		-RequireText 'DockerContainerBackend.Create()' `
+		-Sources @{ 'Smoke.cs' = $dockerSource }
+
+	New-ConsumerCase -Id '15' -Name 'net10 + service module (backend-neutral, no backend package)' `
+		-Framework '<TargetFramework>net10.0</TargetFramework>' `
+		-Package $modulePackage `
+		-Sources @{ 'Smoke.cs' = $portableModuleSource }
+
+	New-ConsumerCase -Id '16' -Name 'net11 windows + both backends (auto detection, WSLC first)' `
+		-Package $sdkPackage `
+		-Items $bothBackendsItems `
+		-RequireText 'WslContainerBackend.Create()' `
+		-Sources @{ 'Smoke.cs' = $dockerSource }
+
+	New-ConsumerCase -Id '17' -Name 'documented backend example on WSL Containers' `
+		-Package $sdkPackage `
+		-Sources @{ 'Smoke.cs' = $documentedBackendSource }
+
+	New-ConsumerCase -Id '18' -Name 'documented backend example on Docker (net10.0)' `
+		-Framework '<TargetFramework>net10.0</TargetFramework>' `
+		-Package 'Purview.Containers.Docker' `
+		-Sources @{ 'Smoke.cs' = $documentedBackendSource }
+
+	New-ConsumerCase -Id '19' -Name 'plain net10.0 + WSL backend (portable facade, auto)' `
+		-Framework '<TargetFramework>net10.0</TargetFramework>' `
+		-Sources @{ 'Smoke.Portable.cs' = $portableSource } `
+		-RequireText 'WslContainerBackend.Create()'
+
+	New-ConsumerCase -Id '20' -Name 'net10.0 + Redis/PostgreSql + both backends (auto, zero-config)' `
+		-Framework '<TargetFramework>net10.0</TargetFramework>' `
+		-Package $modulePackage `
+		-Items $autoItems `
+		-Sources @{ 'Smoke.Auto.cs' = $autoSource } `
+		-RequireText @('WslContainerBackend.Create()', 'DockerContainerBackend.Create()')
+
+	New-ConsumerCase -Id '21' -Name 'net10.0 + umbrella Purview.Containers + modules (one reference, auto)' `
+		-Framework '<TargetFramework>net10.0</TargetFramework>' `
+		-Package 'Purview.Containers' `
+		-Items $umbrellaItems `
+		-Sources @{ 'Smoke.Auto.cs' = $autoSource } `
+		-RequireText @('WslContainerBackend.Create()', 'DockerContainerBackend.Create()')
 )
 
 
 Write-Host ''
-Write-Host 'Purview.WslContainers consumer verification' -ForegroundColor Cyan
+Write-Host 'Purview.Containers.Wsl consumer verification' -ForegroundColor Cyan
 Write-Host "  feed    : $FeedPath"
 Write-Host "  version : $PackageVersion"
 Write-Host "  scratch : $WorkPath"
 Write-Host ''
 
 $results = [System.Collections.Generic.List[object]]::new()
+
+if ($Only.Count -gt 0) {
+	# `pwsh -File script.ps1 -Only 13,14` binds the value as one comma-joined string, so split it. Ids are
+	# zero-padded ('08'), so an unpadded value ('8') matches too.
+	$wanted = @($Only | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+	$cases = @(
+		$cases | Where-Object {
+			$id = $_.Id
+			$wanted -contains $id -or ($id -match '^\d+$' -and $wanted -contains ([string][int]$id))
+		}
+	)
+
+	if ($cases.Count -eq 0) {
+		throw "No consumer cases matched -Only '$($wanted -join ', ')'."
+	}
+}
 
 foreach ($case in $cases) {
 	$slug = ($case.Name -replace '[^a-zA-Z0-9]+', '-').Trim('-').ToLowerInvariant()
@@ -309,6 +505,23 @@ foreach ($case in $cases) {
 		}
 		else {
 			$signal = "$signal; $($case.RequireFile) copied to the output"
+		}
+	}
+
+	if ($passed -and $case.RequireText.Count -gt 0) {
+		foreach ($pattern in $case.RequireText) {
+			$found = @(
+				Get-ChildItem -Path $directory -Recurse -File -Include *.cs, *.csproj, *.json -ErrorAction SilentlyContinue |
+					Select-String -Pattern $pattern -SimpleMatch -ErrorAction SilentlyContinue
+			)
+
+			if ($found.Count -eq 0) {
+				$passed = $false
+				$signal = "$signal; '$pattern' was not generated into the consumer"
+			}
+			else {
+				$signal = "$signal; generated '$pattern'"
+			}
 		}
 	}
 

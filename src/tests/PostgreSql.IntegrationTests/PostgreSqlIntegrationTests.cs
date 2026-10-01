@@ -1,7 +1,7 @@
 using Npgsql;
-using PurviewContainerState = Purview.WslContainers.Containers.ContainerState;
+using PurviewContainerState = Purview.Containers.ContainerState;
 
-namespace Purview.WslContainers.PostgreSql;
+namespace Purview.Containers.PostgreSql;
 
 public class PostgreSqlIntegrationTests
 {

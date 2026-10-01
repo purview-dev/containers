@@ -1,6 +1,6 @@
 using MySqlConnector;
 
-namespace Purview.WslContainers.MySql;
+namespace Purview.Containers.MySql;
 
 public class MySqlIntegrationTests
 {
