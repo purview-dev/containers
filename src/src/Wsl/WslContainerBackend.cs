@@ -6,10 +6,8 @@ namespace Purview.Containers.Wsl;
 /// The WSL Containers (WSLC) backend: it creates containers on the process-wide WSLC session and reports
 /// the installed WSL Containers components. No Docker installation is involved.
 /// </summary>
-public sealed class WslContainerBackend : IContainerBackend
+public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPreference
 {
-	readonly IContainerRuntime? _runtime;
-
 	/// <summary>Creates the backend over the process-wide <see cref="WslContainerRuntime.Instance" />.</summary>
 	public WslContainerBackend() { }
 
@@ -17,16 +15,21 @@ public sealed class WslContainerBackend : IContainerBackend
 	public WslContainerBackend(IContainerRuntime runtime)
 	{
 		ArgumentNullException.ThrowIfNull(runtime);
-		_runtime = runtime;
+		Runtime = runtime;
 	}
 
 	/// <summary>Stable backend identifier.</summary>
 	public string Name => "wsl";
 
+	/// <summary>
+	/// Automatic selection preference: WSLC is preferred over Docker on a machine that can run both.
+	/// </summary>
+	public int AutoPriority => 0;
+
 	/// <summary>Factory used by the generated backend registration.</summary>
 	public static WslContainerBackend Create() => new();
 
-	IContainerRuntime Runtime => _runtime ?? WslContainerRuntime.Instance;
+	IContainerRuntime Runtime => field ?? WslContainerRuntime.Instance;
 
 	/// <inheritdoc />
 	public IContainer CreateContainer(IContainerConfiguration configuration)

@@ -18,8 +18,9 @@ namespace Purview.Containers;
 /// The backend that actually runs is chosen by <see cref="ResolveAsync" /> using this precedence:
 /// a backend pinned with <see cref="Use(IContainerBackend)" />, then the requested
 /// <see cref="Selection" /> (set in code or read from <see cref="SelectionEnvironmentVariable" />), then
-/// automatic probing of every registered backend. A named backend never falls back to another one: the
-/// failure carries that backend's own diagnostics.
+/// automatic probing of every registered backend in <see cref="IContainerBackendPreference.AutoPriority" />
+/// order (lowest first; registration order breaks ties). A named backend never falls back to another one:
+/// the failure carries that backend's own diagnostics.
 /// </para>
 /// </remarks>
 public static class ContainerBackends
@@ -166,7 +167,7 @@ public static class ContainerBackends
 		CancellationToken cancellationToken = default
 	)
 	{
-		List<ContainerBackendInfo> probes = new();
+		List<ContainerBackendInfo> probes = [];
 		foreach (var backend in All)
 		{
 			probes.Add(await ProbeAsync(backend, cancellationToken).ConfigureAwait(false));
@@ -213,6 +214,7 @@ public static class ContainerBackends
 				);
 			}
 
+			// The pinned backend is usable, so return it even if another backend would also work.
 			return pinned;
 		}
 
@@ -235,11 +237,12 @@ public static class ContainerBackends
 				);
 			}
 
+			// The named backend is usable, so return it even if another backend would also work.
 			return named;
 		}
 
 		StringBuilder report = new("No usable container backend was found (selection: auto).");
-		foreach (var backend in registered)
+		foreach (var backend in OrderedForAutoSelection(registered))
 		{
 			var info = await ProbeAsync(backend, cancellationToken).ConfigureAwait(false);
 			report.Append(Environment.NewLine).Append("  ").Append(Describe(info));
@@ -258,6 +261,15 @@ public static class ContainerBackends
 			.Append('.');
 		throw new ContainerBackendUnavailableException(report.ToString());
 	}
+
+	/// <summary>
+	/// Orders the registered backends for automatic selection: lowest
+	/// <see cref="IContainerBackendPreference.AutoPriority" /> first (backends without the interface count
+	/// as 0), with registration order preserved for ties, so the WSL Containers backend is preferred over
+	/// Docker on a machine that can run both.
+	/// </summary>
+	static IEnumerable<IContainerBackend> OrderedForAutoSelection(IContainerBackend[] registered) =>
+		registered.OrderBy(backend => backend is IContainerBackendPreference preference ? preference.AutoPriority : 0);
 
 	static async Task<ContainerBackendInfo> ProbeAsync(IContainerBackend backend, CancellationToken cancellationToken)
 	{
@@ -288,6 +300,7 @@ public static class ContainerBackends
 				+ $"({string.Join("; ", info.MissingComponents)})";
 		}
 
+		// The backend is available and compatible, so the version is meaningful.
 		return $"{info.Name}: available, version {info.Version}";
 	}
 }

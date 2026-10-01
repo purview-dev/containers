@@ -12,10 +12,12 @@ bring your own client.
 ## Requirements
 
 - **WSL Containers backend:** Windows 10/11 with WSL Containers (`wsl --install --no-distribution`), and a
-  consuming project that is a .NET 11 project targeting Windows specifically
-  (`net11.0-windows10.0.19041.0`, x64 or arm64). The `Purview.Containers.Wsl` package is Windows-only and
-  supplies `buildTransitive` defaults for `WindowsSdkPackageVersion`/`PlatformTarget`, rejecting an
-  unsupported consumer with `PCC0001`/`PCC0002` — see the
+  `.NET 10` or later project. A platform-neutral `net10.0` project binds the portable facade and gets
+  automatic WSLC-or-Docker selection; a Windows target framework
+  (`net10.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. The
+  `Purview.Containers.Wsl` package supplies `buildTransitive` defaults for
+  `WindowsSdkPackageVersion`/`PlatformTarget` and (for a platform-neutral consumer on a Windows build
+  host) the implementation payload, rejecting an unsupported consumer with `PCC0001`/`PCC0002` — see the
   [consumer requirements](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Consumer-Requirements.md).
 - **Docker backend:** any reachable Docker daemon (`docker info`), with a `net10.0` or later project on any
   platform. No Windows target framework and no `PCC` guards apply.

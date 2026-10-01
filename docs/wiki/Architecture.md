@@ -15,7 +15,7 @@ Purview.Containers                       (net10.0, portable)
  ├─ Waiting / Images / Mounts / Networking / Diagnostics            readiness, model, secrets
  └─ Runtime/ContainerException                                      neutral error taxonomy
 
-Purview.Containers.Wsl                   (net11.0-windows10.0.19041.0)
+Purview.Containers.Wsl                   (net10.0 facade + net10.0-windows10.0.19041.0 implementation)
  ├─ WslContainerBackend : IContainerBackend  registers itself as "wsl"
  ├─ WslContainerRuntime : IContainerRuntime  process singleton, owns the shared session
  │   ├─ SessionSettings (name, storagePath, cpu/mem, gpu, timeout)
@@ -47,10 +47,12 @@ precedence:
 2. **Named backend** — `PURVIEW_CONTAINERS_BACKEND=wsl|docker|<name>` (or
    `Use(ContainerBackendSelection.Named(...))`). The named backend is probed: an unknown name lists what is
    registered, and an unusable one fails with its own diagnostics. There is no fallback.
-3. **Automatic detection** — every registered backend is probed in registration order and the first
-   *available and compatible* one wins. When none is usable the exception lists each backend's
-   availability, version and missing components, plus the `PURVIEW_CONTAINERS_BACKEND` values that would
-   work.
+3. **Automatic detection** — every registered backend is probed in **auto-priority** order and the first
+   *available and compatible* one wins. A backend positions itself with `IContainerBackendPreference`
+   (lower `AutoPriority` first; a backend without it counts as 0, so registration order is preserved for
+   ties). The WSL Containers backend declares a lower priority than Docker, so a machine that can run both
+   prefers WSLC. When none is usable the exception lists each backend's availability, version and missing
+   components, plus the `PURVIEW_CONTAINERS_BACKEND` values that would work.
 
 Resolution is cached per process, so probes run once; `Reset()` (tests) and `Register`/`Use` invalidate the
 cache. Package consumers get registration from the generated module initializer in

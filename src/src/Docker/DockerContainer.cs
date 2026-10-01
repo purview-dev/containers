@@ -93,7 +93,7 @@ public sealed class DockerContainer : IContainer
 		// Testcontainers exposes a single argv exec overload, so a requested working directory is applied
 		// by executing through the shell.
 		var argv = options?.WorkingDirectory is string workingDirectory
-			? new[] { "sh", "-c", $"cd {Quote(workingDirectory)} && {string.Join(' ', command.Select(Quote))}" }
+			? ["sh", "-c", $"cd {Quote(workingDirectory)} && {string.Join(' ', command.Select(Quote))}"]
 			: command;
 
 		var result = await Handle.ExecAsync(argv, timeoutSource.Token).ConfigureAwait(false);
@@ -213,6 +213,6 @@ public sealed class DockerContainer : IContainer
 			TcStates.Created => ContainerState.Created,
 			TcStates.Running or TcStates.Paused or TcStates.Restarting => ContainerState.Running,
 			TcStates.Exited or TcStates.Dead => ContainerState.Exited,
-			_ => ContainerState.Invalid,
+			TcStates.Undefined or _ => ContainerState.Invalid,
 		};
 }

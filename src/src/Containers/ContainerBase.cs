@@ -7,8 +7,6 @@ namespace Purview.Containers;
 /// </summary>
 public abstract class ContainerBase : IContainer
 {
-	readonly IContainerConfiguration _configuration;
-	readonly IContainerBackend? _backend;
 	IContainer? _container;
 	int _started;
 	int _disposed;
@@ -21,8 +19,8 @@ public abstract class ContainerBase : IContainer
 	protected ContainerBase(IContainerConfiguration configuration, IContainerBackend? backend = null)
 	{
 		ArgumentNullException.ThrowIfNull(configuration);
-		_configuration = configuration;
-		_backend = backend;
+		Configuration = configuration;
+		Backend = backend;
 		Name = ContainerName.Generate(configuration);
 	}
 
@@ -30,10 +28,10 @@ public abstract class ContainerBase : IContainer
 	/// The backend that will create the container, or <c>null</c> to resolve it on
 	/// <see cref="StartAsync" />.
 	/// </summary>
-	protected IContainerBackend? Backend => _backend;
+	protected IContainerBackend? Backend { get; }
 
 	/// <summary>The immutable configuration this container was built from.</summary>
-	protected IContainerConfiguration Configuration => _configuration;
+	protected IContainerConfiguration Configuration { get; }
 
 	/// <summary>The started backend container.</summary>
 	/// <exception cref="InvalidOperationException">The container has not been started.</exception>
@@ -50,7 +48,7 @@ public abstract class ContainerBase : IContainer
 	public ContainerState State => _container?.State ?? ContainerState.Created;
 
 	/// <inheritdoc />
-	public string Image => _configuration.Image;
+	public string Image => Configuration.Image;
 
 	/// <inheritdoc />
 	public virtual async Task StartAsync(CancellationToken cancellationToken = default)
@@ -61,7 +59,7 @@ public abstract class ContainerBase : IContainer
 			return;
 		}
 
-		var backend = _backend ?? await ContainerBackends.ResolveAsync(cancellationToken).ConfigureAwait(false);
+		var backend = Backend ?? await ContainerBackends.ResolveAsync(cancellationToken).ConfigureAwait(false);
 		_container = backend.CreateContainer(WithResolvedName());
 		await _container.StartAsync(cancellationToken).ConfigureAwait(false);
 	}
@@ -128,6 +126,6 @@ public abstract class ContainerBase : IContainer
 	/// </summary>
 	IContainerConfiguration WithResolvedName()
 	{
-		return _configuration is ContainerConfiguration concrete ? concrete with { Name = Name } : _configuration;
+		return Configuration is ContainerConfiguration concrete ? concrete with { Name = Name } : Configuration;
 	}
 }

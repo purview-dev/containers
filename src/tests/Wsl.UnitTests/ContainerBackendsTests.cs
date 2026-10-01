@@ -65,6 +65,43 @@ public class ContainerBackendsTests
 	}
 
 	[Test]
+	public async Task ResolveAsync_PrefersTheLowestAutoPriority()
+	{
+		using RegistryScope scope = new();
+		ContainerBackends.Register(new FakeBackend("deprioritized", autoPriority: 100));
+		ContainerBackends.Register(new FakeBackend("preferred", autoPriority: 0));
+
+		var resolved = await ContainerBackends.ResolveAsync();
+
+		await Assert.That(resolved.Name).IsEqualTo("preferred");
+	}
+
+	[Test]
+	public async Task ResolveAsync_TreatsABackendWithoutAPreferenceAsNeutral()
+	{
+		using RegistryScope scope = new();
+		ContainerBackends.Register(new FakeBackend("deprioritized", autoPriority: 100));
+		ContainerBackends.Register(new PlainBackend("neutral"));
+
+		var resolved = await ContainerBackends.ResolveAsync();
+
+		await Assert.That(resolved.Name).IsEqualTo("neutral");
+	}
+
+	[Test]
+	public async Task ResolveAsync_NamedSelectionIgnoresAutoPriority()
+	{
+		using RegistryScope scope = new();
+		ContainerBackends.Register(new FakeBackend("preferred", autoPriority: 0));
+		ContainerBackends.Register(new FakeBackend("deprioritized", autoPriority: 100));
+
+		ContainerBackends.Use(ContainerBackendSelection.Named("deprioritized"));
+		var resolved = await ContainerBackends.ResolveAsync();
+
+		await Assert.That(resolved.Name).IsEqualTo("deprioritized");
+	}
+
+	[Test]
 	public async Task ResolveAsync_SkipsAnUnusableBackend()
 	{
 		using RegistryScope scope = new();
@@ -206,9 +243,13 @@ public class ContainerBackendsTests
 		public string Extra { get; init; } = string.Empty;
 	}
 
-	sealed class FakeBackend(string name, bool isAvailable = true, bool isCompatible = true) : IContainerBackend
+	sealed class FakeBackend(string name, bool isAvailable = true, bool isCompatible = true, int autoPriority = 0)
+		: IContainerBackend,
+			IContainerBackendPreference
 	{
 		public string Name { get; } = name;
+
+		public int AutoPriority { get; } = autoPriority;
 
 		public int Probes { get; private set; }
 
@@ -227,6 +268,17 @@ public class ContainerBackendsTests
 				)
 			);
 		}
+	}
+
+	/// <summary>A backend that does not implement <see cref="IContainerBackendPreference" />.</summary>
+	sealed class PlainBackend(string name) : IContainerBackend
+	{
+		public string Name { get; } = name;
+
+		public IContainer CreateContainer(IContainerConfiguration configuration) => throw new NotSupportedException();
+
+		public Task<ContainerBackendInfo> GetInfoAsync(CancellationToken cancellationToken = default) =>
+			Task.FromResult(new ContainerBackendInfo(Name, IsAvailable: true, IsCompatible: true, "1.0", []));
 	}
 
 	sealed class ThrowingBackend(string name) : IContainerBackend

@@ -8,8 +8,11 @@ A Testcontainers-style library for .NET that runs throwaway Linux containers for
 > **Two backends, one API.** Containers are created through the backend-neutral `Purview.Containers`
 > abstractions, so the same test suite runs on **WSL Containers** (`Purview.Containers.Wsl`) or
 > **Docker** (`Purview.Containers.Docker`, driven by Testcontainers). Selection is automatic by default
-> and can be pinned with `PURVIEW_CONTAINERS_BACKEND` — which is how a developer machine uses WSLC and a
-> Linux CI runner uses Docker without changing a line of test code.
+> and can be pinned with `PURVIEW_CONTAINERS_BACKEND`. A plain `net10.0` project — no Windows target
+> framework needed — references `Purview.Containers.Wsl` and gets WSLC on a Windows developer machine
+> and Docker on a Linux CI runner **without changing a line of test code or configuration**: the package
+> is multi-target and its `net10.0` facade loads the WSLC implementation at run time on Windows and
+> reports `wsl` as unavailable everywhere else.
 >
 > **[Backends: WSLC or Docker](docs/wiki/Backends.md)** — comparison, side-by-side project setup, CI
 > example and troubleshooting.
@@ -36,9 +39,10 @@ Pick a backend — see [Backends: WSLC or Docker](docs/wiki/Backends.md) for the
 
 - Windows 10/11 with **WSL Containers**, installed via `wsl --install --no-distribution` (verified against
   WSL 3.0.1.0).
-- A consuming project that is a **.NET 11 project targeting Windows specifically** —
-  `net11.0-windows10.0.19041.0`, x64 or arm64. The `Purview.Containers.Wsl` package ships MSBuild defaults
-  for the supporting settings.
+- A consuming project that is **.NET 10 or later**. A platform-neutral `net10.0` project binds the
+  portable facade and gets automatic WSLC-or-Docker selection; a Windows target framework
+  (`net10.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. The
+  `Purview.Containers.Wsl` package ships MSBuild defaults for the supporting settings.
 
 **Docker backend**
 
@@ -171,7 +175,7 @@ The project documentation lives in [`docs/wiki`](docs/wiki/Home.md) and is publi
 
 - [Getting Started](docs/wiki/Getting-Started.md) — prerequisites, first container, first module.
 - [Backends: WSLC or Docker](docs/wiki/Backends.md) — how to choose, side-by-side project setup, CI example, troubleshooting.
-- [Consumer Requirements](docs/wiki/Consumer-Requirements.md) — the .NET 11 + Windows target framework contract, the `PCC0001`/`PCC0002` guards, and the CI workarounds.
+- [Consumer Requirements](docs/wiki/Consumer-Requirements.md) — the target-framework contract, the `PCC0001`/`PCC0002` guards, and the CI workarounds.
 - [Architecture](docs/wiki/Architecture.md) — the shared session model, concurrency and cleanup decisions.
 - [Lifecycle](docs/wiki/Lifecycle.md), [Networking](docs/wiki/Networking.md), [Wait Strategies](docs/wiki/Wait-Strategies.md).
 - [Modules](docs/wiki/Modules.md) — the module contract and every shipped module.

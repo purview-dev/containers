@@ -64,10 +64,11 @@ This wiki is the project documentation hub. The packages are published under the
 - **Docker backend:** any reachable Docker daemon (Docker Desktop, Docker Engine in WSL2, or a CI runner).
   Verify with `docker info`.
 - .NET SDK 11 to build (the repository pins `11.0.100-rc.1.26425.128` in `global.json`).
-- A consuming project must be a **.NET 11 project targeting Windows specifically** when it uses the
-  **WSL Containers backend**: `net11.0-windows10.0.19041.0`, built for x64 or arm64, with
-  `WindowsSdkPackageVersion` `10.0.26100.80` or later. The abstractions and the service modules target
-  `net10.0` and are portable, but they need a backend package to run — see
+- A consuming project must be a **.NET 10 or later** project when it uses the **WSL Containers backend**.
+  The recommended shape is platform-neutral (`net10.0`): it binds the portable facade and gets automatic
+  WSLC-or-Docker selection. A Windows target framework (`net10.0-windows10.0.19041.0`, x64 or arm64) binds
+  the implementation directly. The abstractions and the service modules target `net10.0` and are portable,
+  but they need a backend package to run — see
   [Backends: WSLC or Docker](Backends.md) for the side-by-side setup. The full contract, the exact errors
   raised when it is not met, and the `EnableWindowsTargeting` workaround for non-Windows CI agents are in
   [Consumer Requirements](Consumer-Requirements.md).

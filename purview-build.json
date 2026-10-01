@@ -30,13 +30,21 @@
 				"purview-logo-light.png",
 				"buildTransitive/Purview.Containers.Docker.props"
 			],
+			// Purview.Containers.Wsl is multi-target: lib/net10.0 is the portable facade, and
+			// lib/net10.0-windows10.0.19041 is the WSLC implementation. The portable consumer loads
+			// that implementation (plus the WSLC projection, its Windows SDK dependencies and the
+			// native SDK) from payload/<rid>/ via the buildTransitive targets.
 			"purview.containers.wsl": [
-				"lib/$(TFM)/Purview.Containers.Wsl.dll",
-				"lib/$(TFM)/Purview.Containers.Wsl.xml",
+				"lib/net10.0/Purview.Containers.Wsl.dll",
+				"lib/net10.0/Purview.Containers.Wsl.xml",
+				"lib/net10.0-windows10.0.19041/Purview.Containers.Wsl.dll",
+				"lib/net10.0-windows10.0.19041/Purview.Containers.Wsl.xml",
 				"README.md",
 				"purview-logo-light.png",
 				"buildTransitive/Purview.Containers.Wsl.props",
-				"buildTransitive/Purview.Containers.Wsl.targets"
+				"buildTransitive/Purview.Containers.Wsl.targets",
+				"payload/win-x64/*",
+				"payload/win-arm64/*"
 			],
 			"purview.containers.azurite": [
 				"lib/$(TFM)/Purview.Containers.Azurite.dll",

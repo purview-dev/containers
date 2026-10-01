@@ -9,10 +9,12 @@ Everything runs on one of two backends; pick the one that matches your machine â
 [Backends: WSLC or Docker](Backends.md) for the full comparison.
 
 - **WSL Containers backend:** Windows 10/11 with **WSL Containers** (`wsl --install --no-distribution`),
-  verified against WSL **3.0.1.0**. A consuming project must be a **.NET 11 project targeting Windows
-  specifically** â€” `net11.0-windows10.0.19041.0`, x64 or arm64. The `Purview.Containers.Wsl` package ships
-  MSBuild defaults for `WindowsSdkPackageVersion` and `PlatformTarget`; an unsupported target framework
-  fails the build with `PCC0001` and a non-64-bit consumer with `PCC0002`.
+  verified against WSL **3.0.1.0**. A consuming project must be **.NET 10 or later**: a platform-neutral
+  `net10.0` project binds the portable facade and gets automatic WSLC-or-Docker selection, while a Windows
+  target framework (`net10.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. The
+  `Purview.Containers.Wsl` package ships MSBuild defaults for `WindowsSdkPackageVersion` and
+  `PlatformTarget`; an unsupported target framework fails the build with `PCC0001` and a 32-bit Windows
+  consumer with `PCC0002`.
 - **Docker backend:** any reachable Docker daemon, on any platform, with a `net10.0` or later project. No
   Windows target framework and no `PCC` guards apply.
 - Verify the host with `wsl --version` and `wslc version`, or with `docker info`. The library never
@@ -29,7 +31,7 @@ Everything runs on one of two backends; pick the one that matches your machine â
 Reference a backend package for generic containers:
 
 ```bash
-dotnet add package Purview.Containers.Wsl      # WSL Containers (Windows, .NET 11)
+dotnet add package Purview.Containers.Wsl      # WSL Containers (WSLC on Windows, Docker elsewhere)
 dotnet add package Purview.Containers.Docker   # Docker / Testcontainers (any platform)
 ```
 

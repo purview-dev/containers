@@ -9,25 +9,32 @@ Testcontainers dependency.
 dotnet add package Purview.Containers.Wsl
 ```
 
-Reference this package (or a service module) and every container the abstractions create runs on WSLC; it
-registers itself as the `wsl` backend in the consuming assembly.
+Reference this package (or a service module) and containers run on WSLC. The package is
+**multi-target**: a `net10.0` build (a portable facade) and a `net10.0-windows10.0.19041.0` build (the
+implementation). A Windows-targeting project binds the implementation; a `net10.0` project binds the
+facade, which loads the implementation at run time on a Windows host and reports `wsl` as unavailable
+elsewhere — so the **same** test project runs on WSLC on your Windows machine and on
+[`Purview.Containers.Docker`](https://www.nuget.org/packages/Purview.Containers.Docker) in Linux CI
+with no configuration change. It registers itself as the `wsl` backend in the consuming assembly.
 
-> **Running in CI, or on a machine without WSL Containers?** The same tests run on Docker through
-> [`Purview.Containers.Docker`](https://www.nuget.org/packages/Purview.Containers.Docker). Select a backend
-> with `PURVIEW_CONTAINERS_BACKEND=wsl|docker` or `ContainerBackends.Use(...)` — see
+> **Running in CI, or on a machine without WSL Containers?** With `auto` (the default) the backend is
+> reported unavailable and selection falls through to Docker. Pin instead with
+> `PURVIEW_CONTAINERS_BACKEND=wsl|docker` or `ContainerBackends.Use(...)` — see
 > [Backends: WSLC or Docker](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Backends.md).
 
 ## Requirements
 
 - Windows 10/11 with **WSL Containers** (`wsl --install --no-distribution`), verified against WSL 3.0.1.0.
-- **A .NET 11 project targeting Windows specifically** — `net11.0-windows10.0.19041.0`, x64 or arm64.
-  A consuming project that targets anything else fails the build with `PCC0001` (target framework) or
-  `PCC0002` (platform), and without the packages' MSBuild defaults a stale
+- **A .NET 10 project.** The recommended target framework is platform-neutral (`net10.0`): it binds the
+  facade and gives you automatic WSLC-or-Docker selection. A Windows target framework
+  (`net10.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. Anything older than
+  .NET 10, or a Windows TFM below Windows 10.0.19041.0, fails the build with `PCC0001`; a 32-bit
+  Windows consumer fails with `PCC0002`; and without the packages' MSBuild defaults a stale
   `WindowsSdkPackageVersion` fails with `CS1705`.
 - This package supplies the `buildTransitive` defaults for `WindowsSdkPackageVersion` and
-  `PlatformTarget` that every module package inherits, so a consumer usually only chooses a target
-  framework. The full contract, the error reference and the `EnableWindowsTargeting` workaround for
-  non-Windows CI agents are in the
+  `PlatformTarget` that every module package inherits, and (for a platform-neutral consumer on a Windows
+  build host) copies the Windows implementation payload next to the output. The full contract, the error
+  reference and the `EnableWindowsTargeting` workaround for non-Windows CI agents are in the
   [consumer requirements](https://github.com/purview-dev/wsl-containers/blob/main/docs/wiki/Consumer-Requirements.md).
 - Verify the host with `wsl --version` and `wslc version`. The library never installs or updates WSL
   itself; `WslContainerRuntime.GetInfoAsync()` reports what is missing.

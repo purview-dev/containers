@@ -9,10 +9,16 @@ namespace Purview.Containers.Docker;
 /// Docker Engine inside WSL2, a remote daemon, or the daemon a CI runner provides. It drives the daemon
 /// through Testcontainers, so the resource reaper (Ryuk) still cleans up after a crashed test host.
 /// </summary>
-public sealed class DockerContainerBackend : IContainerBackend
+public sealed class DockerContainerBackend : IContainerBackend, IContainerBackendPreference
 {
 	/// <summary>Stable backend identifier.</summary>
 	public string Name => "docker";
+
+	/// <summary>
+	/// Automatic selection preference: a higher value than WSLC, so a machine that can run both prefers
+	/// WSL Containers.
+	/// </summary>
+	public int AutoPriority => 100;
 
 	/// <summary>Factory used by the generated backend registration.</summary>
 	public static DockerContainerBackend Create() => new();
@@ -65,7 +71,7 @@ public sealed class DockerContainerBackend : IContainerBackend
 				{
 					Images.PullPolicy.Always => TcPullPolicy.Always,
 					Images.PullPolicy.Never => TcPullPolicy.Never,
-					_ => TcPullPolicy.Missing,
+					Images.PullPolicy.Missing or _ => TcPullPolicy.Missing,
 				}
 			);
 

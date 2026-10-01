@@ -17,7 +17,7 @@ environment.
 | **Package** | `Purview.Containers.Wsl` | `Purview.Containers.Docker` |
 | **Prerequisite** | Windows 10/11 with WSL Containers (`wsl --install --no-distribution`) | any reachable Docker daemon (Docker Desktop, Docker Engine in WSL2, a VM, or a CI runner) |
 | **Host OS** | Windows only | Windows, Linux, macOS |
-| **Project target framework** | `net11.0-windows10.0.19041.0`, x64 or arm64 | `net10.0` or later, any platform |
+| **Project target framework** | `net10.0` or later, any platform (portable facade), or `net10.0-windows10.0.19041.0`, x64 or arm64 (implementation bound directly) | `net10.0` or later, any platform |
 | **How containers run** | the `Microsoft.WSL.Containers` managed API (daemonless) | the Docker Engine API via Testcontainers |
 | **Images** | a shared store (`%LOCALAPPDATA%\Purview\WslContainers\images`) reused across runs | the daemon's own image store |
 | **Leak protection** | session disposal plus a process-exit hook | the Testcontainers resource reaper (Ryuk) |
@@ -117,7 +117,7 @@ public class CacheTests
 
 The **package reference** decides which runtime executes it. Three project shapes cover every case.
 
-### Option 1 — WSLC on a Windows machine
+### Option 1 — WSLC on a Windows machine, Docker elsewhere (one project)
 
 ```bash
 dotnet add package Purview.Containers.Wsl
@@ -126,8 +126,7 @@ dotnet add package Purview.Containers.Wsl
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net11.0-windows10.0.19041.0</TargetFramework>
-		<PlatformTarget>x64</PlatformTarget><!-- or arm64 -->
+		<TargetFramework>net10.0</TargetFramework><!-- auto: WSLC on Windows, Docker elsewhere -->
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
@@ -137,8 +136,10 @@ dotnet add package Purview.Containers.Wsl
 </Project>
 ```
 
-`WindowsSdkPackageVersion` is supplied by the package. A project that targets anything other than a .NET 11
-Windows framework fails the build with `PCC0001`, and a 32-bit consumer with `PCC0002`; see
+A platform-neutral `net10.0` project binds the portable facade, so it selects WSLC on a Windows host
+and Docker everywhere else. A Windows target framework (`net10.0-windows10.0.19041.0`, x64 or arm64)
+binds the implementation directly. `WindowsSdkPackageVersion` is supplied by the package. A project
+older than .NET 10 fails the build with `PCC0001`, and a 32-bit Windows consumer with `PCC0002`; see
 [Consumer Requirements](Consumer-Requirements.md).
 
 ### Option 2 — Docker anywhere
@@ -163,9 +164,10 @@ dotnet add package Purview.Containers.Docker
 That project restores and builds on Linux, macOS and Windows — no Windows target framework, no
 `WindowsSdkPackageVersion`, no Docker Desktop licence requirement beyond the daemon you already run.
 
-### Option 3 — one project, both backends
+### Option 3 — one project, both backends (auto)
 
-Multi-target, and reference each backend only for the framework it supports:
+Reference both backends from a single **platform-neutral** project. `auto` selects WSLC on a machine that
+can run it and Docker otherwise — no multi-targeting and no conditional references:
 
 ```bash
 dotnet add package Purview.Containers.Wsl
@@ -175,32 +177,25 @@ dotnet add package Purview.Containers.Docker
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFrameworks>net11.0-windows10.0.19041.0;net10.0</TargetFrameworks>
+		<TargetFramework>net10.0</TargetFramework><!-- WSLC on Windows, Docker elsewhere -->
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
-	<ItemGroup Condition="'$(TargetFramework)' == 'net11.0-windows10.0.19041.0'">
+	<ItemGroup>
 		<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.1" />
-	</ItemGroup>
-	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
 		<PackageReference Include="Purview.Containers.Docker" Version="1.0.0-prerelease.1" />
 	</ItemGroup>
 </Project>
 ```
 
-On a Windows host that also runs Docker, reference **both** packages for the same framework and let the
-selection policy choose (WSLC first, Docker next):
+`auto` probes both in priority order (`wsl` before `docker`) and uses the first that is usable, so this
+one project runs on WSLC on a developer's Windows machine and on Docker in a Linux CI job. A Windows
+target framework is still supported when you want the implementation bound at compile time, but it is not
+required.
 
-```xml
-<ItemGroup>
-	<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.1" />
-	<PackageReference Include="Purview.Containers.Docker" Version="1.0.0-prerelease.1" />
-</ItemGroup>
-```
-
-If your code needs a backend-specific API (for example `WslContainerRuntime`, or
-`WslContainerBackend(runtime)` to pin a specific WSLC session) guard it so the portable target still
-compiles:
+If your code needs a Windows-only API the portable facade does not expose (for example `WslContainer`, or
+`WslContainerBackend(runtime)` to pin a specific WSLC session), guard it with `#if WINDOWS` — defined by
+the SDK only for a Windows target framework — so a portable target still compiles:
 
 ```csharp
 #if WINDOWS
@@ -248,7 +243,7 @@ Selection is resolved once per process, in this order:
 | --- | --- | --- | --- |
 | 1 | Pinned instance | `ContainerBackends.Use(new DockerContainerBackend())`, or `WithBackend(...)` on one builder | used as-is: never probed, never substituted |
 | 2 | Named backend | `PURVIEW_CONTAINERS_BACKEND=wsl\|docker\|<name>`, or `ContainerBackends.Use(ContainerBackendSelection.Named("docker"))` | probed; a missing or unusable backend fails with its own diagnostics and **no fallback** |
-| 3 | Automatic detection | the default (`auto`) | every registered backend is probed in registration order; the first *available and compatible* one wins (WSLC before Docker) |
+| 3 | Automatic detection | the default (`auto`) | every registered backend is probed in auto-priority order (`wsl` at 0, `docker` at 100); the first *available and compatible* one wins, so WSLC is preferred over Docker |
 
 ```csharp
 using Purview.Containers;
@@ -302,8 +297,10 @@ jobs:
       - run: dotnet test --configuration Release --no-build
 ```
 
-- Target `net10.0` or later and never `net11.0-windows…` on a Linux job; the Docker backend is portable and
-  the WSLC backend package is Windows-only.
+- On a Linux job, target a platform-neutral framework (`net10.0` or later). The WSL Containers package is
+  portable — its `net10.0` facade loads the WSLC implementation on a Windows host and reports `wsl` as
+  unavailable elsewhere — so one test project can reference both backends and `auto` selects WSLC on a
+  Windows developer machine and Docker on the Linux runner.
 - Keep your integration tests in their own project or category if you want the fast unit tests to stay
   runtime-free; both can run in the same job.
 - Pinning `PURVIEW_CONTAINERS_BACKEND=docker` makes a runner without a usable daemon **fail loudly** with
@@ -375,7 +372,7 @@ using the wrong runtime.
 backend whose package is not referenced by the project.
 
 **`PCC0001` / `PCC0002`** — a build-time guard from the WSL Containers backend package: the consuming project
-does not target a .NET 11 Windows framework, or is 32-bit. See
+is neither .NET 10+ (Windows or platform-neutral), or is a 32-bit Windows consumer. See
 [Consumer Requirements](Consumer-Requirements.md), or switch the project to the Docker backend.
 
 **The same image is pulled twice** — expected when both runtimes are used: WSLC and Docker keep separate
@@ -384,7 +381,7 @@ image stores.
 ## Related
 
 - [Getting Started](Getting-Started.md) — install, first container, first typed module.
-- [Consumer Requirements](Consumer-Requirements.md) — the .NET 11 Windows contract, the guards and the workarounds.
+- [Consumer Requirements](Consumer-Requirements.md) — the target-framework contract, the guards and the workarounds.
 - [Architecture](Architecture.md#backend-selection) — how resolution and registration work internally.
 - [Modules](Modules.md) — the service modules and their readiness strategies.
 

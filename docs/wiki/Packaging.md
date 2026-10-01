@@ -9,20 +9,21 @@ Each package ships exactly:
 
 | Entry | Source |
 | --- | --- |
-| `lib/$(TFM)/Purview.Containers.Wsl.dll` / `lib/$(TFM)/Purview.Containers.<Module>.dll` | The built assembly: `net10.0` for `Purview.Containers` and the service modules, `net11.0-windows10.0.19041` for the WSL Containers backend. |
+| `lib/$(TFM)/Purview.Containers.*.dll` | The built assembly: `net10.0` for `Purview.Containers` and the service modules; `Purview.Containers.Wsl` ships `net10.0` (the portable facade) and `net10.0-windows10.0.19041` (the implementation). |
 | `lib/$(TFM)/Purview.Containers.Wsl.xml` / `lib/$(TFM)/Purview.Containers.<Module>.xml` | XML documentation, generated because `GenerateDocumentationFile` is on for packable projects. |
 | `README.md` | The package's bespoke `Sdk/README.md` (see below). |
 | `purview-logo-light.png` | The shared Purview package icon (`assets/images/purview-logo-light.png`). |
 | `buildTransitive/Purview.Containers.props` / `.targets` | **Abstractions package.** Declares the `PurviewContainersBackends` list and turns it into a generated backend initializer in the consuming assembly. |
 | `buildTransitive/Purview.Containers.Wsl.props` / `.targets` | **WSL Containers backend only.** Defaults `WindowsSdkPackageVersion`/`PlatformTarget` and raises `PCC0001`/`PCC0002` for unsupported consumers. |
 | `buildTransitive/Purview.Containers.Docker.props` | **Docker backend only.** Adds the Docker backend to the `PurviewContainersBackends` list. |
+| `payload/win-x64/*`, `payload/win-arm64/*` | **WSL Containers backend only.** The Windows implementation, the WSLC projection, its Windows SDK dependencies and the native SDK. The `net10.0` facade loads them at run time on a Windows host; the `buildTransitive` targets copy the matching folder to the consumer output. |
 
 Portable PDBs are delivered through the `.snupkg`, never inside the `.nupkg`.
 
 `$(TFM)` is expanded per shipped framework: `Purview.Containers`, `Purview.Containers.Docker` and the
-service modules ship `lib/net10.0/`, and `Purview.Containers.Wsl` ships
-`lib/net11.0-windows10.0.19041/`, so only the WSL Containers backend is a **.NET 11, Windows-only**
-package. Consumers must target a matching framework; see
+service modules ship `lib/net10.0/`; `Purview.Containers.Wsl` ships both `lib/net10.0/` (the facade)
+and `lib/net10.0-windows10.0.19041/` (the implementation), with the `payload/` folders alongside.
+Every package therefore restores on a portable `net10.0` project. Consumers must target .NET 10+; see
 [Consumer Requirements](Consumer-Requirements.md).
 
 ## Package metadata

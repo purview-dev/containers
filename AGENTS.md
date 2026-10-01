@@ -24,12 +24,14 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 | --- | --- |
 | `src/WSLTestContainers.slnx` | Canonical solution for restore, build, test and pack |
 | `src/src/Containers` | Backend-neutral abstractions (`Purview.Containers`, `net10.0`): `IContainer`/`ContainerConfiguration`, `ContainerBuilder`, `ContainerBase`, `IContainerBackend`/`ContainerBackends`, wait strategies, images, networking, mounts, diagnostics |
-| `src/src/Wsl` | WSL Containers backend (`Purview.Containers.Wsl`, `net11.0-windows10.0.19041.0`): `WslContainerBackend`, the shared session runtime, `WslContainer`, `WslContainerSession` |
+| `src/src/Wsl` | WSL Containers backend (`Purview.Containers.Wsl`, multi-target `net10.0` facade + `net10.0-windows10.0.19041.0` implementation): `WslContainerBackend`, the shared session runtime, `WslContainer`, `WslContainerSession`, and the portable facade (`WslPayload`, `*.Facade.cs`) that loads the implementation at run time |
 | `src/src/Docker` | Docker backend (`Purview.Containers.Docker`, `net10.0`): `DockerContainerBackend` + `DockerContainer` over Testcontainers |
 | `src/src/<Module>` | Service modules (`Purview.Containers.<Module>`, `net10.0`); each is a thin layer over the abstractions and carries a bespoke `Sdk/README.md` |
 | `src/src/<Project>/Sdk` | Package-only assets. `Sdk/README.md` is packed as the package README (suppressing the repo-root README); `Sdk/buildTransitive/**` ships MSBuild assets to consumers (the abstractions' backend registration, each backend package's own registration entry, and the WSL backend's consumer defaults and guards) |
 | `src/tests` | TUnit unit (`*.UnitTests`) and container integration (`*.IntegrationTests`) projects: the WSLC suites need a WSLC host, `Docker.IntegrationTests` and `Modules.DockerIntegrationTests` need a Docker daemon |
 | `spikes/WslcSpikes` | Phase 0 investigation harness (`s1`..`s14` probes); not part of the test run |
+| `spikes/DynamicLoadSpike` | Phase 0 feasibility probe for the portable facade: loads the WSLC projection from a local payload and drives a session from a plain `net10.0` process; not part of the test run |
+| `spikes/PortableConsumerSpike` | Acceptance probe for the portable facade: a `net10.0` project that binds the facade and runs a real WSLC container through a `wslc/` payload; not part of the test run |
 | `docs/wiki` | User-facing documentation wiki, aggregated by the purview-dev website. `Backends.md` is the consumer guide to choosing and configuring WSLC or Docker |
 | `samples/getting-started` | Runnable consumer-shaped samples (WSLC and Docker) built with the solution; `just sample-wsl` / `just sample-docker` |
 | `mkdocs.yml` | Wiki site configuration (`docs_dir: docs/wiki`) |
@@ -65,10 +67,11 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   (`ContainerNotSupportedException`).
 - **One backend registry per process** (`ContainerBackends`): backend packages register themselves through
   the generated module initializer, `ResolveAsync()` returns the pinned backend, the
-  `PURVIEW_CONTAINERS_BACKEND`-selected backend, or the first *usable* registered backend (probing each
-  one), and an empty/unusable registry throws `ContainerBackendUnavailableException` naming the fix. A
-  named or pinned backend never silently falls back. A module must never reference a backend package — it
-  resolves through the registry.
+  `PURVIEW_CONTAINERS_BACKEND`-selected backend, or the first *usable* registered backend in
+  auto-priority order (`IContainerBackendPreference.AutoPriority`, lowest first; `wsl` is 0 and `docker`
+  is 100, so WSLC is preferred when both are usable), and an empty/unusable registry throws
+  `ContainerBackendUnavailableException` naming the fix. A named or pinned backend never silently falls
+  back. A module must never reference a backend package — it resolves through the registry.
 - **`DisposeAsync` is idempotent** and never terminates the shared session; a process-exit hook disposes the
   session so its name is released.
 - **Secrets use `Secret`** and must never reach logs, names, `ToString()` or diagnostics (they are redacted).
@@ -76,18 +79,20 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 ## Consumer requirements and compatibility
 
 - The packages split by framework: `Purview.Containers` (abstractions) and the service modules target
-  **`net10.0`** on any platform, while `Purview.Containers.Wsl` is the **.NET 11, Windows-only** backend
-  (`net11.0-windows10.0.19041.0`). `src/src/Directory.Build.props` sets the `net10.0` subtree default and
-  `Wsl.csproj` overrides it; `src/tests` keeps the Windows target because the tests drive WSLC. The
-  contract, the failures that enforce it and the CI workarounds are documented in
+  **`net10.0`** on any platform. `Purview.Containers.Wsl` is **multi-target**: `net10.0` (a portable
+  facade) and `net10.0-windows10.0.19041.0` (the WSLC implementation). `src/src/Directory.Build.props`
+  sets the `net10.0` subtree default and `Wsl.csproj` adds the Windows build; `src/tests` keeps the
+  Windows target because the tests drive WSLC and therefore bind the implementation. The contract, the
+  failures that enforce it and the CI workarounds are documented in
   [Consumer Requirements](docs/wiki/Consumer-Requirements.md); update that page whenever a target
-  framework, the `buildTransitive` defaults or the `PCC0001`/`PCC0002` guards change.
+  framework, the `buildTransitive` defaults, the payload layout or the `PCC0001`/`PCC0002` guards change.
 - `Purview.Containers.Wsl` ships `Sdk/buildTransitive/Purview.Containers.Wsl.{props,targets}` so consumers
-  inherit `WindowsSdkPackageVersion`/`PlatformTarget` defaults and a clear error for an unsupported
-  target framework (`PCC0001`) or a 32-bit consumer (`PCC0002`). Those assets are framework-agnostic, so
-  NuGet no longer raises `NU1202` at restore time — the guards are the fail-fast path. Keep them, and
-  keep the `RequiredContent` entries that declare them. **These assets must never flow to a `net10.0`
-  consumer** (a Docker-backed one) or `PCC0001` fires on Linux; they belong to the WSL backend package only.
+  inherit `WindowsSdkPackageVersion`/`PlatformTarget` defaults, a clear error for an unsupported target
+  framework (`PCC0001`) or a 32-bit Windows consumer (`PCC0002`), and — for a platform-neutral consumer
+  on a Windows build host — a copy of the WSLC implementation payload (`wslc/`) that the `net10.0` facade
+  loads at run time. Those assets are framework-agnostic, so NuGet never raises `NU1202` at restore time;
+  the guards are the fail-fast path. Keep them, and keep the `RequiredContent` entries (including
+  `payload/**`) that declare them. They belong to the WSL backend package only.
 - `Purview.Containers` ships `Sdk/buildTransitive/Purview.Containers.{props,targets}`, which turn
   the `PurviewContainersBackends` list (each backend package appends its own entry) into a generated
   module initializer in the consuming assembly. That is how a package consumer's process discovers its
@@ -140,9 +145,9 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   exclusively locks its image-store VHD, so parallel modules fail with `0x80070020`.
 - Use the shared `WslcTest` helper in `src/tests/SharedTestingFramework` for integration skip/availability
   checks. Unit tests may use the modules' `BuildConfigurationForTesting()` internal hook.
-- `Wsl.UnitTests/ConsumerRequirementsTests.cs` guards the published target framework
-  (`.NETCoreApp,Version=v11.0` plus `Windows10.0.19041.0`); keep it in step with
-  [Consumer Requirements](docs/wiki/Consumer-Requirements.md).
+- `Wsl.UnitTests/ConsumerRequirementsTests.cs` guards the published target framework of the Windows
+  build (`.NETCoreApp,Version=v10.0` plus `Windows10.0.19041.0`), which the test project binds; keep it
+  in step with [Consumer Requirements](docs/wiki/Consumer-Requirements.md).
 - `just verify-consumers` packs and then builds throwaway consumer projects to assert the documented
   guard errors and workarounds. It restores from nuget.org, so it stays out of the `[Category=Unit]`
   filter and is a local/explicit step.

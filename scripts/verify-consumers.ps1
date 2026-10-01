@@ -19,17 +19,18 @@
 	  05  a module package with no settings (defaults are transitive)  -> builds
 	  06  net8.0-windows + AssetTargetFallback escape hatch           -> PCC0001 (the hatch does not work)
 	  07  net8.0-windows without the escape hatch                     -> PCC0001
-	  08  plain net11.0 (not Windows-specific)                        -> PCC0001
+	  08  plain net11.0 (platform-neutral facade)                     -> builds, wsl registration generated
 	  09  ...with PlatformTarget=AnyCPU (corrected to x64)            -> builds, wslcsdk.dll copied
 	  10  the net11.0-windows shorthand TFM (no OS version)           -> PCC0001
 	  11  multi-targeting with a conditional PackageReference          -> builds
-	  12  multi-targeting with an unconditional PackageReference       -> PCC0001
+	  12  multi-targeting with an unconditional PackageReference       -> builds (both inner builds supported)
 	  13  net10.0 + portable abstractions                             -> builds
 	  14  net10.0 + Docker backend                                    -> builds, backend registration generated
 	  15  net10.0 + service module (no backend package)               -> builds
 	  16  net11.0 windows + both backends (auto detection)            -> builds, both registrations generated
 	  17  the documented backend example, on WSL Containers          -> builds
 	  18  the documented backend example, on Docker (net10.0)         -> builds
+	  19  plain net10.0 + WSL backend (portable facade, auto WSLC/Docker) -> builds, wsl registration generated
 
 .PARAMETER FeedPath
 	Folder holding the packed .nupkg files. Defaults to <repo>/artifacts.
@@ -319,9 +320,10 @@ $cases = @(
 		-Framework "<TargetFramework>$net8Windows</TargetFramework>" `
 		-Properties "$sdkVersion$x64" -Expect 'PCC0001'
 
-	New-ConsumerCase -Id '08' -Name 'plain net11.0 (not Windows-specific)' `
+	New-ConsumerCase -Id '08' -Name 'plain net11.0 (platform-neutral facade)' `
 		-Framework '<TargetFramework>net11.0</TargetFramework>' `
-		-Properties "$sdkVersion$x64" -Expect 'PCC0001'
+		-Sources @{ 'Smoke.Portable.cs' = $portableSource } `
+		-RequireText 'WslContainerBackend.Create()'
 
 	New-ConsumerCase -Id '09' -Name 'net11 windows + PlatformTarget=AnyCPU' `
 		-Properties "$sdkVersion<PlatformTarget>AnyCPU</PlatformTarget>" -RequireFile 'wslcsdk.dll'
@@ -341,8 +343,7 @@ $cases = @(
 		-Framework "<TargetFrameworks>net11.0;$net11Windows</TargetFrameworks>" `
 		-Properties '<EnableDefaultCompileItems>false</EnableDefaultCompileItems>' `
 		-Items $multiTargetItems `
-		-Sources @{ 'Smoke.Windows.cs' = $apiSource; 'Smoke.Portable.cs' = $portableSource } `
-		-Expect 'PCC0001'
+		-Sources @{ 'Smoke.Windows.cs' = $apiSource; 'Smoke.Portable.cs' = $portableSource }
 
 	New-ConsumerCase -Id '13' -Name 'net10 + portable abstractions' `
 		-Framework '<TargetFramework>net10.0</TargetFramework>' `
@@ -374,6 +375,11 @@ $cases = @(
 		-Framework '<TargetFramework>net10.0</TargetFramework>' `
 		-Package 'Purview.Containers.Docker' `
 		-Sources @{ 'Smoke.cs' = $documentedBackendSource }
+
+	New-ConsumerCase -Id '19' -Name 'plain net10.0 + WSL backend (portable facade, auto WSLC/Docker)' `
+		-Framework '<TargetFramework>net10.0</TargetFramework>' `
+		-Sources @{ 'Smoke.Portable.cs' = $portableSource } `
+		-RequireText 'WslContainerBackend.Create()'
 )
 
 

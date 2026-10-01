@@ -34,15 +34,10 @@ public readonly record struct ContainerBackendSelection
 	/// Parses a configuration value. <c>null</c>, empty, whitespace and <c>auto</c> (case-insensitive)
 	/// mean automatic detection; any other value names a backend.
 	/// </summary>
-	public static ContainerBackendSelection Parse(string? value)
-	{
-		if (string.IsNullOrWhiteSpace(value) || string.Equals(value.Trim(), "auto", StringComparison.OrdinalIgnoreCase))
-		{
-			return Auto;
-		}
-
-		return Named(value);
-	}
+	public static ContainerBackendSelection Parse(string? value) =>
+		string.IsNullOrWhiteSpace(value) || string.Equals(value.Trim(), "auto", StringComparison.OrdinalIgnoreCase)
+			? Auto
+			: Named(value);
 
 	/// <summary>Reads the selection from the <c>PURVIEW_CONTAINERS_BACKEND</c> environment variable.</summary>
 	public static ContainerBackendSelection FromEnvironment() =>

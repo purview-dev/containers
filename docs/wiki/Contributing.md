@@ -8,8 +8,9 @@ request.
 - Windows with **WSL Containers** for integration tests; see [Getting Started](Getting-Started.md).
 - .NET SDK 11 (pinned in `global.json` as `11.0.100-rc.1.26425.128`).
 - The library projects split by framework: `src/src/Directory.Build.props` sets `net10.0` for the
-  backend-neutral abstractions and the service modules, and `src/src/Wsl/Wsl.csproj` overrides it to
-  `net11.0-windows10.0.19041.0` because the WSL Containers projection is Windows-only. `src/tests` keeps
+  backend-neutral abstractions and the service modules. `src/src/Wsl/Wsl.csproj` is multi-target
+  (`net10.0` facade + `net10.0-windows10.0.19041.0` implementation) because the WSL Containers projection
+  is Windows-only. `src/tests` keeps
   the Windows target (`src/Directory.Build.props`), which also sets `EnableWindowsTargeting=true` so the
   solution builds on the Linux CI agent. Do not remove that property: without it the shared pipeline
   fails with `NETSDK1100`. See [Consumer Requirements](Consumer-Requirements.md).

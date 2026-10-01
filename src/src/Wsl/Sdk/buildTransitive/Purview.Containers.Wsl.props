@@ -9,7 +9,7 @@
 
   Why: Microsoft.WSL.Containers 3.0.1 ships a C#/WinRT projection built against
   Microsoft.Windows.SDK.NET 10.0.26100.79. The Windows targeting pack resolved for
-  net11.0-windows10.0.19041.0 is older (10.0.19041.x), which fails to compile with CS1705
+  a net10.0-windows10.0.19041.0 target is older (10.0.19041.x), which fails to compile with CS1705
   (the projection "uses 'Microsoft.Windows.SDK.NET' which has a higher version than
   referenced assembly"). Pinning 10.0.26100.80 (the nearest published version) resolves it.
   NOTE: NuGet only auto-imports buildTransitive/<PackageId>.props and buildTransitive/<PackageId>.targets.
