@@ -180,7 +180,11 @@ Commit messages follow Conventional Commits enforced by the `commit-msg` lefthoo
   `purview-dev/build/.github/workflows/purview-build.yml`, with pack and validation enabled.
 - `.github/workflows/release.yml` runs the shared release pipeline with `release-mode: NuGet` on a push to
   `main`.
-- Both workflows pin `dotnet-version` to `global.json`'s `sdk.version`; keep them in sync, and keep
+- `.github/workflows/integration-wsl.yml` is a **manual** (`workflow_dispatch`) workflow that runs the
+  WSLC integration suites on a self-hosted Windows runner with the custom `wslc` label (documented in
+  [Testing](docs/wiki/Testing.md)); `.github/actionlint.yaml` declares that label. It is never attached to
+  `pull_request` or `push`.
+- The workflows pin `dotnet-version` to `global.json`'s `sdk.version`; keep them in sync, and keep
   `purview-build.json` pointing at `src/WSLTestContainers.slnx`. The shared workflow runs on
   `ubuntu-latest`, which is why `EnableWindowsTargeting=true` must stay in `src/Directory.Build.props`.
 

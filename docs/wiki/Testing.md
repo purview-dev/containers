@@ -61,6 +61,39 @@ image cache (no per-process re-pull) and is the fastest option.
 In Visual Studio, untick **Run Tests in Parallel** (or set *Maximum Parallel Test Projects* to 1) before
 running the WSLC integration suites.
 
+## Running the WSLC suites in CI (manual)
+
+The Docker half of the matrix runs on every pull request. The WSLC half cannot: it needs a Windows host
+with WSL Containers, which no GitHub-hosted runner provides, so it is a **manual** workflow —
+`.github/workflows/integration-wsl.yml` — that runs on a self-hosted runner.
+
+Trigger it from **Actions → Integration (WSL Containers) → Run workflow**, or:
+
+```bash
+gh workflow run "Integration (WSL Containers)" --ref main
+gh run watch
+```
+
+It runs `Wsl.IntegrationTests` and then the seven service-module suites (`PostgreSql`, `Redis`, `MsSql`,
+`MySql`, `RabbitMq`, `Azurite`, `Nats`) one project at a time, so the shared WSLC image store is never
+contended. Two optional inputs: `ref` (a branch, tag or SHA other than the selected one) and `filter`
+(a TUnit treenode filter, defaulting to every test).
+
+### Self-hosted runner prerequisites
+
+Register a **Windows x64** runner for this repository (or organisation) with the labels
+`self-hosted` and the custom **`wslc`** label, and install on that machine:
+
+- Windows 10/11 with **WSL Containers**: `wsl --install --no-distribution`, verified with
+  `wsl --version` and `wslc version`.
+- The **.NET 11 SDK** the repository pins (`11.0.100-rc.1.26425.128`).
+
+The job's first step prints `wsl --version` and `wslc version`, so a mis-provisioned runner fails
+immediately instead of surfacing as container timeouts. The WSLC suites skip themselves when the host
+lacks the WSL Containers components, so a runner without it would report successes-with-skips rather than
+real coverage — the host check is what makes that visible. `actionlint` is told about the custom label in
+`.github/actionlint.yaml`.
+
 ## Expectations
 
 - The `Wsl.IntegrationTests` module runs many real containers in one session and can take several
