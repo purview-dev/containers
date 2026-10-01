@@ -23,6 +23,7 @@
 	</Folder>
 
 	<Folder Name="/samples/">
+		<Project Path="../samples/getting-started/AutoSample/AutoSample.csproj" />
 		<Project Path="../samples/getting-started/DockerSample/DockerSample.csproj" />
 		<Project Path="../samples/getting-started/WslSample/WslSample.csproj" />
 	</Folder>

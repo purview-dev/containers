@@ -30,7 +30,8 @@
 	  16  net11.0 windows + both backends (auto detection)            -> builds, both registrations generated
 	  17  the documented backend example, on WSL Containers          -> builds
 	  18  the documented backend example, on Docker (net10.0)         -> builds
-	  19  plain net10.0 + WSL backend (portable facade, auto WSLC/Docker) -> builds, wsl registration generated
+	  19  plain net10.0 + WSL backend (portable facade, auto) -> builds, wsl registration generated
+	  20  net10.0 + Redis/PostgreSql + both backends (auto)   -> builds, both registrations generated
 
 .PARAMETER FeedPath
 	Folder holding the packed .nupkg files. Defaults to <repo>/artifacts.
@@ -236,6 +237,35 @@ $wslBackendItems = @'
 	</ItemGroup>
 '@
 
+# The "auto" shape documented in docs/wiki/Using-in-Your-Tests.md: a platform-neutral consumer with two
+# service modules and BOTH backends, so the one project runs on WSLC (Windows) and Docker (everywhere else).
+$autoItems = @'
+	<ItemGroup>
+		<PackageReference Include="Purview.Containers.Redis" Version="{{VERSION}}" />
+		<PackageReference Include="Purview.Containers.Wsl" Version="{{VERSION}}" />
+		<PackageReference Include="Purview.Containers.Docker" Version="{{VERSION}}" />
+	</ItemGroup>
+'@
+
+$autoSource = @'
+using Purview.Containers;
+using Purview.Containers.PostgreSql;
+using Purview.Containers.Redis;
+
+namespace Consumer;
+
+public static class Program
+{
+	public static async Task<string> SelectedBackendAsync() => (await ContainerBackends.ResolveAsync()).Name;
+
+	public static RedisBuilder Cache() => new RedisBuilder();
+
+	public static PostgreSqlBuilder Database() => new PostgreSqlBuilder().WithDatabase("app");
+
+	public static void Main() { }
+}
+'@
+
 # Mirrors the container code in the "The same test, either backend" example of docs/wiki/Backends.md, so
 # the documented example is compiled against both backend packages on every run. The test assertion is
 # omitted because the generated consumer project has no test framework.
@@ -276,7 +306,7 @@ function New-ConsumerCase {
 		[hashtable] $Sources = @{ 'Smoke.cs' = $apiSource },
 		[string] $Expect = 'Builds',
 		[string] $RequireFile = '',
-		[string] $RequireText = ''
+		[string[]] $RequireText = @()
 	)
 
 	[pscustomobject]@{
@@ -376,10 +406,17 @@ $cases = @(
 		-Package 'Purview.Containers.Docker' `
 		-Sources @{ 'Smoke.cs' = $documentedBackendSource }
 
-	New-ConsumerCase -Id '19' -Name 'plain net10.0 + WSL backend (portable facade, auto WSLC/Docker)' `
+	New-ConsumerCase -Id '19' -Name 'plain net10.0 + WSL backend (portable facade, auto)' `
 		-Framework '<TargetFramework>net10.0</TargetFramework>' `
 		-Sources @{ 'Smoke.Portable.cs' = $portableSource } `
 		-RequireText 'WslContainerBackend.Create()'
+
+	New-ConsumerCase -Id '20' -Name 'net10.0 + Redis/PostgreSql + both backends (auto, zero-config)' `
+		-Framework '<TargetFramework>net10.0</TargetFramework>' `
+		-Package $modulePackage `
+		-Items $autoItems `
+		-Sources @{ 'Smoke.Auto.cs' = $autoSource } `
+		-RequireText @('WslContainerBackend.Create()', 'DockerContainerBackend.Create()')
 )
 
 
@@ -454,18 +491,20 @@ foreach ($case in $cases) {
 		}
 	}
 
-	if ($passed -and $case.RequireText) {
-		$found = @(
-			Get-ChildItem -Path $directory -Recurse -File -Include *.cs, *.csproj, *.json -ErrorAction SilentlyContinue |
-				Select-String -Pattern $case.RequireText -SimpleMatch -ErrorAction SilentlyContinue
-		)
+	if ($passed -and $case.RequireText.Count -gt 0) {
+		foreach ($pattern in $case.RequireText) {
+			$found = @(
+				Get-ChildItem -Path $directory -Recurse -File -Include *.cs, *.csproj, *.json -ErrorAction SilentlyContinue |
+					Select-String -Pattern $pattern -SimpleMatch -ErrorAction SilentlyContinue
+			)
 
-		if ($found.Count -eq 0) {
-			$passed = $false
-			$signal = "$signal; '$($case.RequireText)' was not generated into the consumer"
-		}
-		else {
-			$signal = "$signal; generated '$($case.RequireText)'"
+			if ($found.Count -eq 0) {
+				$passed = $false
+				$signal = "$signal; '$pattern' was not generated into the consumer"
+			}
+			else {
+				$signal = "$signal; generated '$pattern'"
+			}
 		}
 	}
 

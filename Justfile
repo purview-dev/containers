@@ -131,6 +131,12 @@ sample-wsl:
     echo "Running {{ BLUE }}samples/getting-started/WslSample{{ NORMAL }} (needs WSL Containers)..."
     dotnet run --project samples/getting-started/WslSample/WslSample.csproj
 
+# Runs the auto (zero-config) getting-started sample: picks WSL Containers on Windows or Docker elsewhere
+[group('Samples')]
+sample-auto:
+    echo "Running {{ BLUE }}samples/getting-started/AutoSample{{ NORMAL }} (WSL Containers on Windows, Docker elsewhere)..."
+    dotnet run --project samples/getting-started/AutoSample/AutoSample.csproj
+
 # Runs the Docker getting-started sample: needs a reachable Docker daemon, starts a real container
 [group('Samples')]
 sample-docker:

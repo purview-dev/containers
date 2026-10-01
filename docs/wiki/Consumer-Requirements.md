@@ -238,7 +238,7 @@ because the package keeps a `net10.0-windows10.0.19041` build, but the condition
 
 ## Verifying these requirements
 
-`just verify-consumers` packs the solution and builds nineteen throwaway consumer projects against the
+`just verify-consumers` packs the solution and builds twenty throwaway consumer projects against the
 produced packages, asserting every claim on this page:
 
 | Case | Consumer | Expected outcome |
@@ -262,6 +262,7 @@ produced packages, asserting every claim on this page:
 | 17 | the documented backend example on WSL Containers | builds |
 | 18 | the documented backend example on Docker (`net10.0`) | builds |
 | 19 | a plain `net10.0` consumer of the WSL Containers backend | builds; the `wsl` registration is generated (the portable facade) |
+| 20 | a `net10.0` consumer of two modules with **both** backends (the auto shape) | builds; both registrations are generated |
 
 The script is `scripts/verify-consumers.ps1` and it only writes to the temp folder. It needs network
 access (it restores transitive dependencies from nuget.org), so it is a local/CI-explicit step

@@ -10,6 +10,7 @@ code runs on either runtime; see [Backends: WSLC or Docker](Backends.md).
 ## Guides
 
 - [Getting Started](Getting-Started.md)
+- [Using in your tests (auto)](Using-in-Your-Tests.md)
 - [Backends: WSLC or Docker](Backends.md)
 - [Consumer requirements](Consumer-Requirements.md)
 - [Architecture](Architecture.md)
