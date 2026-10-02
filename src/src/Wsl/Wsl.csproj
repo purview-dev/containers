@@ -15,7 +15,7 @@
 		  A Windows consumer (net10.0-windows… or net11.0-windows…) binds the implementation and behaves
 		  exactly as before; only a platform-neutral consumer gets the facade. The approach rests on the
 		  extracted and tested result that the WSLC projection is a net8.0-windows asset loadable by a
-		  net10.0 process - see spikes/DynamicLoadSpike.
+		  net10.0 process.
 		-->
 		<TargetFramework></TargetFramework>
 		<TargetFrameworks>net10.0;net10.0-windows10.0.19041.0</TargetFrameworks>

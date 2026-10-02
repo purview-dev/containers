@@ -19,7 +19,7 @@ The `Justfile` wraps the common steps:
 
 | Command | What it does |
 | --- | --- |
-| `just build` | `dotnet build src/WSLTestContainers.slnx` (Debug). |
+| `just build` | `dotnet build src/Containers.slnx` (Debug). |
 | `just test` | `dotnet test` across the solution, one test module at a time (see [Testing](Testing.md)). |
 | `just lint-check` / `just lint-fix` | CSharpier check / format over the repository root. |
 | `just pack` | Build (Debug) and `dotnet pack` into `./artifacts`. |
@@ -54,7 +54,7 @@ the run with the failing module's output.
   with `release-mode: NuGet`, which packs, publishes to NuGet and creates the `v<version>` GitHub release.
 
 Both workflows pin `dotnet-version` to the SDK in `global.json` (`11.0.100-rc.1.26425.128`); keep them in
-sync when the SDK is bumped, and keep `purview-build.json` pointing at `src/WSLTestContainers.slnx`.
+sync when the SDK is bumped, and keep `purview-build.json` pointing at `src/Containers.slnx`.
 
 The shared workflow runs on **`ubuntu-latest`**, so the Linux agent builds the portable `net10.0` projects
 and the `net11.0-windows10.0.19041.0` test projects. That only works because `src/Directory.Build.props`

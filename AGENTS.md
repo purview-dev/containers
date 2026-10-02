@@ -22,7 +22,7 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 
 | Path | Purpose |
 | --- | --- |
-| `src/WSLTestContainers.slnx` | Canonical solution for restore, build, test and pack |
+| `src/Containers.slnx` | Canonical solution for restore, build, test and pack |
 | `src/src/Containers` | Umbrella package (`Purview.Containers`, `net10.0`): references `Core` and both backends; no code of its own |
 | `src/src/Core` | Backend-neutral abstractions (`Purview.Containers.Core`, `net10.0`, namespace `Purview.Containers`): `IContainer`/`ContainerConfiguration`, `ContainerBuilder`, `ContainerBase`, `IContainerBackend`/`ContainerBackends`, wait strategies, images, networking, mounts, diagnostics |
 | `src/src/Wsl` | WSL Containers backend (`Purview.Containers.Wsl`, multi-target `net10.0` facade + `net10.0-windows10.0.19041.0` implementation): `WslContainerBackend`, the shared session runtime, `WslContainer`, `WslContainerSession`, and the portable facade (`WslPayload`, `*.Facade.cs`) that loads the implementation at run time |
@@ -30,9 +30,6 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 | `src/src/<Module>` | Service modules (`Purview.Containers.<Module>`, `net10.0`); each is a thin layer over the abstractions and carries a bespoke `Sdk/README.md` |
 | `src/src/<Project>/Sdk` | Package-only assets. `Sdk/README.md` is packed as the package README (suppressing the repo-root README); `Sdk/buildTransitive/**` ships MSBuild assets to consumers (the abstractions' backend registration, each backend package's own registration entry, and the WSL backend's consumer defaults and guards) |
 | `src/tests` | TUnit unit (`*.UnitTests`) and container integration (`*.IntegrationTests`) projects: the WSLC suites need a WSLC host, `Docker.IntegrationTests` and `Modules.DockerIntegrationTests` need a Docker daemon |
-| `spikes/WslcSpikes` | Phase 0 investigation harness (`s1`..`s14` probes); not part of the test run |
-| `spikes/DynamicLoadSpike` | Phase 0 feasibility probe for the portable facade: loads the WSLC projection from a local payload and drives a session from a plain `net10.0` process; not part of the test run |
-| `spikes/PortableConsumerSpike` | Acceptance probe for the portable facade: a `net10.0` project that binds the facade and runs a real WSLC container through a `wslc/` payload; not part of the test run |
 | `docs/wiki` | User-facing documentation wiki, aggregated by the purview-dev website. `Backends.md` is the consumer guide to choosing and configuring WSLC or Docker |
 | `samples/getting-started` | Runnable consumer-shaped samples (WSLC and Docker) built with the solution; `just sample-wsl` / `just sample-docker` |
 | `mkdocs.yml` | Wiki site configuration (`docs_dir: docs/wiki`) |
@@ -188,7 +185,7 @@ Commit messages follow Conventional Commits enforced by the `commit-msg` lefthoo
   [Testing](docs/wiki/Testing.md)); `.github/actionlint.yaml` declares that label. It is never attached to
   `pull_request` or `push`.
 - The workflows pin `dotnet-version` to `global.json`'s `sdk.version`; keep them in sync, and keep
-  `purview-build.json` pointing at `src/WSLTestContainers.slnx`. The shared workflow runs on
+  `purview-build.json` pointing at `src/Containers.slnx`. The shared workflow runs on
   `ubuntu-latest`, which is why `EnableWindowsTargeting=true` must stay in `src/Directory.Build.props`.
 
 ## Completion checklist

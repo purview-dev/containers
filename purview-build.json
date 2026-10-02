@@ -1,6 +1,6 @@
 {
 	"Build": {
-		"Solution": "src/WSLTestContainers.slnx",
+		"Solution": "src/Containers.slnx",
 		"TestRoot": "src/tests",
 		"TestPatterns": "*UnitTests.csproj",
 		"TestProjects": "*Tests.csproj",

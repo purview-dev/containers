@@ -118,56 +118,40 @@ await rabbitMq.StartAsync();
 string amqp = rabbitMq.GetConnectionString();
 ```
 
-> These are the target APIs. The generic container is implemented; the module builders arrive in
-> Phases 3–6. See the docs for the designed surface.
-
-## Key design decisions (verified by spikes)
+## Key design decisions
 
 | Decision | Evidence |
 | --- | --- |
-| One shared process-wide session, shared storage path | image store is keyed by storage path; session start ~20 ms (S2); concurrent sessions can't share the VHD (S18) → auto-fallback to isolated store |
-| Unique session names `wslc-{pid}-{rand}` | session names are machine-reserved (S1, S13) |
-| Default `NetworkingMode = Bridged` | port mappings require Bridged; default is `none` (S4) |
-| Random host ports via native `windowsPort=0` | race-free random assignment (S4) |
-| Serialize session/container lifecycle ops | concurrent `Start` can race (`0x8000FFFF`) (S8) |
-| No Ryuk-style reaper needed | `Session.Dispose()` frees the session; orphans block only their own name (S10, S14) |
-| No container-name DNS | containers reach each other by IP only (S9) |
+| One shared process-wide session, shared storage path | the image store is keyed by storage path; session start is ~20 ms; concurrent sessions cannot share the VHD, so the runtime falls back to an isolated store |
+| Unique session names `wslc-{pid}-{rand}` | session names are machine-reserved |
+| Default `NetworkingMode = Bridged` | port mappings require Bridged; the default is `none` |
+| Random host ports via native `windowsPort=0` | race-free random assignment |
+| Serialize session/container lifecycle ops | a concurrent `Start` can race (`0x8000FFFF`) |
+| No Ryuk-style reaper needed | `Session.Dispose()` frees the session; orphans block only their own name |
+| No container-name DNS | containers reach each other by IP only |
 | `Image`/`WithTag` fail fast | invalid images/tags rejected at configuration time, never at pull time |
 
 ## Repository layout
 
 ```
 src/
-  Wsl/          core runtime + WSL Containers backend (package Purview.Containers.Wsl)
-  PostgreSql/   PostgreSQL module (builder, container, Npgsql connection string)
-  Redis/        Redis module (builder, container, StackExchange.Redis connection string)
-  MsSql/        SQL Server module (builder, container, SqlClient connection string)
-  RabbitMq/     RabbitMQ module (builder, container, AMQP + management endpoints)
-  Azurite/      Azurite module (builder, container, blob/queue/table endpoints)
-  Nats/         NATS module (builder, container, client + monitoring endpoints)
-  MySql/        MySQL module (builder, container, MySqlConnector connection string)
-tests/
-  SharedTestingFramework/   shared WSLC skip/helper for integration tests
-  Wsl.UnitTests/
-  Wsl.IntegrationTests/
-  PostgreSql.UnitTests/
-  PostgreSql.IntegrationTests/
-  Redis.UnitTests/
-  Redis.IntegrationTests/
-  MsSql.UnitTests/
-  MsSql.IntegrationTests/
-  RabbitMq.UnitTests/
-  RabbitMq.IntegrationTests/
-  Azurite.UnitTests/
-  Azurite.IntegrationTests/
-spikes/
-  WslcSpikes/               Phase 0 investigation harness (run: see below)
+  Containers.slnx    canonical solution (restore, build, test, pack)
+  src/
+    Core/         backend-neutral abstractions (Purview.Containers.Core)
+    Wsl/          WSL Containers backend (Purview.Containers.Wsl)
+    Docker/       Docker backend (Purview.Containers.Docker)
+    Containers/   umbrella package (Purview.Containers): Core + both backends
+    PostgreSql/   Redis/    MsSql/    MySql/
+    RabbitMq/     Azurite/  Nats/     service modules
+  tests/          TUnit unit + integration projects (WSLC and Docker suites)
+samples/
+  getting-started/    runnable samples (WslSample, DockerSample, AutoSample)
 docs/
-  wiki/                     project wiki (mkdocs.yml -> docs_dir: docs/wiki)
-    index.md  Home.md  _Sidebar.md  Getting-Started.md  Testing.md
-    Architecture.md  Lifecycle.md  Networking.md  Wait-Strategies.md  Modules.md
-    Packaging.md  Release-Flow.md  Contributing.md  Contributing-Modules.md
-    Wslc-Api-Investigation.md  Wslc-Capability-Matrix.md
+  wiki/               project wiki (mkdocs.yml -> docs_dir: docs/wiki)
+    index.md  Home.md  _Sidebar.md  Getting-Started.md  Using-in-Your-Tests.md
+    Backends.md  Consumer-Requirements.md  Architecture.md  Lifecycle.md
+    Networking.md  Wait-Strategies.md  Modules.md  Testing.md  Packaging.md
+    Release-Flow.md  Contributing.md  Contributing-Modules.md
 ```
 
 ## Documentation
@@ -188,7 +172,7 @@ The project documentation lives in [`docs/wiki`](docs/wiki/Home.md) and is publi
 Every package also ships its own `README.md` (from `src/src/<Project>/Sdk/README.md`), so
 `dotnet add package Purview.Containers.<Module>` brings documentation specific to that package.
 
-The PostgreSQL, Redis, SQL Server and RabbitMQ modules work today:
+All seven service modules work today:
 
 ```csharp
 await using var postgres = new PostgreSqlBuilder()
@@ -275,13 +259,13 @@ just sample-wsl               # needs WSL Containers
 just sample-docker            # needs a Docker daemon
 ```
 
-> The `Wsl.IntegrationTests` module runs 27 real containers in one session and takes ~4
-> minutes because WSLC serialises container operations; expect slow-test warnings while it runs.
+> The `Wsl.IntegrationTests` module starts many real containers in one session and can take several
+> minutes, because WSLC serialises container operations; expect slow-test warnings while it runs.
 
 ### Verifying the consumer contract
 
 ```powershell
-just verify-consumers          # pack, then build 16 throwaway consumer projects against ./artifacts
+just verify-consumers          # pack, then build 21 throwaway consumer projects against ./artifacts
 just verify-consumers -Keep    # same, keeping the generated projects for inspection
 ```
 
@@ -289,14 +273,6 @@ just verify-consumers -Keep    # same, keeping the generated projects for inspec
 the happy path, the shipped `buildTransitive` defaults, the `PCC0001`/`PCC0002` guards, and the
 non-.NET-11 escape hatch that deliberately does not work. It needs network access and is therefore a
 local step rather than part of the `[Category=Unit]` pipeline filter.
-
-## Running the Phase 0 spikes
-
-```powershell
-dotnet build spikes/WslcSpikes/WslcSpikes.csproj
-dotnet run --project spikes/WslcSpikes -- sfull
-# or s1..s14 for individual behaviour probes
-```
 
 ## License
 

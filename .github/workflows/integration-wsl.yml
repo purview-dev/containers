@@ -49,10 +49,10 @@ jobs:
           wslc version
 
       - name: Restore
-        run: dotnet restore src/WSLTestContainers.slnx
+        run: dotnet restore src/Containers.slnx
 
       - name: Build
-        run: dotnet build src/WSLTestContainers.slnx --configuration Release --no-restore
+        run: dotnet build src/Containers.slnx --configuration Release --no-restore
 
       - name: WSLC backend contract
         # Real containers on a shared WSLC session; ~27 tests and ~4 minutes.

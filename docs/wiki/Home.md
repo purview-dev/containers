@@ -107,7 +107,7 @@ example and the troubleshooting reference.
 
 | Path | Purpose |
 | --- | --- |
-| `src/WSLTestContainers.slnx` | Canonical solution for restore, build, test and pack. |
+| `src/Containers.slnx` | Canonical solution for restore, build, test and pack. |
 | `src/src/Containers` | Umbrella package (`Purview.Containers`): references Core and both backends; no code of its own. |
 | `src/src/Core` | Backend-neutral abstractions (`Purview.Containers.Core`, namespace `Purview.Containers`): the container contract, builders and backend selection. |
 | `src/src/Wsl` | WSL Containers backend (`Purview.Containers.Wsl`): containers, images, runtime, networking, mounts, diagnostics. |
@@ -115,7 +115,6 @@ example and the troubleshooting reference.
 | `src/src/<Module>` | Service modules; each carries a bespoke `Sdk/README.md` that ships as the package README. |
 | `src/tests` | TUnit unit and integration test projects (WSLC and Docker suites). |
 | `samples/getting-started` | Runnable WSLC and Docker samples (`just sample-wsl`, `just sample-docker`). |
-| `spikes/WslcSpikes` | Phase 0 investigation harness (`s1`..`s14` behaviour probes). |
 | `docs/wiki` | This wiki, aggregated by the purview-dev website. |
 | `purview-build.json` | Shared `Purview.Build` pipeline configuration, including the exhaustive pack manifest. |
 | `.agents` | Package-delivered agent skills, agents and prompts. |

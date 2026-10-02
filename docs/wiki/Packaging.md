@@ -1,6 +1,6 @@
 # Packaging
 
-Every project under `src/src` is packable and ships as `Purview.Containers.*`; test and spike projects
+Every project under `src/src` is packable and ships as `Purview.Containers.*`; test projects
 never pack. Packages are produced into `./artifacts` with a matching `.snupkg`.
 
 ## What a package contains
@@ -84,7 +84,7 @@ alongside the `Sdk/README.md`. Removing content from a package means removing th
 ## Adding a package
 
 1. Create `src/src/<Name>/<Name>.csproj` with `<IsPackable>true</IsPackable>`, an assembly/package id, a
-   description and tags, and add it to `src/WSLTestContainers.slnx`.
+   description and tags, and add it to `src/Containers.slnx`.
 2. Add `Sdk/README.md` documenting the package (see the existing modules for the shape).
 3. Add the package to `RequiredContent` in `purview-build.json`.
 4. Prove it with `just pack` and `just pipeline-pack-validate`.
