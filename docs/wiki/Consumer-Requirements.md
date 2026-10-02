@@ -9,9 +9,10 @@ The WSL Containers backend package is **multi-target**. It ships a Windows build
 (`net10.0-windows10.0.19041.0`, the implementation, built on the `Microsoft.WSL.Containers`
 projection) and a platform-neutral build (`net10.0`, a facade). A Windows-targeting project binds the
 implementation directly; any other project binds the facade, which builds on **every** platform and, on
-a Windows host, loads the implementation at run time. That is what lets the *same* `net10.0` test
-project run on WSLC on a developer's Windows machine and on Docker in a Linux CI job with no
-configuration change. This page is the authoritative statement of that contract, of the workarounds
+a Windows host, loads the implementation at run time. That is what lets a `net10.0` test project that
+references the WSL backend (or the umbrella `Purview.Containers`, which also brings Docker) run on WSLC on
+a developer's Windows machine and on Docker in a Linux CI job with no configuration change. This page is
+the authoritative statement of that contract, of the workarounds
 that exist for it, and of how each of them is verified.
 
 ## Which package requires what

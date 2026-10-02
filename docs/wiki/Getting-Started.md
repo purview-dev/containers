@@ -28,24 +28,34 @@ Everything runs on one of two backends; pick the one that matches your machine �
 
 ## 1. Reference a package
 
-Reference a backend package for generic containers:
+| Package | Use it when |
+| --- | --- |
+| `Purview.Containers` | The umbrella: `Core` + both backends. One reference, zero config — WSLC on Windows, Docker elsewhere (auto). **Recommended default.** |
+| `Purview.Containers.Wsl` | WSL Containers only — a Windows dev machine with no Docker. |
+| `Purview.Containers.Docker` | Docker only — any platform, CI, Linux/macOS. |
+
+Start with the umbrella:
 
 ```bash
-dotnet add package Purview.Containers.Wsl      # WSL Containers (WSLC on Windows, Docker elsewhere)
-dotnet add package Purview.Containers.Docker   # Docker / Testcontainers (any platform)
+dotnet add package Purview.Containers
 ```
 
-or a service module, which is backend-neutral and needs a backend package alongside it:
+or pick a single backend:
+
+```bash
+dotnet add package Purview.Containers.Wsl      # WSLC only (Windows)
+dotnet add package Purview.Containers.Docker   # Docker only (any platform)
+```
+
+A service module is backend-neutral, so it needs any backend (or the umbrella) alongside it:
 
 ```bash
 dotnet add package Purview.Containers.PostgreSql
-dotnet add package Purview.Containers.Wsl      # ...or Purview.Containers.Docker
+dotnet add package Purview.Containers          # ...or Purview.Containers.Wsl / Purview.Containers.Docker
 ```
 
-> **Want it to just work without choosing a backend?** Add `Purview.Containers` (the umbrella — it brings
-> the abstractions and both backends) to a platform-neutral `net10.0` project and let automatic selection
-> decide — WSLC on a Windows machine, Docker everywhere else, with no code or configuration change. See
-> [Using it in your tests](Using-in-Your-Tests.md).
+The umbrella is the zero-config shape — see [Using it in your tests](Using-in-Your-Tests.md) for the full
+story.
 
 ## 2. Run a generic container
 

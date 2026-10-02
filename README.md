@@ -35,7 +35,10 @@ The WSLC backend is built directly against the `Microsoft.WSL.Containers` NuGet 
 
 ## Prerequisites
 
-Pick a backend — see [Backends: WSLC or Docker](docs/wiki/Backends.md) for the comparison.
+Pick a backend — see [Backends: WSLC or Docker](docs/wiki/Backends.md) for the comparison — or skip the
+choice: reference the umbrella `Purview.Containers` and it brings the abstractions plus both backends,
+selecting WSLC on Windows and Docker elsewhere automatically. Pick a single backend below only when you
+want to fix the runtime.
 
 **WSL Containers backend**
 

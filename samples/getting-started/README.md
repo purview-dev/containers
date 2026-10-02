@@ -30,7 +30,9 @@ They reference the backends as **projects** so they build from a clone with no p
 consumer uses packages instead:
 
 ```bash
-dotnet add package Purview.Containers.Docker    # or Purview.Containers.Wsl
+dotnet add package Purview.Containers             # umbrella: both backends, auto (recommended)
+dotnet add package Purview.Containers.Wsl         # or WSLC only
+dotnet add package Purview.Containers.Docker      # or Docker only
 ```
 
 Because they are project references, no `buildTransitive` assets apply, so each sample registers its
