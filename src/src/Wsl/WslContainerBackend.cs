@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Purview.Containers.Runtime;
 
 namespace Purview.Containers.Wsl;
@@ -18,6 +19,15 @@ public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPr
 		Runtime = runtime;
 	}
 
+	/// <summary>Creates the backend over a runtime configured with the given options.</summary>
+	[SuppressMessage(
+		"Reliability",
+		"CA2000:Dispose objects before losing scope",
+		Justification = "The runtime owns the process-wide session and is released by its process-exit hook; the backend is process-lifetime."
+	)]
+	public WslContainerBackend(WslContainerRuntimeOptions options)
+		: this(new WslContainerRuntime(options)) { }
+
 	/// <summary>Stable backend identifier.</summary>
 	public string Name => "wsl";
 
@@ -28,6 +38,36 @@ public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPr
 
 	/// <summary>Factory used by the generated backend registration.</summary>
 	public static WslContainerBackend Create() => new();
+
+	/// <summary>
+	/// Creates a backend from the runtime options forwarded by the portable facade. The facade cannot pass
+	/// <see cref="WslContainerRuntimeOptions" /> across the payload boundary directly (each build has its own
+	/// copy of the type), so it forwards the individual primitive values instead.
+	/// </summary>
+	internal static WslContainerBackend Create(
+		uint? cpuCount,
+		uint? memorySizeInMB,
+		bool enableGpu,
+		string? sessionName,
+		string? storagePath,
+		int storageMode,
+		long? sessionTimeoutTicks,
+		bool disableProcessExitCleanup
+	)
+	{
+		WslContainerRuntimeOptions options = new()
+		{
+			CPUCount = cpuCount,
+			MemorySizeInMB = memorySizeInMB,
+			EnableGPU = enableGpu,
+			SessionName = sessionName,
+			StoragePath = storagePath,
+			StorageMode = (StorageMode)storageMode,
+			SessionTimeout = sessionTimeoutTicks is { } ticks ? TimeSpan.FromTicks(ticks) : null,
+			DisableProcessExitCleanup = disableProcessExitCleanup,
+		};
+		return new WslContainerBackend(options);
+	}
 
 	IContainerRuntime Runtime => field ?? WslContainerRuntime.Instance;
 

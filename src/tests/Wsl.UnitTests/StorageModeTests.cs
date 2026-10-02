@@ -9,6 +9,16 @@ public class StorageModeTests
 
 		await Assert.That(options.StorageMode).IsEqualTo(StorageMode.Shared);
 		await Assert.That(options.StoragePath).IsNull();
+		await Assert.That(options.MemorySizeInMB).IsEqualTo((uint)4096);
+	}
+
+	[Test]
+	public async Task DefaultOptions_WithStoragePath_KeepDefaultMemory()
+	{
+		var options = WslContainerRuntimeOptions.Default with { StoragePath = @"C:\temp\store" };
+
+		await Assert.That(options.StoragePath).IsEqualTo(@"C:\temp\store");
+		await Assert.That(options.MemorySizeInMB).IsEqualTo((uint)4096);
 	}
 
 	[Test]

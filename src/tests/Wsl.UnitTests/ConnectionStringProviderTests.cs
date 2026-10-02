@@ -2,32 +2,20 @@ namespace Purview.Containers.Wsl;
 
 public class ConnectionStringProviderTests
 {
-	sealed class HostOnlyProvider : ContainerConnectionStringProvider<IContainer, IContainerConfiguration>
+	sealed class HostOnlyProvider(string host) : ContainerConnectionStringProvider<IContainer, IContainerConfiguration>
 	{
-		readonly string _host;
-
-		public HostOnlyProvider(string host) => _host = host;
-
 		/// <inheritdoc />
-		protected override string GetHostConnectionString() => _host;
+		protected override string GetHostConnectionString() => host;
 	}
 
-	sealed class HostAndContainerProvider : ContainerConnectionStringProvider<IContainer, IContainerConfiguration>
+	sealed class HostAndContainerProvider(string host, string container)
+		: ContainerConnectionStringProvider<IContainer, IContainerConfiguration>
 	{
-		readonly string _host;
-		readonly string _container;
-
-		public HostAndContainerProvider(string host, string container)
-		{
-			_host = host;
-			_container = container;
-		}
+		/// <inheritdoc />
+		protected override string GetHostConnectionString() => host;
 
 		/// <inheritdoc />
-		protected override string GetHostConnectionString() => _host;
-
-		/// <inheritdoc />
-		protected override string GetContainerConnectionString() => _container;
+		protected override string GetContainerConnectionString() => container;
 	}
 
 	[Test]

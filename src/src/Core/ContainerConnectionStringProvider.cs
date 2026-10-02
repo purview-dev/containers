@@ -42,6 +42,7 @@ public abstract class ContainerConnectionStringProvider<TContainer, TConfigurati
 			throw new ConnectionStringNotAvailableException(connectionMode, GetType());
 		}
 
+		// The connection string is non-empty, so return it.
 		return connectionString;
 	}
 

@@ -33,11 +33,15 @@ public sealed class WslContainerRuntime : IContainerRuntime
 	/// <summary>Creates a runtime with default options.</summary>
 	public WslContainerRuntime() { }
 
-	/// <summary>Creates a runtime with the given options (retained for API parity; applied when WSLC runs).</summary>
+	/// <summary>
+	/// Creates a runtime with the given options. On a platform-neutral target this facade is diagnostics-only:
+	/// configure the runtime via <see cref="WslContainerBackend" /> (all options) or just the storage path via
+	/// the <c>PURVIEW_CONTAINERS_STORAGE_PATH</c> environment variable.
+	/// </summary>
 	public WslContainerRuntime(WslContainerRuntimeOptions options) =>
 		Options = options ?? WslContainerRuntimeOptions.Default;
 
-	/// <summary>The options this runtime was created with, if any.</summary>
+	/// <summary>The options this runtime was created with (diagnostics-only on a platform-neutral target).</summary>
 	public WslContainerRuntimeOptions? Options { get; }
 
 	/// <inheritdoc />

@@ -35,12 +35,52 @@ Service modules (`Purview.Containers.PostgreSql`, `Redis`, …) are backend-neut
 | **Host OS** | Windows only | Windows, Linux, macOS |
 | **Project target framework** | `net10.0` or later, any platform (portable facade), or `net10.0-windows10.0.19041.0`, x64 or arm64 (implementation bound directly) | `net10.0` or later, any platform |
 | **How containers run** | the `Microsoft.WSL.Containers` managed API (daemonless) | the Docker Engine API via Testcontainers |
-| **Images** | a shared store (`%LOCALAPPDATA%\Purview\WslContainers\images`) reused across runs | the daemon's own image store |
+| **Images** | a shared store (`%LOCALAPPDATA%\Purview\WslContainers\images`) reused across runs; the location is configurable | the daemon's own image store |
 | **Leak protection** | session disposal plus a process-exit hook | the Testcontainers resource reaper (Ryuk) |
 | **Check the host** | `wsl --version`, `wslc version` | `docker info` |
 | **Typical fit** | local Windows development without Docker Desktop, fastest cold start | CI runners, non-Windows hosts, teams already running Docker |
 
-Switch between them without touching test code:
+## Image store location (WSLC)
+
+By default WSLC images are pulled once into a shared store under the local profile:
+
+```text
+%LOCALAPPDATA%\Purview\WslContainers\images
+```
+
+To put the image store somewhere else — a different drive, a project-local cache, or a per-run folder —
+set the process-wide environment variable (works for every consumer shape, including a platform-neutral
+`net10.0` facade):
+
+```powershell
+$env:PURVIEW_CONTAINERS_STORAGE_PATH = 'D:\wslc-images'   # PowerShell
+```
+
+```bash
+export PURVIEW_CONTAINERS_STORAGE_PATH=/mnt/d/wslc-images  # bash / WSL / CI
+```
+
+Or configure the backend in code:
+
+```csharp
+using Purview.Containers;
+using Purview.Containers.Wsl;
+
+ContainerBackends.Use(new WslContainerBackend(WslContainerRuntimeOptions.Default with
+{
+    StoragePath = @"D:\wslc-images",
+    StorageMode = StorageMode.Shared,
+}));
+```
+
+`StorageMode.Shared` (the default) keeps a stable, warm image store at `StoragePath` (or the default above
+when it is unset); `StorageMode.PerSession` gives each session a throwaway store under
+`%LOCALAPPDATA%\Purview\WslContainers\sessions\{name}`. The full `WslContainerRuntimeOptions` set (CPU,
+memory, GPU, session name, `StoragePath`, `StorageMode`, timeout) is honoured on both a platform-neutral
+`net10.0` consumer — where the facade forwards it to the Windows build at run time — and a Windows target
+framework. The pre-rename `WSL_CONTAINERS_STORAGE_PATH` is still honoured as a fallback.
+
+## Switch between them without touching test code:
 
 ```bash
 # auto (the default) | wsl | docker | <any registered backend name>
