@@ -139,10 +139,10 @@ that leans on the Testcontainers modules ports across unchanged:
 
 | Module | Image | Readiness | Client | Status |
 |---|---|---|---|---|
-| PostgreSQL | `postgres:17` | `pg_isready` | Npgsql | ✅ implemented (Phase 3) |
-| Redis | `redis:7` | `redis-cli ping` | StackExchange.Redis | ✅ implemented (Phase 4) — also usable with Valkey/Garnet via `WithImage` |
-| SQL Server | `mcr.microsoft.com/mssql/server:2022-latest` | host `SqlClient` connection | Microsoft.Data.SqlClient | ✅ implemented (Phase 5) — requires `.AcceptLicense()`; the connection string defaults to `Database=master` (`WithDatabase(...)` to change it); session needs ≥ 2000 MB memory |
-| RabbitMQ | `rabbitmq:3-management` | log `"Server startup complete"` | RabbitMQ.Client | ✅ implemented (Phase 6) — AMQP + management endpoints |
+| PostgreSQL | `postgres:17` | `pg_isready` | Npgsql | ✅ implemented |
+| Redis | `redis:7` | `redis-cli ping` | StackExchange.Redis | ✅ implemented — also usable with Valkey/Garnet via `WithImage` |
+| SQL Server | `mcr.microsoft.com/mssql/server:2022-latest` | host `SqlClient` connection | Microsoft.Data.SqlClient | ✅ implemented — requires `.AcceptLicense()`; the connection string defaults to `Database=master` (`WithDatabase(...)` to change it); session needs ≥ 2000 MB memory |
+| RabbitMQ | `rabbitmq:3-management` | log `"Server startup complete"` | RabbitMQ.Client | ✅ implemented — AMQP + management endpoints |
 | Azurite | `mcr.microsoft.com/azure-storage/azurite` | log `"successfully listening"` | Azure.Storage.* | ✅ implemented — blob/queue/table endpoints; the well-known `devstoreaccount1` key is a placeholder in `AzuriteAccount.Key` until the consuming repo supplies it |
 | NATS | `nats:2` | log `"Listening for client connections"` | NATS.Client.Core | ✅ implemented — client + monitoring endpoints |
 | MySQL | `mysql:8` | host `MySqlConnector` connection | MySqlConnector | ✅ implemented — uses a real connection poll (the image logs `"ready for connections"` during its temporary init server) |

@@ -2,7 +2,7 @@
 
 Composable readiness waits. **A started WSLC container is not necessarily a ready service** — `Container.Start()` returns once the init process is running; readiness is checked separately.
 
-> **Status: implemented (Phase 2).** Verified by integration tests (`tests/Wsl.IntegrationTests/WaitStrategyTests.cs`).
+> **Status: implemented.** Verified by integration tests (`tests/Wsl.IntegrationTests/WaitStrategyTests.cs`).
 
 ## Model
 
@@ -37,7 +37,7 @@ WaitStrategy.WithTimeout / .WithInterval / .WithRetries   (fluent)
 `ForContainerRunning()` — checks `Container.State == Running`. This only means the init process started; it is NOT a service-readiness check.
 
 ### TCP
-`ForTcpPort(8080)` — connects to `127.0.0.1:<mapped host port>`. Refused/reset/timeout ⇒ not ready. IPv4 only (WSLC maps IPv4 loopback only — EXP S12).
+`ForTcpPort(8080)` — connects to `127.0.0.1:<mapped host port>`. Refused/reset/timeout ⇒ not ready. IPv4 only (WSLC maps IPv4 loopback only).
 
 ### HTTP
 ```csharp

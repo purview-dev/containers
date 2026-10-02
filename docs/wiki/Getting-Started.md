@@ -112,7 +112,7 @@ just sample-docker   # needs a Docker daemon
 ## 5. Build and pack locally
 
 ```powershell
-just build                # dotnet build of src/WSLTestContainers.slnx (Debug)
+just build                # dotnet build of src/Containers.slnx (Debug)
 just pack                 # build + dotnet pack into ./artifacts
 just pipeline-pack-validate   # shared pipeline: restore, build, lint, test, pack, validate
 ```

@@ -6,7 +6,7 @@ export DOTNET_SKIP_FIRST_TIME_EXPERIENCE := "1"
 export DO_NOT_TRACK := "1"
 
 root_folder := "./src/"
-solution_file := root_folder + "WSLTestContainers.slnx"
+solution_file := root_folder + "Containers.slnx"
 test_solution := solution_file
 build_configuration := "Debug"
 

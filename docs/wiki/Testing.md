@@ -100,8 +100,6 @@ real coverage — the host check is what makes that visible. `actionlint` is tol
   minutes, because WSLC serialises container operations. Slow-test warnings while it runs are expected.
 - Integration tests skip themselves when the host lacks the required WSL/WSLC components, so a machine
   without WSLC can still run the unit suites.
-- `spikes/WslcSpikes` is a manual investigation harness (`dotnet run --project spikes/WslcSpikes -- sfull`,
-  or `s1`..`s14` for individual behaviour probes); it is not part of the test run.
 
 ## Verifying the consumer contract
 
@@ -117,7 +115,7 @@ throwaway consumer projects for every documented outcome (see
 outside the `[Category=Unit]` filter because it packs and restores from nuget.org:
 
 ```powershell
-just verify-consumers          # 19 consumer projects, all assertions
+just verify-consumers          # 21 consumer projects, all assertions
 just verify-consumers -Keep    # same, keeping the generated projects for inspection
 ```
 

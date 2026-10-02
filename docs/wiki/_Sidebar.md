@@ -13,5 +13,3 @@
 - [Release Flow](Release-Flow.md)
 - [Contributing Modules](Contributing-Modules.md)
 - [Contributing](Contributing.md)
-- [WSLC API Investigation](Wslc-Api-Investigation.md)
-- [WSLC Capability Matrix](Wslc-Capability-Matrix.md)
