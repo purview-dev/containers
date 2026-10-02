@@ -29,7 +29,8 @@ public class RabbitMqBuilder : ContainerBuilder<RabbitMqBuilder, RabbitMqContain
 	{
 		WithImage(image)
 			.WithPortBinding(AmqpPort, assignRandomHostPort: true)
-			.WithPortBinding(ManagementPort, assignRandomHostPort: true);
+			.WithPortBinding(ManagementPort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new RabbitMqConnectionStringProvider());
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
@@ -38,7 +39,8 @@ public class RabbitMqBuilder : ContainerBuilder<RabbitMqBuilder, RabbitMqContain
 	{
 		WithImage(RabbitMqImage)
 			.WithPortBinding(AmqpPort, assignRandomHostPort: true)
-			.WithPortBinding(ManagementPort, assignRandomHostPort: true);
+			.WithPortBinding(ManagementPort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new RabbitMqConnectionStringProvider());
 	}
 
 	/// <summary>Sets the AMQP username.</summary>

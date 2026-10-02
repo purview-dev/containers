@@ -121,6 +121,29 @@ public sealed class DockerContainer : IContainer
 	}
 
 	/// <inheritdoc />
+	public string GetConnectionString(ConnectionMode connectionMode = ConnectionMode.Host)
+	{
+		if (connectionMode != ConnectionMode.Host)
+		{
+			throw new ConnectionStringModeNotSupportedException(connectionMode, GetType());
+		}
+
+		var first = GetMappedPublicPorts().FirstOrDefault();
+		if (first.Key == 0 && first.Value == 0)
+		{
+			throw new ConnectionStringNotAvailableException(connectionMode, GetType());
+		}
+
+		return $"127.0.0.1:{first.Value}";
+	}
+
+	/// <inheritdoc />
+	public string GetConnectionString(string name, ConnectionMode connectionMode = ConnectionMode.Host)
+	{
+		throw new ConnectionStringNameNotSupportedException(GetType(), name);
+	}
+
+	/// <inheritdoc />
 	public async Task<string> GetLogsAsync(LogOutput? stream = null, CancellationToken cancellationToken = default)
 	{
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);

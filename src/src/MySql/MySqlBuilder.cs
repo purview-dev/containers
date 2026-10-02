@@ -26,14 +26,18 @@ public class MySqlBuilder : ContainerBuilder<MySqlBuilder, MySqlContainer, MySql
 	/// <summary>Creates a builder with a custom image.</summary>
 	public MySqlBuilder(string image)
 	{
-		WithImage(image).WithPortBinding(MySqlPort, assignRandomHostPort: true);
+		WithImage(image)
+			.WithPortBinding(MySqlPort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new MySqlConnectionStringProvider());
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
 	public MySqlBuilder(IContainerBackend backend)
 		: base(backend)
 	{
-		WithImage(MySqlImage).WithPortBinding(MySqlPort, assignRandomHostPort: true);
+		WithImage(MySqlImage)
+			.WithPortBinding(MySqlPort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new MySqlConnectionStringProvider());
 	}
 
 	/// <summary>Sets the database name.</summary>

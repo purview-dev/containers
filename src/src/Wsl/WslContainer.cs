@@ -263,6 +263,31 @@ public class WslContainer : IContainer
 	}
 
 	/// <inheritdoc />
+	public string GetConnectionString(ConnectionMode connectionMode = ConnectionMode.Host)
+	{
+		EnsureStarted();
+		if (connectionMode != ConnectionMode.Host)
+		{
+			throw new ConnectionStringModeNotSupportedException(connectionMode, GetType());
+		}
+
+		var first = _portMappings.FirstOrDefault();
+		if (first.Key == 0 && first.Value == 0)
+		{
+			throw new ConnectionStringNotAvailableException(connectionMode, GetType());
+		}
+
+		return $"127.0.0.1:{first.Value}";
+	}
+
+	/// <inheritdoc />
+	public string GetConnectionString(string name, ConnectionMode connectionMode = ConnectionMode.Host)
+	{
+		EnsureStarted();
+		throw new ConnectionStringNameNotSupportedException(GetType(), name);
+	}
+
+	/// <inheritdoc />
 	public virtual Task<string> GetLogsAsync(LogOutput? stream = null, CancellationToken cancellationToken = default)
 	{
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);

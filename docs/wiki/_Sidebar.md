@@ -7,6 +7,7 @@
 - [Lifecycle](Lifecycle.md)
 - [Networking](Networking.md)
 - [Wait Strategies](Wait-Strategies.md)
+- [Connection Strings](Connection-Strings.md)
 - [Modules](Modules.md)
 - [Testing](Testing.md)
 - [Packaging](Packaging.md)

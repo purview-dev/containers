@@ -8,6 +8,8 @@ namespace Purview.Containers;
 public abstract class ContainerBase : IContainer
 {
 	IContainer? _container;
+	IConnectionStringProvider? _connectionStringProvider;
+	Action? _configureConnectionStringProvider;
 	int _started;
 	int _disposed;
 
@@ -62,6 +64,7 @@ public abstract class ContainerBase : IContainer
 		var backend = Backend ?? await ContainerBackends.ResolveAsync(cancellationToken).ConfigureAwait(false);
 		_container = backend.CreateContainer(WithResolvedName());
 		await _container.StartAsync(cancellationToken).ConfigureAwait(false);
+		_configureConnectionStringProvider?.Invoke();
 	}
 
 	/// <inheritdoc />
@@ -90,6 +93,46 @@ public abstract class ContainerBase : IContainer
 	public virtual IReadOnlyDictionary<ushort, ushort> GetMappedPublicPorts()
 	{
 		return Container.GetMappedPublicPorts();
+	}
+
+	/// <inheritdoc />
+	public virtual string GetConnectionString(ConnectionMode connectionMode = ConnectionMode.Host)
+	{
+		_ = Container; // throws when the container has not been started
+		if (_connectionStringProvider is { } provider)
+		{
+			return provider.GetConnectionString(connectionMode);
+		}
+
+		return connectionMode switch
+		{
+			ConnectionMode.Host => GetDefaultHostConnectionString(),
+			ConnectionMode.Container => throw new ConnectionStringModeNotSupportedException(connectionMode, GetType()),
+			_ => throw new ArgumentOutOfRangeException(nameof(connectionMode), connectionMode, null),
+		};
+	}
+
+	/// <inheritdoc />
+	public virtual string GetConnectionString(string name, ConnectionMode connectionMode = ConnectionMode.Host)
+	{
+		_ = Container; // throws when the container has not been started
+		if (_connectionStringProvider is { } provider)
+		{
+			return provider.GetConnectionString(name, connectionMode);
+		}
+
+		throw new ConnectionStringNameNotSupportedException(GetType(), name);
+	}
+
+	string GetDefaultHostConnectionString()
+	{
+		var first = GetMappedPublicPorts().FirstOrDefault();
+		if (first.Key == 0 && first.Value == 0)
+		{
+			throw new ConnectionStringNotAvailableException(ConnectionMode.Host, GetType());
+		}
+
+		return $"127.0.0.1:{first.Value}";
 	}
 
 	/// <inheritdoc />
@@ -127,5 +170,19 @@ public abstract class ContainerBase : IContainer
 	IContainerConfiguration WithResolvedName()
 	{
 		return Configuration is ContainerConfiguration concrete ? concrete with { Name = Name } : Configuration;
+	}
+
+	/// <summary>Wires an explicit connection string provider, configured once the container has started.</summary>
+	internal void SetConnectionStringProvider<TContainer, TConfiguration>(
+		IConnectionStringProvider<TContainer, TConfiguration> provider,
+		TContainer container,
+		TConfiguration configuration
+	)
+		where TContainer : IContainer
+		where TConfiguration : IContainerConfiguration
+	{
+		ArgumentNullException.ThrowIfNull(provider);
+		_connectionStringProvider = provider;
+		_configureConnectionStringProvider = () => provider.Configure(container, configuration);
 	}
 }

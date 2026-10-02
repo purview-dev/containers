@@ -23,7 +23,8 @@ public class NatsBuilder : ContainerBuilder<NatsBuilder, NatsContainer, NatsConf
 	{
 		WithImage(image)
 			.WithPortBinding(ClientPort, assignRandomHostPort: true)
-			.WithPortBinding(MonitoringPort, assignRandomHostPort: true);
+			.WithPortBinding(MonitoringPort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new NatsConnectionStringProvider());
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
@@ -32,7 +33,8 @@ public class NatsBuilder : ContainerBuilder<NatsBuilder, NatsContainer, NatsConf
 	{
 		WithImage(NatsImage)
 			.WithPortBinding(ClientPort, assignRandomHostPort: true)
-			.WithPortBinding(MonitoringPort, assignRandomHostPort: true);
+			.WithPortBinding(MonitoringPort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new NatsConnectionStringProvider());
 	}
 
 	/// <summary>Builds the immutable configuration (internal; used by the module's own tests).</summary>
