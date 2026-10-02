@@ -21,14 +21,18 @@ public class RedisBuilder : ContainerBuilder<RedisBuilder, RedisContainer, Redis
 	/// <summary>Creates a builder with a custom image (e.g. <c>valkey/valkey:7</c>).</summary>
 	public RedisBuilder(string image)
 	{
-		WithImage(image).WithPortBinding(RedisPort, assignRandomHostPort: true);
+		WithImage(image)
+			.WithPortBinding(RedisPort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new RedisConnectionStringProvider());
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
 	public RedisBuilder(IContainerBackend backend)
 		: base(backend)
 	{
-		WithImage(RedisImage).WithPortBinding(RedisPort, assignRandomHostPort: true);
+		WithImage(RedisImage)
+			.WithPortBinding(RedisPort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new RedisConnectionStringProvider());
 	}
 
 	/// <summary>Builds the immutable configuration (internal; used by the module's own tests).</summary>

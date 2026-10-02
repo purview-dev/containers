@@ -42,6 +42,27 @@ public sealed class FakeContainer : IContainer
 
 	public IReadOnlyDictionary<ushort, ushort> GetMappedPublicPorts() => PortMappings;
 
+	public string GetConnectionString(ConnectionMode connectionMode = ConnectionMode.Host)
+	{
+		if (connectionMode != ConnectionMode.Host)
+		{
+			throw new ConnectionStringModeNotSupportedException(connectionMode, GetType());
+		}
+
+		var first = PortMappings.FirstOrDefault();
+		if (first.Key == 0 && first.Value == 0)
+		{
+			throw new ConnectionStringNotAvailableException(connectionMode, GetType());
+		}
+
+		return $"127.0.0.1:{first.Value}";
+	}
+
+	public string GetConnectionString(string name, ConnectionMode connectionMode = ConnectionMode.Host)
+	{
+		throw new ConnectionStringNameNotSupportedException(GetType(), name);
+	}
+
 	public Task<string> GetLogsAsync(LogOutput? stream = null, CancellationToken cancellationToken = default)
 	{
 		return Task.FromResult(stream is LogOutput.Stderr ? string.Empty : Logs);

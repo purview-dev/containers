@@ -14,6 +14,7 @@ Purview.Containers                       (net10.0)   umbrella: references Core, 
      ├─ ContainerBase                                                   typed module container (delegates to the backend)
      ├─ ContainerBackends + IContainerBackend                           backend registry and selection
      ├─ Waiting / Images / Mounts / Networking / Diagnostics            readiness, model, secrets
+     ├─ IConnectionStringProvider / ConnectionMode / ContainerConnectionStringProvider   connection strings
      └─ Runtime/ContainerException                                      neutral error taxonomy
 
 Purview.Containers.Wsl                   (net10.0 facade + net10.0-windows10.0.19041.0 implementation)
@@ -27,9 +28,9 @@ Purview.Containers.Wsl                   (net10.0 facade + net10.0-windows10.0.1
  ├─ WslContainer        : IContainer         WSLC-backed container
  └─ WslContainerSession : IContainerSession  image pull + container create/start/stop/delete/exec
 
-IContainer : IAsyncDisposable
+IContainer : IConnectionStringProvider, IAsyncDisposable
   StartAsync / StopAsync / DisposeAsync / ExecAsync / GetMappedPublicPort /
-  GetLogsAsync / tailing IAsyncEnumerable
+  GetConnectionString / GetLogsAsync / tailing IAsyncEnumerable
 ```
 
 A module (`Purview.Containers.PostgreSql`, `Purview.Containers.Redis`, …) derives its container from

@@ -24,14 +24,18 @@ public class PostgreSqlBuilder : ContainerBuilder<PostgreSqlBuilder, PostgreSqlC
 	/// <summary>Creates a builder with a custom image.</summary>
 	public PostgreSqlBuilder(string image)
 	{
-		WithImage(image).WithPortBinding(PostgreSqlPort, assignRandomHostPort: true);
+		WithImage(image)
+			.WithPortBinding(PostgreSqlPort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new PostgreSqlConnectionStringProvider());
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
 	public PostgreSqlBuilder(IContainerBackend backend)
 		: base(backend)
 	{
-		WithImage(PostgreSqlImage).WithPortBinding(PostgreSqlPort, assignRandomHostPort: true);
+		WithImage(PostgreSqlImage)
+			.WithPortBinding(PostgreSqlPort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new PostgreSqlConnectionStringProvider());
 	}
 
 	/// <summary>Sets the database name.</summary>

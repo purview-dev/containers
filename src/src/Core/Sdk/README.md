@@ -19,6 +19,7 @@ separate package.
 | Area | Types |
 | --- | --- |
 | Container contract | `IContainer`, `IContainerConfiguration`, `ContainerConfiguration`, `ContainerBuilder<TBuilder, TContainer, TConfiguration>`, `ContainerBase` |
+| Connection strings | `IConnectionStringProvider`, `IConnectionStringProvider<TContainer, TConfiguration>`, `ContainerConnectionStringProvider<TContainer, TConfiguration>`, `ConnectionMode` |
 | Backends | `IContainerBackend`, `ContainerBackendInfo`, `ContainerBackends`, `ContainerBackendUnavailableException` |
 | Readiness | `Purview.Containers.Waiting`: `Wait`, `IWaitStrategy`, TCP/HTTP/command/log strategies |
 | Configuration model | `PortBinding`, `BindMount`, `NamedVolume`, `RegistryCredentials`, `Image`, `PullPolicy` |

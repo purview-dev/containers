@@ -25,14 +25,18 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 	/// <summary>Creates a builder with a custom image.</summary>
 	public MsSqlBuilder(string image)
 	{
-		WithImage(image).WithPortBinding(MsSqlPort, assignRandomHostPort: true);
+		WithImage(image)
+			.WithPortBinding(MsSqlPort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new MsSqlConnectionStringProvider());
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
 	public MsSqlBuilder(IContainerBackend backend)
 		: base(backend)
 	{
-		WithImage(MsSqlImage).WithPortBinding(MsSqlPort, assignRandomHostPort: true);
+		WithImage(MsSqlImage)
+			.WithPortBinding(MsSqlPort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new MsSqlConnectionStringProvider());
 	}
 
 	/// <summary>Sets the SA password. Must satisfy SQL Server password complexity (at least 8 characters).</summary>

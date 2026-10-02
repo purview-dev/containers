@@ -122,6 +122,11 @@ public sealed class PostgreSqlContainer : ContainerBase
 - Prefer client connection-string builders: `NpgsqlConnectionStringBuilder`, `SqlConnectionStringBuilder`, `UriBuilder`, etc. Avoid handcrafted escaping.
 - Credentials are stored as `Secret` in the module configuration; diagnostics and `ToString()` never reveal them.
 
+Every module builder also registers a connection string provider, so the polymorphic
+`IContainer.GetConnectionString()` returns the same value as the module's own `GetConnectionString()`.
+See [Connection Strings](Connection-Strings.md). `ConnectionMode.Container` (container-to-container) is
+not supported yet.
+
 Every module exposes `GetConnectionString()` with the same shape it has in Testcontainers, so test code
 that leans on the Testcontainers modules ports across unchanged:
 

@@ -36,6 +36,7 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 	TimeSpan _startupTimeout = TimeSpan.FromMinutes(5);
 	readonly List<IWaitStrategy> _waitStrategies = [];
 	RegistryCredentials? _registryCredentials;
+	IConnectionStringProvider<TContainer, TConfiguration>? _connectionStringProvider;
 
 	/// <summary>The backend the built container will use. When <c>null</c> it is resolved at start time via <see cref="ContainerBackends.ResolveAsync" />.</summary>
 	protected IContainerBackend? Backend { get; private set; }
@@ -71,6 +72,14 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 	{
 		_parsedImage = image;
 		_image = image.FullReference;
+		return (TBuilder)this;
+	}
+
+	/// <summary>Overrides the connection string provider the built container exposes via <see cref="IContainer" />.</summary>
+	public TBuilder WithConnectionStringProvider(IConnectionStringProvider<TContainer, TConfiguration> provider)
+	{
+		ArgumentNullException.ThrowIfNull(provider);
+		_connectionStringProvider = provider;
 		return (TBuilder)this;
 	}
 
@@ -286,7 +295,13 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 	{
 		var configuration = BuildConfiguration();
 		Validate(configuration);
-		return CreateContainer(configuration);
+		var container = CreateContainer(configuration);
+		if (_connectionStringProvider is { } provider && container is ContainerBase baseContainer)
+		{
+			baseContainer.SetConnectionStringProvider(provider, container, configuration);
+		}
+
+		return container;
 	}
 
 	/// <summary>Builds the immutable configuration from the accumulated builder state.</summary>

@@ -1,7 +1,7 @@
 namespace Purview.Containers;
 
 /// <summary>A throwaway Linux container running on WSL Containers.</summary>
-public interface IContainer : IAsyncDisposable
+public interface IContainer : IConnectionStringProvider, IAsyncDisposable
 {
 	/// <summary>Container identifier, available after start.</summary>
 	string Id { get; }

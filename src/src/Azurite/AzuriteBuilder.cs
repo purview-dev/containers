@@ -28,7 +28,8 @@ public class AzuriteBuilder : ContainerBuilder<AzuriteBuilder, AzuriteContainer,
 			.WithCommand("azurite", "--blobHost", "0.0.0.0", "--queueHost", "0.0.0.0", "--tableHost", "0.0.0.0")
 			.WithPortBinding(BlobPort, assignRandomHostPort: true)
 			.WithPortBinding(QueuePort, assignRandomHostPort: true)
-			.WithPortBinding(TablePort, assignRandomHostPort: true);
+			.WithPortBinding(TablePort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new AzuriteConnectionStringProvider());
 	}
 
 	/// <summary>Creates a builder using an explicit runtime.</summary>
@@ -39,7 +40,8 @@ public class AzuriteBuilder : ContainerBuilder<AzuriteBuilder, AzuriteContainer,
 			.WithCommand("azurite", "--blobHost", "0.0.0.0", "--queueHost", "0.0.0.0", "--tableHost", "0.0.0.0")
 			.WithPortBinding(BlobPort, assignRandomHostPort: true)
 			.WithPortBinding(QueuePort, assignRandomHostPort: true)
-			.WithPortBinding(TablePort, assignRandomHostPort: true);
+			.WithPortBinding(TablePort, assignRandomHostPort: true)
+			.WithConnectionStringProvider(new AzuriteConnectionStringProvider());
 	}
 
 	/// <summary>Builds the immutable configuration (internal; used by the module's own tests).</summary>
