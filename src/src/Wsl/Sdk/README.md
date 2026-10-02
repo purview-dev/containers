@@ -13,12 +13,14 @@ Reference this package (or a service module) and containers run on WSLC. The pac
 **multi-target**: a `net10.0` build (a portable facade) and a `net10.0-windows10.0.19041.0` build (the
 implementation). A Windows-targeting project binds the implementation; a `net10.0` project binds the
 facade, which loads the implementation at run time on a Windows host and reports `wsl` as unavailable
-elsewhere — so the **same** test project runs on WSLC on your Windows machine and on
-[`Purview.Containers.Docker`](https://www.nuget.org/packages/Purview.Containers.Docker) in Linux CI
-with no configuration change. It registers itself as the `wsl` backend in the consuming assembly.
+elsewhere. It registers itself as the `wsl` backend in the consuming assembly. To also run the same test
+code on Docker in Linux CI, reference
+[`Purview.Containers.Docker`](https://www.nuget.org/packages/Purview.Containers.Docker) (or the umbrella
+[`Purview.Containers`](https://www.nuget.org/packages/Purview.Containers), which brings both backends).
 
-> **Running in CI, or on a machine without WSL Containers?** With `auto` (the default) the backend is
-> reported unavailable and selection falls through to Docker. Pin instead with
+> **Running in CI, or on a machine without WSL Containers?** With only this package referenced, `wsl` is
+> reported unavailable and there is **no** backend to fall back to. Add `Purview.Containers.Docker` or use
+> the umbrella `Purview.Containers`, and `auto` (the default) falls through to Docker. Pin instead with
 > `PURVIEW_CONTAINERS_BACKEND=wsl|docker` or `ContainerBackends.Use(...)` — see
 > [Backends: WSLC or Docker](https://github.com/purview-dev/containers/blob/main/docs/wiki/Backends.md).
 

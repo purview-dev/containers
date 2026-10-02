@@ -2,13 +2,29 @@
 
 `Purview.Containers` has **one API and two interchangeable backends**. The same test code, the same service
 modules (`Purview.Containers.PostgreSql`, `Redis`, `MsSql`, `RabbitMq`, `Azurite`, `Nats`, `MySql`), and
-the same connection-string accessors run on either runtime — you choose which one, in code or from the
-environment.
+the same connection-string accessors run on either runtime — you choose which one by the package you
+reference, and can override it in code or from the environment.
 
+- `**Purview.Containers**` — the umbrella: `Core` plus both backends, for one reference with automatic
+  selection.
+- `**Purview.Containers.Core**` — the backend-neutral abstractions (the API you code against); usually
+  arrives transitively.
 - `**Purview.Containers.Wsl**` — throwaway containers on **Microsoft WSL Containers (WSLC)**, the Windows
   runtime with no Docker installation.
 - `**Purview.Containers.Docker**` — throwaway containers on **any reachable Docker daemon**, driven by
   Testcontainers.
+
+## Which package do I reference?
+
+| Package | Use it when |
+| --- | --- |
+| `Purview.Containers` | The umbrella: `Core` + both backends. One reference, zero config — WSLC on Windows, Docker elsewhere (auto). **Recommended default.** |
+| `Purview.Containers.Core` | The backend-neutral abstractions (the API). Reference it explicitly with one or both backends when you want a minimal dependency surface; otherwise it arrives transitively. |
+| `Purview.Containers.Wsl` | WSL Containers only — a Windows dev machine with no Docker. |
+| `Purview.Containers.Docker` | Docker only — any platform, CI, Linux/macOS. |
+
+Service modules (`Purview.Containers.PostgreSql`, `Redis`, …) are backend-neutral: add any backend package
+(or the umbrella) alongside one to run it.
 
 ## At a glance
 
@@ -117,7 +133,7 @@ public class CacheTests
 
 The **package reference** decides which runtime executes it. Three project shapes cover every case.
 
-### Option 1 — WSLC on a Windows machine, Docker elsewhere (one project)
+### Option 1 — WSLC only (Windows)
 
 ```bash
 dotnet add package Purview.Containers.Wsl
@@ -126,7 +142,7 @@ dotnet add package Purview.Containers.Wsl
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework><!-- auto: WSLC on Windows, Docker elsewhere -->
+		<TargetFramework>net10.0</TargetFramework><!-- WSLC only -->
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
@@ -136,13 +152,16 @@ dotnet add package Purview.Containers.Wsl
 </Project>
 ```
 
-A platform-neutral `net10.0` project binds the portable facade, so it selects WSLC on a Windows host
-and Docker everywhere else. A Windows target framework (`net10.0-windows10.0.19041.0`, x64 or arm64)
-binds the implementation directly. `WindowsSdkPackageVersion` is supplied by the package. A project
-older than .NET 10 fails the build with `PCC0001`, and a 32-bit Windows consumer with `PCC0002`; see
+This project runs WSLC on a Windows host. A platform-neutral `net10.0` project binds the portable
+facade; a Windows target framework (`net10.0-windows10.0.19041.0`, x64 or arm64) binds the
+implementation directly. `WindowsSdkPackageVersion` is supplied by the package. A project older than
+.NET 10 fails the build with `PCC0001`, and a 32-bit Windows consumer with `PCC0002`; see
 [Consumer Requirements](Consumer-Requirements.md).
 
-### Option 2 — Docker anywhere
+> On a non-Windows host this project has **no usable backend** (the facade reports `wsl` unavailable).
+> To also run on Docker there, add `Purview.Containers.Docker` or use the umbrella — see Option 3.
+
+### Option 2 — Docker only (any platform)
 
 ```bash
 dotnet add package Purview.Containers.Docker
@@ -164,14 +183,13 @@ dotnet add package Purview.Containers.Docker
 That project restores and builds on Linux, macOS and Windows — no Windows target framework, no
 `WindowsSdkPackageVersion`, no Docker Desktop licence requirement beyond the daemon you already run.
 
-### Option 3 — one project, both backends (auto)
+### Option 3 — both backends, automatic selection (recommended)
 
-Reference both backends from a single **platform-neutral** project. `auto` selects WSLC on a machine that
-can run it and Docker otherwise — no multi-targeting and no conditional references:
+Add the umbrella `Purview.Containers`: it brings `Core` plus both backends, so `auto` selects WSLC on a
+machine that can run it and Docker otherwise — no multi-targeting and no conditional references:
 
 ```bash
-dotnet add package Purview.Containers.Wsl
-dotnet add package Purview.Containers.Docker
+dotnet add package Purview.Containers
 ```
 
 ```xml
@@ -182,16 +200,23 @@ dotnet add package Purview.Containers.Docker
 		<ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.1" />
-		<PackageReference Include="Purview.Containers.Docker" Version="1.0.0-prerelease.1" />
+		<PackageReference Include="Purview.Containers" Version="1.0.0-prerelease.1" />
 	</ItemGroup>
 </Project>
 ```
 
-`auto` probes both in priority order (`wsl` before `docker`) and uses the first that is usable, so this
-one project runs on WSLC on a developer's Windows machine and on Docker in a Linux CI job. A Windows
-target framework is still supported when you want the implementation bound at compile time, but it is not
-required.
+`auto` probes the registered backends in priority order (`wsl` before `docker`) and uses the first that is
+usable, so this one project runs on WSLC on a developer's Windows machine and on Docker in a Linux CI job.
+A Windows target framework is still supported when you want the implementation bound at compile time, but
+it is not required.
+
+Prefer the explicit form? Reference `Purview.Containers.Core` plus both backends instead of the umbrella:
+
+```bash
+dotnet add package Purview.Containers.Core
+dotnet add package Purview.Containers.Wsl
+dotnet add package Purview.Containers.Docker
+```
 
 If your code needs a Windows-only API the portable facade does not expose (for example `WslContainer`, or
 `WslContainerBackend(runtime)` to pin a specific WSLC session), guard it with `#if WINDOWS` — defined by
@@ -216,7 +241,7 @@ A module is backend-neutral, so only the backend package line changes:
 
 ```bash
 dotnet add package Purview.Containers.PostgreSql   # the module
-dotnet add package Purview.Containers.Wsl          # ...or Purview.Containers.Docker
+dotnet add package Purview.Containers              # ...or Purview.Containers.Wsl / Purview.Containers.Docker
 ```
 
 ```csharp

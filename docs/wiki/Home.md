@@ -84,8 +84,10 @@ updates WSL on its own.
 
 ## Choosing a backend
 
-Two backends implement the same API. Automatic detection is the default; pin one in code or from the
-environment:
+Two backends implement the same API. The zero-choice default is the umbrella `Purview.Containers` (see the
+Packages table above): one reference brings both backends and automatic selection — WSLC on Windows,
+Docker elsewhere. Reference a single backend only when you want to fix the runtime. Automatic detection is
+the default; pin one in code or from the environment:
 
 ```powershell
 # auto (the default) | wsl | docker | <registered backend name>

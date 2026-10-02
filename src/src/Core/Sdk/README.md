@@ -59,8 +59,9 @@ callers that want to apply their own policy.
 ## Requirements
 
 - **.NET 10 or later**, any platform (this package is portable).
-- A **backend package**: `Purview.Containers.Wsl` (WSLC on a Windows host, Docker elsewhere) or
-  `Purview.Containers.Docker` (Docker Engine reachable from the test host).
+- A **backend package**: `Purview.Containers.Wsl` (WSLC on a Windows host),
+  `Purview.Containers.Docker` (Docker Engine reachable from the test host), or both — or the umbrella
+  `Purview.Containers`, which brings this package plus both backends for automatic selection.
 
 ## Related
 
