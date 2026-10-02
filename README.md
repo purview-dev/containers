@@ -31,7 +31,8 @@ The WSLC backend is built directly against the `Microsoft.WSL.Containers` NuGet 
 > modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite, NATS, MySQL). On WSLC, **images are shared
 > by default** (`StorageMode.Shared`): sessions reuse a stable image store
 > (`%LOCALAPPDATA%\Purview\WslContainers\images`) so images are pulled once, not per session;
-> `StorageMode.PerSession` provides isolation. Runnable samples live in `samples/getting-started`.
+> `StorageMode.PerSession` provides isolation. Move the store with `PURVIEW_CONTAINERS_STORAGE_PATH` or
+> `WslContainerRuntimeOptions.StoragePath`. Runnable samples live in `samples/getting-started`.
 
 ## Prerequisites
 

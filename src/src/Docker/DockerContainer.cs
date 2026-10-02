@@ -134,6 +134,7 @@ public sealed class DockerContainer : IContainer
 			throw new ConnectionStringNotAvailableException(connectionMode, GetType());
 		}
 
+		// The Docker backend is always local, so the connection string is always localhost with the first mapped port.
 		return $"127.0.0.1:{first.Value}";
 	}
 

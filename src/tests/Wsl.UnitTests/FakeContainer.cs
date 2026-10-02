@@ -55,6 +55,7 @@ public sealed class FakeContainer : IContainer
 			throw new ConnectionStringNotAvailableException(connectionMode, GetType());
 		}
 
+		// Return the connection string in the format "
 		return $"127.0.0.1:{first.Value}";
 	}
 

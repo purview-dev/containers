@@ -44,7 +44,9 @@ This wiki is the project documentation hub. The packages are published under the
 
 - **One shared, process-wide session** — a stable storage path gives a warm image cache
   (`StorageMode.Shared`), and the runtime transparently falls back to an isolated per-process store when a
-  concurrent process holds the shared store VHD.
+  concurrent process holds the shared store VHD. The image store defaults to
+  `%LOCALAPPDATA%\Purview\WslContainers\images` and can be moved with `PURVIEW_CONTAINERS_STORAGE_PATH` or
+  `WslContainerRuntimeOptions.StoragePath`.
 - **Race-free random host ports** — native `windowsPort=0` allocation, read back from the container's mapped
   ports, instead of probing for a free port first.
 - **Fail-fast configuration** — invalid images and tags are rejected at configuration time (`Image.Parse`),

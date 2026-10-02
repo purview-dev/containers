@@ -104,6 +104,7 @@ public abstract class ContainerBase : IContainer
 			return provider.GetConnectionString(connectionMode);
 		}
 
+		// If the container has started but no connection string provider was configured, we can only support the default host connection string.
 		return connectionMode switch
 		{
 			ConnectionMode.Host => GetDefaultHostConnectionString(),
@@ -121,6 +122,7 @@ public abstract class ContainerBase : IContainer
 			return provider.GetConnectionString(name, connectionMode);
 		}
 
+		// If the container has started but no connection string provider was configured, we can only support the default host connection string.
 		throw new ConnectionStringNameNotSupportedException(GetType(), name);
 	}
 
@@ -132,6 +134,7 @@ public abstract class ContainerBase : IContainer
 			throw new ConnectionStringNotAvailableException(ConnectionMode.Host, GetType());
 		}
 
+		// The default host connection string is always
 		return $"127.0.0.1:{first.Value}";
 	}
 

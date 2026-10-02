@@ -33,8 +33,20 @@ static class WslPayload
 	const string BackendTypeName = "Purview.Containers.Wsl.WslContainerBackend";
 
 	static readonly Lock Sync = new();
-	static bool Attempted;
-	static IContainerBackend? Resolved;
+	static readonly Dictionary<WslContainerRuntimeOptions, IContainerBackend?> ConfiguredBackends = [];
+	static readonly Type[] OptionsFactoryParameterTypes =
+	[
+		typeof(uint?),
+		typeof(uint?),
+		typeof(bool),
+		typeof(string),
+		typeof(string),
+		typeof(int),
+		typeof(long?),
+		typeof(bool),
+	];
+	static bool DefaultAttempted;
+	static IContainerBackend? DefaultBackend;
 	static string? Failure;
 
 	/// <summary>True when this host could possibly run WSL Containers.</summary>
@@ -45,7 +57,7 @@ static class WslPayload
 	/// (non-Windows), the payload is absent, or it failed to load. The reason is available from
 	/// <see cref="FailureReason" />.
 	/// </summary>
-	internal static IContainerBackend? TryCreateBackend()
+	internal static IContainerBackend? TryCreateBackend(WslContainerRuntimeOptions? options = null)
 	{
 		if (!IsHostSupported)
 		{
@@ -55,20 +67,31 @@ static class WslPayload
 
 		lock (Sync)
 		{
-			if (!Attempted)
+			if (options is null)
 			{
-				Attempted = true;
-				Resolved = Create();
+				if (!DefaultAttempted)
+				{
+					DefaultAttempted = true;
+					DefaultBackend = Create(options: null);
+				}
+
+				return DefaultBackend;
 			}
 
-			return Resolved;
+			if (!ConfiguredBackends.TryGetValue(options, out var backend))
+			{
+				backend = Create(options);
+				ConfiguredBackends[options] = backend;
+			}
+
+			return backend;
 		}
 	}
 
 	/// <summary>The reason the last <see cref="TryCreateBackend" /> returned <c>null</c>.</summary>
 	internal static string FailureReason => Failure ?? "The WSL Containers implementation is unavailable.";
 
-	static IContainerBackend? Create()
+	static IContainerBackend? Create(WslContainerRuntimeOptions? options)
 	{
 		foreach (var directory in CandidateDirectories())
 		{
@@ -87,10 +110,38 @@ static class WslPayload
 			{
 				PayloadLoadContext context = new(directory);
 				var assembly = context.LoadFromAssemblyPath(candidate);
-				var factory = assembly
-					.GetType(BackendTypeName, throwOnError: false)
-					?.GetMethod("Create", BindingFlags.Public | BindingFlags.Static);
-				if (factory?.Invoke(null, null) is IContainerBackend backend)
+				var backendType = assembly.GetType(BackendTypeName, throwOnError: false);
+				var factory = options is null
+					? backendType?.GetMethod(
+						"Create",
+						BindingFlags.Public | BindingFlags.Static,
+						binder: null,
+						Type.EmptyTypes,
+						modifiers: null
+					)
+					: backendType?.GetMethod(
+						"Create",
+						BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static,
+						binder: null,
+						OptionsFactoryParameterTypes,
+						modifiers: null
+					);
+
+				object?[]? arguments = options is null
+					? null
+					:
+					[
+						options.CPUCount,
+						options.MemorySizeInMB,
+						options.EnableGPU,
+						options.SessionName,
+						options.StoragePath,
+						(int)options.StorageMode,
+						options.SessionTimeout?.Ticks,
+						options.DisableProcessExitCleanup,
+					];
+
+				if (factory?.Invoke(null, arguments) is IContainerBackend backend)
 				{
 					return backend;
 				}

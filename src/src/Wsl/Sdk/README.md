@@ -108,8 +108,23 @@ a diagnostic naming the container, image, state, mapped ports, strategy and a bo
 `%LOCALAPPDATA%\Purview\WslContainers\images`, so images are pulled once and reused across process runs.
 A session exclusively locks its `storage.vhdx`; when a concurrent process holds the default shared store the
 runtime verifies the store once and transparently falls back to an isolated per-process store (removed when
-that session terminates). Configure `WslContainerRuntimeOptions` for CPU, memory, GPU, session name,
-`StoragePath` (or the `PURVIEW_CONTAINERS_STORAGE_PATH` environment variable) and `StorageMode.PerSession`.
+that session terminates).
+
+To place the image store somewhere other than the local profile, set the process-wide override
+`PURVIEW_CONTAINERS_STORAGE_PATH` (the pre-rename `WSL_CONTAINERS_STORAGE_PATH` is still honoured as a
+fallback), or configure the backend in code:
+
+```csharp
+ContainerBackends.Use(new WslContainerBackend(WslContainerRuntimeOptions.Default with
+{
+    StoragePath = @"D:\wslc-images",
+    StorageMode = StorageMode.Shared,
+}));
+```
+
+The full `WslContainerRuntimeOptions` set (CPU, memory, GPU, session name, `StoragePath`, `StorageMode`,
+timeout) is honoured on both a platform-neutral (`net10.0`) consumer — where the facade forwards it to the
+Windows build at run time — and a Windows target framework, where the Windows build applies it directly.
 
 The Microsoft types (`Session`, `Container`, `Process`, …) stay behind the public interfaces; the only escape
 hatch is the opt-in accessor for `Inspect()` and raw handles.

@@ -17,6 +17,20 @@ namespace Purview.Containers.Wsl;
 /// </remarks>
 public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPreference
 {
+	readonly WslContainerRuntimeOptions? _options;
+
+	/// <summary>Creates the backend over the default process-wide runtime.</summary>
+	public WslContainerBackend() { }
+
+	/// <summary>
+	/// Creates the backend configured with the given runtime options. On a platform-neutral target the
+	/// options are forwarded to the Windows implementation when it is loaded.
+	/// </summary>
+	public WslContainerBackend(WslContainerRuntimeOptions options)
+	{
+		_options = options ?? WslContainerRuntimeOptions.Default;
+	}
+
 	/// <summary>Stable backend identifier.</summary>
 	public string Name => "wsl";
 
@@ -54,8 +68,8 @@ public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPr
 		}
 	}
 
-	static IContainerBackend Resolve() =>
-		WslPayload.TryCreateBackend()
+	IContainerBackend Resolve() =>
+		WslPayload.TryCreateBackend(_options)
 		?? throw new WslContainerPrerequisiteException(
 			$"The WSL Containers backend cannot run here. {WslPayload.FailureReason}"
 		);

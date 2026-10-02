@@ -75,7 +75,7 @@ cache. Package consumers get registration from the generated module initializer 
 
 Design rules:
 
-1. **One lazily-started session per process** with a deterministic name `wslc-{processId}-{8 hex}` (unique per machine; session names are reserved until the session is disposed) and a **stable storage path** (default `%LOCALAPPDATA%\Purview.WslContainers\sessions\{name}\`), configurable.
+1. **One lazily-started session per process** with a deterministic name `wslc-{processId}-{8 hex}` (unique per machine; session names are reserved until the session is disposed) and a **stable storage path** (default `%LOCALAPPDATA%\Purview\WslContainers\images`), configurable via `WslContainerRuntimeOptions.StoragePath` or `PURVIEW_CONTAINERS_STORAGE_PATH`.
 2. The session VM is capped at **4096 MB by default** (`WslContainerRuntimeOptions.Default`). This is required for SQL Server (which refuses to start below 2000 MB — `sqlservr: This program requires a machine with at least 2000 megabytes of memory`) and harmless for lighter containers. Override via `WslContainerRuntimeOptions.MemorySizeInMB`.
 2. `IContainerBackend` is the seam for backends: a backend package (starting with `Purview.Containers.Wsl`) supplies `IContainer` instances, and `ContainerBackends` resolves which one runs. `IContainerRuntime` remains the WSLC-internal seam so advanced users/tests can substitute a per-container-session runtime for isolation experiments.
 3. Container `DisposeAsync` never terminates the shared session; it deletes the container only.
@@ -85,9 +85,11 @@ Design rules:
 
 - Name: `wslc-{pid}-{random8}`. Never place secrets/credentials in names, paths, or logs.
 - **Storage is shared by default** (`StorageMode.Shared`): all sessions use
-  `%LOCALAPPDATA%\Purview.WslContainers\images`, so the image store is pulled once and reused across
-  process runs. Set `StorageMode.PerSession` (or an explicit `StoragePath` / `PURVIEW_CONTAINERS_STORAGE_PATH`)
-  for isolation. Session names stay unique per process; only the path is shared.
+  `%LOCALAPPDATA%\Purview\WslContainers\images`, so the image store is pulled once and reused across
+  process runs. Set `StorageMode.PerSession` (or an explicit `StoragePath` /
+  `PURVIEW_CONTAINERS_STORAGE_PATH`) for isolation; in code, configure the backend with
+  `new WslContainerBackend(new WslContainerRuntimeOptions { StoragePath = … })`. Session names stay unique
+  per process; only the path is shared.
 - **Concurrent sharing is not possible**: a running session exclusively locks its `storage.vhdx`
   (a second session on the same path fails with `0x80070020`). The lock is taken lazily on the
   first store access, so contention can surface on `GetImages()` rather than at session start; the runtime
@@ -123,8 +125,9 @@ on the same path can start its session successfully and only fail later on its f
 (`GetImages()`) with `0x80070020`. The runtime therefore verifies the store once, under a gate, on the
 first `GetSessionAsync`; when a concurrent process holds the default shared store, that session is
 discarded and the runtime transparently switches to an isolated per-process store. Explicit
-`StoragePath`/`PURVIEW_CONTAINERS_STORAGE_PATH`/`StorageMode.PerSession` configuration opts out of the
-fallback. Isolated stores are transient and are removed when their session terminates.
+`StoragePath`/`PURVIEW_CONTAINERS_STORAGE_PATH`/`StorageMode.PerSession` configuration (or
+`new WslContainerBackend(new WslContainerRuntimeOptions { StoragePath = … })`) opts out of the fallback.
+Isolated stores are transient and are removed when their session terminates.
 
 ## Cleanup & reaper decision
 

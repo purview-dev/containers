@@ -277,6 +277,7 @@ public class WslContainer : IContainer
 			throw new ConnectionStringNotAvailableException(connectionMode, GetType());
 		}
 
+		// WSLC does not support dynamic host port assignment; the host port is always the same as the container port.
 		return $"127.0.0.1:{first.Value}";
 	}
 

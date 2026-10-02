@@ -5,18 +5,18 @@ How to add a new service module to `Purview.Containers`.
 ## Files
 
 ```
-src/MyService/
+src/src/MyService/
   MyService.csproj                      -> PackageId Purview.Containers.MyService
   MyServiceConfiguration.cs             -> immutable record, module fields
   MyServiceBuilder.cs                   -> fluent builder
   MyServiceContainer.cs                 -> container, connection string / endpoints
-tests/MyService.UnitTests/
-tests/MyService.IntegrationTests/
+src/tests/MyService.UnitTests/
+src/tests/MyService.IntegrationTests/
 ```
 
 ## Steps
 
-1. **Reference the core**: `<ProjectReference Include="../Wsl/Wsl.csproj" />` (the Purview SDK adds the right `InternalsVisibleTo`/pack defaults).
+1. **Reference the abstractions**: `<ProjectReference Include="../Core/Core.csproj" />`. A module never references a backend package; the Purview SDK supplies the pack defaults and the `InternalsVisibleTo` entries for the module's test projects.
 2. **Configuration record** — derive from `ContainerConfiguration`, add module fields; credentials as `Secret`:
 
 ```csharp
@@ -79,12 +79,12 @@ public class MyServiceBuilder : ContainerBuilder<MyServiceBuilder, MyServiceCont
    ```
 5. **Wait strategy** — prefer verifying the service itself (exec a readiness command or a host client connection), not merely that a TCP port is open. See [Wait Strategies](Wait-Strategies.md). Default waits are applied in `BuildConfiguration()` unless the caller supplied their own.
 6. **Secrets** — passwords/usernames go into a `Secret`-typed field; configuration `ToString()` redacts sensitive values automatically.
-7. **Tests** — unit tests use `BuildConfigurationForTesting()` (internal test hook on the module builder); integration tests use TUnit, the shared `WslcTest.SkipIfUnavailableAsync()` helper from `tests/SharedTestingFramework`, and the real client.
+7. **Tests** — unit tests use `BuildConfigurationForTesting()` (internal test hook on the module builder); integration tests use TUnit, the shared `WslcTest.SkipIfUnavailableAsync()` helper from `src/tests/SharedTestingFramework`, and the real client.
 
 ## Conventions
 
 - Package ID `Purview.Containers.MyService` (namespace prefix `Purview`).
 - Module is thin: no session management, no port allocation logic, no output buffering.
 - Default networking is `Bridged` (from the core defaults); ports use native random allocation unless a fixed host port is explicitly requested.
-- The module is **backend-neutral** (`net10.0`, references `Purview.Containers` only) and therefore does **not** bring a backend or inherit its consumer requirements. A consumer references the module *and* a backend package (`Purview.Containers.Wsl` for WSLC, `Purview.Containers.Docker` for Docker). See [Consumer Requirements](Consumer-Requirements.md).
+- The module is **backend-neutral** (`net10.0`, references `Purview.Containers.Core` only) and therefore does **not** bring a backend or inherit its consumer requirements. A consumer references the module *and* a backend package (`Purview.Containers.Wsl` for WSLC, `Purview.Containers.Docker` for Docker). See [Consumer Requirements](Consumer-Requirements.md).
 - If a Testcontainers capability has no WSLC equivalent (e.g. UDP, TTY, `--user`), throw `ContainerNotSupportedException` at build/validation rather than silently ignoring it.
