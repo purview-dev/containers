@@ -112,8 +112,8 @@ diagnostics.
 - The abstractions and every service module are portable `net10.0`; see
   [Consumer Requirements](Consumer-Requirements.md) for the exact target-framework contract, the
   `PCC0001`/`PCC0002` guards and the `EnableWindowsTargeting` workaround for non-Windows build agents.
-- The per-module connection-string shapes (Redis, PostgreSQL, SQL Server, MySQL, RabbitMQ, Azurite, NATS)
-  are in [Modules](Modules.md#connection-strings).
+- The per-module connection-string shapes (Redis, PostgreSQL, SQL Server, MySQL, RabbitMQ, Azurite, NATS,
+  Azure Key Vault Emulator) are in [Modules](Modules.md#connection-strings).
 - A live sample of this shape is `samples/getting-started/AutoSample` (`just sample-auto`).
 
 ## Related

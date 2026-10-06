@@ -39,6 +39,7 @@ This wiki is the project documentation hub. The packages are published under the
 | `Purview.Containers.Azurite` | Azure Storage emulator (`azure-storage/azurite`), blob/queue/table endpoints. |
 | `Purview.Containers.Nats` | NATS broker (`nats:2`), client + monitoring endpoints. |
 | `Purview.Containers.MySql` | MySQL container (`mysql:8`), host-side `MySqlConnector` readiness. |
+| `Purview.Containers.AzureKeyVaultEmulator` | Azure Key Vault emulator (`jamesgoulddev/azure-keyvault-emulator`), secrets/keys/certificates endpoints and certificate-pinned Azure SDK clients. |
 
 ## Feature highlights
 
