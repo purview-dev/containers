@@ -12,6 +12,10 @@
 		<PackageVersion Include="TUnit.Core" Version="1.72.4" />
 		<PackageVersion Include="TUnit.Mocks" Version="1.72.4" />
 		<PackageVersion Include="Bogus" Version="35.6.5" />
+		<PackageVersion Include="Azure.Core" Version="1.63.0" />
+		<PackageVersion Include="Azure.Security.KeyVault.Certificates" Version="4.9.2" />
+		<PackageVersion Include="Azure.Security.KeyVault.Keys" Version="4.10.2" />
+		<PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.11.2" />
 		<PackageVersion Include="Npgsql" Version="10.0.3" />
 		<PackageVersion Include="Microsoft.Data.SqlClient" Version="7.1.1" />
 		<PackageVersion Include="StackExchange.Redis" Version="3.3.1" />

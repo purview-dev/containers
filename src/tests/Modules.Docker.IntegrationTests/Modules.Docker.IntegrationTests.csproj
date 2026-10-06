@@ -10,6 +10,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="../../src/AzureKeyVaultEmulator/AzureKeyVaultEmulator.csproj" />
 		<ProjectReference Include="../../src/Docker/Docker.csproj" />
 		<ProjectReference Include="../../src/Azurite/Azurite.csproj" />
 		<ProjectReference Include="../../src/MsSql/MsSql.csproj" />

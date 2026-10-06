@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<IsPackable>true</IsPackable>
+		<Description>Azure Key Vault Emulator module for Purview.Containers: throwaway vault emulators (secrets, keys, certificates) on WSL Containers or Docker.</Description>
+		<PackageTags>wsl;containers;docker;keyvault;azure;emulator;testing;integration</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Authors>Purview</Authors>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Azure.Core" />
+		<PackageReference Include="Azure.Security.KeyVault.Certificates" />
+		<PackageReference Include="Azure.Security.KeyVault.Keys" />
+		<PackageReference Include="Azure.Security.KeyVault.Secrets" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../Core/Core.csproj" />
+	</ItemGroup>
+</Project>

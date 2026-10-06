@@ -5,7 +5,7 @@
 This repository contains `Purview.Containers`, a Testcontainers-style library for .NET that runs throwaway
 Linux containers for integration testing on **Microsoft WSL Containers (WSLC)** — the Windows runtime with
 no Docker installation — or on **Docker** through Testcontainers, plus the service modules (`PostgreSql`,
-`Redis`, `MsSql`, `RabbitMq`, `Azurite`, `Nats`, `MySql`).
+`Redis`, `MsSql`, `RabbitMq`, `Azurite`, `Nats`, `MySql`, `AzureKeyVaultEmulator`).
 `docs/wiki/Backends.md` is the consumer guide to choosing and configuring a backend; keep it up to date
 whenever a target framework, a backend package or the `buildTransitive` assets change.
 
