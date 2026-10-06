@@ -124,7 +124,7 @@ transitive references**, so a project that references the backend package direct
 project that does — gets them automatically.
 
 > A **service module** (`Purview.Containers.PostgreSql`, `Redis`, `MsSql`, `RabbitMq`, `Azurite`, `Nats`,
-> `MySql`) is backend-neutral and does **not** bring a backend, so reference the module **and**
+> `MySql`, `AzureKeyVaultEmulator`) is backend-neutral and does **not** bring a backend, so reference the module **and**
 > `Purview.Containers.Wsl` (or another backend package) to run it. Use `Purview.Containers.Docker` to run
 > the same module on Docker, and `PURVIEW_CONTAINERS_BACKEND` to choose between them.
 

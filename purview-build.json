@@ -55,6 +55,12 @@
 				"payload/win-x64/*",
 				"payload/win-arm64/*"
 			],
+			"purview.containers.azurekeyvaultemulator": [
+				"lib/$(TFM)/Purview.Containers.AzureKeyVaultEmulator.dll",
+				"lib/$(TFM)/Purview.Containers.AzureKeyVaultEmulator.xml",
+				"README.md",
+				"purview-logo-light.png"
+			],
 			"purview.containers.azurite": [
 				"lib/$(TFM)/Purview.Containers.Azurite.dll",
 				"lib/$(TFM)/Purview.Containers.Azurite.xml",

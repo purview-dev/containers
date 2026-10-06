@@ -2,7 +2,7 @@ using System.Globalization;
 using Purview.Containers.Docker;
 using TUnit.Core.Exceptions;
 
-namespace Purview.Containers.Modules;
+namespace Purview.Containers.Modules.Docker;
 
 /// <summary>
 /// Every service module on the Docker backend. The WSLC suites prove the modules against WSL Containers;
@@ -126,5 +126,27 @@ public class ModuleDockerTests
 
 		await AssertStartedAsync(nats, Nats.NatsBuilder.ClientPort);
 		await Assert.That(nats.GetClientEndpoint().Port).IsGreaterThan(0);
+	}
+
+	[Test]
+	public async Task AzureKeyVaultEmulator_StoresAndReturnsASecret()
+	{
+		await SkipIfUnavailableAsync();
+
+		// Trust-store installation is disabled: the module's clients pin the emulator certificate, so the
+		// runner's trust store is never modified.
+		await using var emulator = new AzureKeyVaultEmulator.AzureKeyVaultEmulatorBuilder()
+			.WithTrustStoreInstallation(false)
+			.Build();
+
+		await AssertStartedAsync(emulator, AzureKeyVaultEmulator.AzureKeyVaultEmulatorBuilder.EmulatorPort);
+
+		var client = emulator.GetSecretClient();
+		await client.SetSecretAsync("docker-integration-secret", "s3cret");
+
+		var secret = await client.GetSecretAsync("docker-integration-secret");
+
+		await Assert.That(secret.Value.Value).IsEqualTo("s3cret");
+		await Assert.That(emulator.GetVaultUri().Scheme).IsEqualTo("https");
 	}
 }

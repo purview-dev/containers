@@ -34,14 +34,14 @@ just test '/*/*/*/*[Category=Integration]' --max-parallel-test-modules 1
 Integration suites target whichever backend is selected. Automatic detection prefers WSLC and falls back
 to Docker, so a WSLC host runs the WSLC suites and a Docker-only host runs the Docker ones; pin one with
 `PURVIEW_CONTAINERS_BACKEND=wsl|docker` to fail loudly instead of falling back. The Docker suites
-(`Docker.IntegrationTests` for the container contract, `Modules.DockerIntegrationTests` for the seven
+(`Docker.IntegrationTests` for the container contract, `Modules.DockerIntegrationTests` for the eight
 service modules) skip themselves when no daemon is reachable, and the WSLC suites skip themselves when the
 host lacks the WSL Containers components. See [Backends: WSLC or Docker](Backends.md) for consumer-facing
 setup and CI examples.
 
 ```powershell
 just test src/tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj                            # Docker contract
-just test src/tests/Modules.DockerIntegrationTests/Modules.DockerIntegrationTests.csproj             # the seven modules on Docker
+just test src/tests/Modules.DockerIntegrationTests/Modules.DockerIntegrationTests.csproj             # the eight modules on Docker
 ```
 
 ## Why test modules run serially
@@ -74,8 +74,8 @@ gh workflow run "Integration (WSL Containers)" --ref main
 gh run watch
 ```
 
-It runs `Wsl.IntegrationTests` and then the seven service-module suites (`PostgreSql`, `Redis`, `MsSql`,
-`MySql`, `RabbitMq`, `Azurite`, `Nats`) one project at a time, so the shared WSLC image store is never
+It runs `Wsl.IntegrationTests` and then the eight service-module suites (`AzureKeyVaultEmulator`,
+`PostgreSql`, `Redis`, `MsSql`, `MySql`, `RabbitMq`, `Azurite`, `Nats`) one project at a time, so the shared WSLC image store is never
 contended. Two optional inputs: `ref` (a branch, tag or SHA other than the selected one) and `filter`
 (a TUnit treenode filter, defaulting to every test).
 

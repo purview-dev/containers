@@ -10,6 +10,7 @@
 		<File Path="Directory.Build.targets" />
 	</Folder>
 	<Folder Name="/src/">
+		<Project Path="src/AzureKeyVaultEmulator/AzureKeyVaultEmulator.csproj" />
 		<Project Path="src/Azurite/Azurite.csproj" />
 		<Project Path="src/Containers/Containers.csproj" />
 		<Project Path="src/Core/Core.csproj" />
@@ -30,11 +31,13 @@
 	</Folder>
 
 	<Folder Name="/tests/">
+		<Project Path="tests/AzureKeyVaultEmulator.IntegrationTests/AzureKeyVaultEmulator.IntegrationTests.csproj" />
+		<Project Path="tests/AzureKeyVaultEmulator.UnitTests/AzureKeyVaultEmulator.UnitTests.csproj" />
 		<Project Path="tests/Azurite.IntegrationTests/Azurite.IntegrationTests.csproj" />
 		<Project Path="tests/Azurite.UnitTests/Azurite.UnitTests.csproj" />
 		<Project Path="tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj" />
 		<Project Path="tests/Docker.UnitTests/Docker.UnitTests.csproj" />
-		<Project Path="tests/Modules.DockerIntegrationTests/Modules.DockerIntegrationTests.csproj" />
+		<Project Path="tests/Modules.Docker.IntegrationTests/Modules.Docker.IntegrationTests.csproj" />
 		<Project Path="tests/MsSql.IntegrationTests/MsSql.IntegrationTests.csproj" />
 		<Project Path="tests/MsSql.UnitTests/MsSql.UnitTests.csproj" />
 		<Project Path="tests/MySql.IntegrationTests/MySql.IntegrationTests.csproj" />

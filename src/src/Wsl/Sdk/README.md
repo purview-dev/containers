@@ -144,4 +144,4 @@ See the [project wiki](https://github.com/purview-dev/containers/blob/main/docs/
 [Networking](https://github.com/purview-dev/containers/blob/main/docs/wiki/Networking.md) and
 [Wait Strategies](https://github.com/purview-dev/containers/blob/main/docs/wiki/Wait-Strategies.md).
 Ready-made service modules ship as `Purview.Containers.PostgreSql`, `Redis`, `MsSql`, `RabbitMq`,
-`Azurite`, `Nats` and `MySql`.
+`Azurite`, `Nats`, `MySql` and `AzureKeyVaultEmulator`.

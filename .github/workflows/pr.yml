@@ -24,7 +24,7 @@ jobs:
       # Mirrors Build:TestFilter in purview-build.json: the SDK categorises unit test projects as Unit,
       # so the WSLC integration suites are never selected and the runner needs no WSLC host.
       test-filter: "/*/*/*/*[Category=Unit]"
-      # All eight library projects are packable, so pack and validate the produced packages.
+      # All library projects are packable, so pack and validate the produced packages.
       run-pack: true
       validate-pack: true
     secrets: inherit
@@ -46,4 +46,4 @@ jobs:
       - name: Docker backend
         run: dotnet test src/tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*'
       - name: Service modules on Docker
-        run: dotnet test src/tests/Modules.DockerIntegrationTests/Modules.DockerIntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*'
+        run: dotnet test src/tests/Modules.Docker.IntegrationTests/Modules.Docker.IntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*'
