@@ -106,6 +106,8 @@
 		}
 	},
 	"Release": {
-		"Mode": "None"
+		"Eligibility": {
+			"Policy": "TrunkReservesMinor"
+		}
 	}
 }
