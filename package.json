@@ -1,6 +1,7 @@
 {
-	"name": "purview-containers",
+	"name": "containers",
 	"version": "1.0.0-prerelease.6",
+	"description": "Testcontainers-style library for .NET that runs throwaway Linux containers for integration testing, on Microsoft WSL Containers or Docker.",
 	"license": "MIT",
 	"author": {
 		"name": "Kieron Lanning",
