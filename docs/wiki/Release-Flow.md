@@ -29,8 +29,8 @@ The `Justfile` wraps the common steps:
 
 ## The shared pipeline
 
-All pipeline recipes first install the `Purview.Build` tool into `.tools/purview-build` and then run it
-against `purview-build.json`:
+All pipeline recipes first run `dotnet tool restore` (installing the pinned `Purview.Build` from
+`.config/dotnet-tools.json`) and then run it against `purview-build.json`:
 
 | Recipe | Pipeline arguments |
 | --- | --- |
