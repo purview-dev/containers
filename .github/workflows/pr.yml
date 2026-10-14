@@ -20,7 +20,7 @@ jobs:
       # the .NET 11 SDK in global.json. Without the matching SDK the runner cannot resolve global.json
       # ("A compatible .NET SDK was not found") and every step fails.
       # Keep in sync with `sdk.version` in global.json.
-      dotnet-version: "11.0.100-rc.1.26425.128"
+      dotnet-version: "11.0.100-rc.2.26504.105"
       # Mirrors Build:TestFilter in purview-build.json: the SDK categorises unit test projects as Unit,
       # so the WSLC integration suites are never selected and the runner needs no WSLC host.
       test-filter: "/*/*/*/*[Category=Unit]"
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           # Keep in sync with `sdk.version` in global.json.
-          dotnet-version: "11.0.100-rc.1.26425.128"
+          dotnet-version: "11.0.100-rc.2.26504.105"
       - name: Docker backend
         run: dotnet test src/tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*'
       - name: Service modules on Docker
