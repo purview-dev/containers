@@ -36,8 +36,8 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 | `src/Directory.Build.props` / `src/Directory.Build.targets` | Solution-wide SDK import, package metadata and the shared package icon |
 | `purview-build.json` | Shared `Purview.Build` pipeline configuration: solution, test discovery/filter and the **exhaustive** pack-validation manifest |
 | `Justfile` | Supported local workflow commands |
-| `.agents` | Package-delivered skills, agents and prompts (read-only here) |
-| `.purview/agent-sync.cache` | SDK-managed manifest recording which `.agents` files are already mirrored |
+| `skills` | The agent skills this repository authors and publishes |
+| `.agents/skills` | Skills installed from other repositories by the skills CLI (gitignored; `skills-lock.json` is the tracked record) |
 
 ## Standard workflow
 
@@ -203,3 +203,36 @@ Before handing work back:
 - Run the appropriate build, test, formatting and pack checks in proportion to risk.
 - State exactly what validation ran. If a check was skipped or blocked, give the concrete reason and the
   remaining risk.
+
+## Agent skills
+
+Authored skills live in the repository-root `skills/` folder. **Nothing packs them into a NuGet
+package** - `Purview.BuildSdk` 1.0.6 removed skill packaging and the build-time `.agents/` mirror
+outright. The skills CLI clones the *git* repository and only discovers a root `skills/` folder, so
+that is the one delivery route.
+
+`.agents/skills/` is the CLI's install location for skills from **other** repositories, and is
+gitignored. This repository's own skills are never installed into it - that would leave two copies to
+drift apart. Read them at their authored path, `skills/<name>/SKILL.md`.
+
+```bash
+npx skills add purview-dev/containers
+```
+
+| Skill | Answers |
+| -- | -- |
+| `skills/purview-containers-quickstart/` | which package, how a backend is chosen, a first container, a typed module, connection strings |
+| `skills/purview-containers-lifecycle/` | start/stop/dispose semantics, cleanup guarantees, wait strategies, WSLC networking |
+| `skills/purview-containers-testing/` | the test tiers, why modules run serially, pinning a backend, the CI shape |
+| `skills/purview-containers-consumer-requirements/` | the target-framework contract, `PCC0001`/`PCC0002` and the other consumer build errors |
+
+Every skill carries the `purview-containers` prefix. Skills install into one flat directory per
+agent, shared with every skill a developer has installed from anywhere, so an unprefixed name
+collides and the loser is whichever installed second.
+
+`src/tests/Repository.UnitTests/SkillTests.cs` validates them on every test run through
+`Purview.Skills.Testing`. The `[InheritsTests]` attribute there is load-bearing - TUnit does not walk
+base types during discovery, so without it the run is green and nothing is checked.
+
+A relative link from one `SKILL.md` into another skill's folder is a rule violation: only a skill's
+own folder is installed with it. Name the other skill in prose instead.

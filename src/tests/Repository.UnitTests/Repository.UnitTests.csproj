@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<!-- These tests assert something about the repository itself - its skills/ folder - not about
+		     a backend or the runtime's reach, and Purview.Skills.Testing ships net10.0 only. -->
+		<TargetFramework>net10.0</TargetFramework>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- The SDK auto-references a sibling SharedTesting* project into every test project.
+		     SharedTestingFramework targets net11.0-windows10.0.19041 because it drives the WSLC
+		     backend, and these tests touch no container at all, so the reference is removed rather
+		     than this project being dragged onto a Windows target framework. -->
+		<ProjectReference Remove="../SharedTestingFramework/SharedTestingFramework.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The Agent Skills conformance rule set, shipped by Purview.BuildSdk. The rules live in the
+		     package so they are defined once rather than reimplemented here. -->
+		<PackageReference Include="Purview.Skills.Testing" />
+	</ItemGroup>
+</Project>
