@@ -51,6 +51,7 @@
 		<Project Path="tests/Redis.IntegrationTests/Redis.IntegrationTests.csproj" />
 		<Project Path="tests/Redis.UnitTests/Redis.UnitTests.csproj" />
 		<Project Path="tests/SharedTestingFramework/SharedTestingFramework.csproj" />
+		<Project Path="tests/Repository.UnitTests/Repository.UnitTests.csproj" />
 		<Project Path="tests/Wsl.IntegrationTests/Wsl.IntegrationTests.csproj" />
 		<Project Path="tests/Wsl.UnitTests/Wsl.UnitTests.csproj" />
 	</Folder>

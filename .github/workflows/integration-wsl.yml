@@ -40,7 +40,7 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           # Keep in sync with `sdk.version` in global.json (and the other workflows).
-          dotnet-version: "11.0.100-rc.1.26425.128"
+          dotnet-version: "11.0.100-rc.2.26504.105"
 
       - name: Verify the WSL Containers host
         shell: pwsh

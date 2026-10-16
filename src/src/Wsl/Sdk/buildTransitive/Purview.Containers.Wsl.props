@@ -7,7 +7,7 @@
   copying settings into its own project file. These are defaults only: a consumer that sets
   its own value always wins.
 
-  Why: Microsoft.WSL.Containers 3.0.1 ships a C#/WinRT projection built against
+  Why: Microsoft.WSL.Containers 3.0.3 ships a C#/WinRT projection built against
   Microsoft.Windows.SDK.NET 10.0.26100.79. The Windows targeting pack resolved for
   a net10.0-windows10.0.19041.0 target is older (10.0.19041.x), which fails to compile with CS1705
   (the projection "uses 'Microsoft.Windows.SDK.NET' which has a higher version than
