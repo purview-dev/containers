@@ -99,7 +99,7 @@ error PCC0002: Purview.Containers.Wsl requires a 64-bit (x64 or arm64) consumer 
 
 ### 4. Windows SDK targeting pack version
 
-`Microsoft.WSL.Containers` 3.0.1's projection references `Microsoft.Windows.SDK.NET`
+`Microsoft.WSL.Containers` 3.0.3's projection references `Microsoft.Windows.SDK.NET`
 `10.0.26100.79`. Targeting a Windows target framework (`net10.0-windows10.0.19041.0`) resolves a lower pack
 (`10.0.19041.x`) by default and the compiler rejects the mismatch:
 

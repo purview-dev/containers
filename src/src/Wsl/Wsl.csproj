@@ -33,7 +33,7 @@
 	     Windows build only (the WSL Containers projection needs the newer SDK pack to avoid CS1705). -->
 	<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-windows10.0.19041.0'">
 		<PlatformTarget>x64</PlatformTarget>
-		<WindowsSdkPackageVersion>10.0.26100.80</WindowsSdkPackageVersion>
+		<WindowsSdkPackageVersion>$(WindowsSdkRefPackageVersion)</WindowsSdkPackageVersion>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -89,11 +89,49 @@
 	<Target Name="PurviewContainersWslAddPayload" Condition="'$(TargetFramework)' == 'net10.0'">
 		<PropertyGroup>
 			<_WslWindowsBinDir>$(MSBuildThisFileDirectory)bin/$(Configuration)/net10.0-windows10.0.19041.0/</_WslWindowsBinDir>
-			<_WslcPayloadSource>$(NuGetPackageRoot)microsoft.wsl.containers/3.0.1</_WslcPayloadSource>
-			<_WindowsSdkPayloadSource>$(NuGetPackageRoot)microsoft.windows.sdk.net.ref/10.0.26100.80</_WindowsSdkPayloadSource>
+			<!--
+			  Both versions are read from Directory.Packages.props, which is the only place they are
+			  declared (see the note there). Addressing the payload by a hardcoded version is what let
+			  the path drift from the central pin and break the CI pack.
+			-->
+			<_WslcPayloadSource>$(NuGetPackageRoot)microsoft.wsl.containers/$(MicrosoftWSLContainersVersion)</_WslcPayloadSource>
+			<_WindowsSdkPayloadSource>$(NuGetPackageRoot)microsoft.windows.sdk.net.ref/$(WindowsSdkRefPackageVersion)</_WindowsSdkPayloadSource>
+			<_WslcPayloadVersionHint>MicrosoftWSLContainersVersion ('$(MicrosoftWSLContainersVersion)') in Directory.Packages.props must match the Microsoft.WSL.Containers version this project restores.</_WslcPayloadVersionHint>
+			<_WindowsSdkPayloadVersionHint>WindowsSdkRefPackageVersion ('$(WindowsSdkRefPackageVersion)') in Directory.Packages.props must match WindowsSdkPackageVersion.</_WindowsSdkPayloadVersionHint>
 		</PropertyGroup>
 
-		<ItemGroup Condition="Exists('$(_WslWindowsBinDir)Purview.Containers.Wsl.dll')">
+		<!--
+		  Fail fast. NuGet's PackTask reports a dangling payload path as a bare "Could not find a part
+		  of the path", with no indication of which version to fix; these errors name the property and
+		  the file instead. They also cover the case the old Exists() condition hid: a pack that runs
+		  without the Windows inner build, where the payload would silently be left out of the package.
+		-->
+		<Error
+			Condition="!Exists('$(_WslWindowsBinDir)Purview.Containers.Wsl.dll')"
+			Text="The Windows implementation is missing at '$(_WslWindowsBinDir)Purview.Containers.Wsl.dll'. Pack builds every target framework first, so build the project before packing: dotnet build src/Containers.slnx."
+		/>
+		<Error
+			Condition="!Exists('$(_WslcPayloadSource)/lib/net8.0-windows10.0.19041.0/wslcsdkcs.dll')"
+			Text="The WSLC projection is missing at '$(_WslcPayloadSource)/lib/net8.0-windows10.0.19041.0/wslcsdkcs.dll'. $(_WslcPayloadVersionHint)"
+		/>
+		<Error
+			Condition="!Exists('$(_WslcPayloadSource)/runtimes/win-x64/native/wslcsdk.dll')"
+			Text="The native WSLC SDK is missing at '$(_WslcPayloadSource)/runtimes/win-x64/native/wslcsdk.dll'. $(_WslcPayloadVersionHint)"
+		/>
+		<Error
+			Condition="!Exists('$(_WslcPayloadSource)/runtimes/win-arm64/native/wslcsdk.dll')"
+			Text="The native WSLC SDK is missing at '$(_WslcPayloadSource)/runtimes/win-arm64/native/wslcsdk.dll'. $(_WslcPayloadVersionHint)"
+		/>
+		<Error
+			Condition="!Exists('$(_WindowsSdkPayloadSource)/lib/net8.0/Microsoft.Windows.SDK.NET.dll')"
+			Text="The Windows SDK projection is missing at '$(_WindowsSdkPayloadSource)/lib/net8.0/Microsoft.Windows.SDK.NET.dll'. $(_WindowsSdkPayloadVersionHint)"
+		/>
+		<Error
+			Condition="!Exists('$(_WindowsSdkPayloadSource)/lib/net8.0/WinRT.Runtime.dll')"
+			Text="WinRT.Runtime.dll is missing at '$(_WindowsSdkPayloadSource)/lib/net8.0/WinRT.Runtime.dll'. $(_WindowsSdkPayloadVersionHint)"
+		/>
+
+		<ItemGroup>
 			<TfmSpecificPackageFile
 				Include="$(_WslWindowsBinDir)Purview.Containers.Wsl.dll"
 				PackagePath="payload/win-x64"

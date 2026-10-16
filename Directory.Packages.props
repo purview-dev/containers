@@ -3,11 +3,34 @@
 		<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
 		<CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
 	</PropertyGroup>
+
+	<!--
+	  Single source of truth for the two packages the WSL Containers backend does not merely reference
+	  but copies out of the NuGet cache by path.
+
+	    Microsoft.WSL.Containers        the C#/WinRT projection (wslcsdkcs.dll) and the native
+	                                    wslcsdk.dll that Purview.Containers.Wsl packs under payload/<rid>/.
+	    Microsoft.Windows.SDK.NET.Ref   the Microsoft.Windows.SDK.NET/WinRT.Runtime pair the projection
+	                                    binds; its version is the WindowsSdkPackageVersion default.
+
+	  They must be declared here and nowhere else. PackageVersion is evaluated in this file, before any
+	  project body, so a property declared in a .csproj is too late for PackageVersion to reference.
+	  Directory.Build.props is imported earlier still, but the only one in this repository is
+	  src/Directory.Build.props, which the samples outside src/ never import; this file is the one
+	  every project that needs the value does import. Declaring the version twice is exactly what let
+	  the payload path drift from the pin and break the CI pack, so read it from here: there is then
+	  nothing left to drift.
+	-->
+	<PropertyGroup>
+		<MicrosoftWSLContainersVersion>3.0.3</MicrosoftWSLContainersVersion>
+		<WindowsSdkRefPackageVersion>10.0.26100.80</WindowsSdkRefPackageVersion>
+	</PropertyGroup>
+
 	<ItemGroup Label="Transitive Pinning">
 		<PackageVersion Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageVersion Include="Microsoft.WSL.Containers" Version="3.0.3" />
+		<PackageVersion Include="Microsoft.WSL.Containers" Version="$(MicrosoftWSLContainersVersion)" />
 		<PackageVersion Include="Testcontainers" Version="4.16.0" />
 		<PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.11.0" />
 		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.402" />

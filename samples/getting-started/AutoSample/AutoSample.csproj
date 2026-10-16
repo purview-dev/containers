@@ -32,8 +32,13 @@
 	-->
 	<PropertyGroup>
 		<WslWindowsOutput>$(MSBuildThisFileDirectory)../../../src/src/Wsl/bin/$(Configuration)/net10.0-windows10.0.19041.0/</WslWindowsOutput>
-		<WslcPayloadSource>$(NuGetPackageRoot)microsoft.wsl.containers/3.0.1</WslcPayloadSource>
-		<WindowsSdkPayloadSource>$(NuGetPackageRoot)microsoft.windows.sdk.net.ref/10.0.26100.80</WindowsSdkPayloadSource>
+		<!--
+		  Both versions come from Directory.Packages.props, which is the only place they are declared
+		  (see the note there). Addressing the payload by a hardcoded version is what let the path
+		  drift from the central pin and break the CI pack.
+		-->
+		<WslcPayloadSource>$(NuGetPackageRoot)microsoft.wsl.containers/$(MicrosoftWSLContainersVersion)</WslcPayloadSource>
+		<WindowsSdkPayloadSource>$(NuGetPackageRoot)microsoft.windows.sdk.net.ref/$(WindowsSdkRefPackageVersion)</WindowsSdkPayloadSource>
 	</PropertyGroup>
 
 	<Target Name="CopyWslcPayload" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
@@ -44,9 +49,25 @@
 			<WslcPayload Include="$(WindowsSdkPayloadSource)/lib/net8.0/Microsoft.Windows.SDK.NET.dll" />
 			<WslcPayload Include="$(WindowsSdkPayloadSource)/lib/net8.0/WinRT.Runtime.dll" />
 		</ItemGroup>
+		<!--
+		  Fail fast, for the same reason as the Wsl package's payload target: a Copy over a missing
+		  source is a confusing error, and a bumped pin that is not restored is the likely cause.
+		-->
 		<Error
 			Condition="!Exists('$(WslWindowsOutput)Purview.Containers.Wsl.dll')"
 			Text="The Windows implementation is not built. Run 'just build' (or build src/src/Wsl/Wsl.csproj) first."
+		/>
+		<Error
+			Condition="!Exists('$(WslcPayloadSource)/lib/net8.0-windows10.0.19041.0/wslcsdkcs.dll')"
+			Text="The WSLC projection is missing at '$(WslcPayloadSource)/lib/net8.0-windows10.0.19041.0/wslcsdkcs.dll'. MicrosoftWSLContainersVersion ('$(MicrosoftWSLContainersVersion)') in Directory.Packages.props must match the Microsoft.WSL.Containers version this project restores."
+		/>
+		<Error
+			Condition="!Exists('$(WslcPayloadSource)/runtimes/win-x64/native/wslcsdk.dll')"
+			Text="The native WSLC SDK is missing at '$(WslcPayloadSource)/runtimes/win-x64/native/wslcsdk.dll'. MicrosoftWSLContainersVersion ('$(MicrosoftWSLContainersVersion)') in Directory.Packages.props must match the Microsoft.WSL.Containers version this project restores."
+		/>
+		<Error
+			Condition="!Exists('$(WindowsSdkPayloadSource)/lib/net8.0/Microsoft.Windows.SDK.NET.dll')"
+			Text="The Windows SDK projection is missing at '$(WindowsSdkPayloadSource)/lib/net8.0/Microsoft.Windows.SDK.NET.dll'. WindowsSdkRefPackageVersion ('$(WindowsSdkRefPackageVersion)') in Directory.Packages.props must match WindowsSdkPackageVersion."
 		/>
 		<Copy SourceFiles="@(WslcPayload)" DestinationFolder="$(OutDir)wslc" SkipUnchangedFiles="true" />
 		<Message Importance="high" Text="WSL Containers payload copied to $(OutDir)wslc" />
