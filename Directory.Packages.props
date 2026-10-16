@@ -3,6 +3,9 @@
 		<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
 		<CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
 	</PropertyGroup>
+	<ItemGroup Label="Transitive Pinning">
+			<PackageVersion Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
+	</ItemGroup>
 	<ItemGroup>
 		<PackageVersion Include="Microsoft.WSL.Containers" Version="3.0.3" />
 		<PackageVersion Include="Testcontainers" Version="4.16.0" />
@@ -12,7 +15,7 @@
 		<PackageVersion Include="TUnit" Version="1.75.0" />
 		<PackageVersion Include="TUnit.Core" Version="1.75.0" />
 		<PackageVersion Include="TUnit.Mocks" Version="1.75.0" />
-		<PackageVersion Include="Purview.Skills.Testing" Version="1.0.6" />
+		<PackageVersion Include="Purview.Skills.Testing" Version="1.0.7" />
 		<PackageVersion Include="Bogus" Version="35.6.5" />
 		<PackageVersion Include="Azure.Core" Version="1.63.0" />
 		<PackageVersion Include="Azure.Security.KeyVault.Certificates" Version="4.9.2" />
@@ -24,6 +27,5 @@
 		<PackageVersion Include="RabbitMQ.Client" Version="7.2.2" />
 		<PackageVersion Include="NATS.Client.Core" Version="3.3.1" />
 		<PackageVersion Include="MySqlConnector" Version="2.6.2" />
-		<PackageVersion Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
 	</ItemGroup>
 </Project>
