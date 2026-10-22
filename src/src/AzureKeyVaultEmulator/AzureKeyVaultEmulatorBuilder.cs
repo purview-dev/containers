@@ -207,7 +207,7 @@ public class AzureKeyVaultEmulatorBuilder
 		AzureKeyVaultEmulatorConfiguration configuration
 	) => new(configuration, Backend);
 
-	WaitStrategy BuildDefaultWaitStrategy()
+	static WaitStrategy BuildDefaultWaitStrategy()
 	{
 		// GET / is served unauthenticated once Kestrel is listening; any HTTP response proves the HTTPS
 		// stack is up. AllowInsecureTls keeps the probe independent of the host trust store.

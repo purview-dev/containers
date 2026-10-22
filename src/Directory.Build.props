@@ -29,4 +29,16 @@
 			Link="Sdk/purview-logo-light.png"
 		/>
 	</ItemGroup>
+
+	<!--
+	  Project-level retry for every test project. The retry itself is a run-time option
+	  (Microsoft.Testing.Platform's retry-failed-tests flag), not an assembly attribute:
+	  Microsoft.Testing.Extensions.Retry reruns failed tests by restarting the test host, so it needs
+	  no per-test exception list and no rebuilding to change policy. The package auto-registers through
+	  Microsoft.Testing.Platform.MSBuild. Applying it to every test project means a solution-wide
+	  `dotnet test` accepts the flag; the integration suites pass it, the unit suites do not.
+	-->
+	<ItemGroup Condition="'$(TestingType)' != ''">
+		<PackageReference Include="Microsoft.Testing.Extensions.Retry" />
+	</ItemGroup>
 </Project>

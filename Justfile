@@ -90,10 +90,14 @@ restore *args:
 # test assemblies contend for the shared store and fail with 0x80070020 ("file is being used by another
 # process"). Override by appending the flag, e.g.
 # just test '/*/*/*/*/' --max-parallel-test-modules 4
+#
+# Failures are retried at the test-project level by Microsoft.Testing.Platform's retry extension. It
+# restarts the test host for each attempt, which also gives WSLC a fresh session; the delay lets the
+# previous host release the session VHD.
 [group('Build and Test')]
 test filter="/*/*/*/*/" *args:
     echo "Running tests for {{ BLUE }}{{ test_solution }}{{ NORMAL }} with {{ YELLOW }}{{ build_configuration }}{{ NORMAL }}..."
-    dotnet test --solution "{{ test_solution }}" --configuration "{{ build_configuration }}" --max-parallel-test-modules 1 --treenode-filter={{ filter }} {{ args }}
+    dotnet test --solution "{{ test_solution }}" --configuration "{{ build_configuration }}" --max-parallel-test-modules 1 --treenode-filter={{ filter }} --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50 {{ args }}
 
 # Cleans the solution with the specified configuration (default: Debug)
 [group('Build and Test')]

@@ -27,7 +27,7 @@ public class AzuriteBuilderTests
 		await Assert.That(configuration.PortBindings).Contains(p => p.ContainerPort == 10001 && p.AssignRandomHostPort);
 		await Assert.That(configuration.PortBindings).Contains(p => p.ContainerPort == 10002 && p.AssignRandomHostPort);
 		await Assert.That(configuration.WaitStrategies.Count).IsEqualTo(1);
-		await Assert.That(configuration.WaitStrategies[0]).IsTypeOf<LogMessageWaitStrategy>();
+		await Assert.That(configuration.WaitStrategies[0]).IsTypeOf<AllWaitStrategy>();
 	}
 
 	[Test]

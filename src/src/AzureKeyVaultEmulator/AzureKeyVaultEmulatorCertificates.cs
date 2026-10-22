@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Security.Cryptography;
@@ -22,6 +23,12 @@ static class AzureKeyVaultEmulatorCertificates
 	// stay out of a runner's user profile.
 	static readonly string[] ContinuousIntegrationVariables = ["BUILD_BUILDID", "CI", "GITHUB_ACTIONS", "TF_BUILD"];
 
+	// Tests and parallel consumers can point several emulators at the same default directory. The
+	// first-run generation is a read-check-write sequence, so without a lock two callers can both
+	// write the pair and one can observe a half-written PFX. The lock is per directory and only
+	// spans this process; CI and the integration suites run test projects one at a time.
+	static readonly ConcurrentDictionary<string, object> DirectoryLocks = new(StringComparer.OrdinalIgnoreCase);
+
 	internal static string DefaultDirectory { get; } = ResolveDefaultDirectory();
 
 	/// <summary>
@@ -40,23 +47,32 @@ static class AzureKeyVaultEmulatorCertificates
 		var pfxPath = Path.Combine(configuration.CertificateDirectory, PfxFileName);
 		var crtPath = Path.Combine(configuration.CertificateDirectory, CrtFileName);
 
-		if (File.Exists(pfxPath) && File.Exists(crtPath))
+		lock (LockFor(configuration.CertificateDirectory))
 		{
-			return (LoadPfx(pfxPath), Generated: false);
+			if (File.Exists(pfxPath) && File.Exists(crtPath))
+			{
+				return (LoadPfx(pfxPath), Generated: false);
+			}
+
+			if (!configuration.GenerateCertificates)
+			{
+				throw new ContainerConfigurationException(
+					$"No certificate pair was found in '{configuration.CertificateDirectory}' and certificate generation is disabled. Provide '{PfxFileName}' (password '{AzureKeyVaultEmulatorBuilder.CertificatePassword}') and '{CrtFileName}', or re-enable generated certificates."
+				);
+			}
+
+			// Half of the pair has gone missing: remove both so the regenerated pair is consistent.
+			TryDelete(pfxPath);
+			TryDelete(crtPath);
+
+			return (GenerateAndExport(pfxPath, crtPath), Generated: true);
 		}
+	}
 
-		if (!configuration.GenerateCertificates)
-		{
-			throw new ContainerConfigurationException(
-				$"No certificate pair was found in '{configuration.CertificateDirectory}' and certificate generation is disabled. Provide '{PfxFileName}' (password '{AzureKeyVaultEmulatorBuilder.CertificatePassword}') and '{CrtFileName}', or re-enable generated certificates."
-			);
-		}
-
-		// Half of the pair has gone missing: remove both so the regenerated pair is consistent.
-		TryDelete(pfxPath);
-		TryDelete(crtPath);
-
-		return (GenerateAndExport(pfxPath, crtPath), Generated: true);
+	static object LockFor(string certificateDirectory)
+	{
+		var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(certificateDirectory));
+		return DirectoryLocks.GetOrAdd(fullPath, static _ => new object());
 	}
 
 	/// <summary>Installs the certificate into the host trust store so unmodified Azure SDK clients connect.</summary>
@@ -188,11 +204,25 @@ static class AzureKeyVaultEmulatorCertificates
 			certificate.FriendlyName = "Azure Key Vault Emulator";
 		}
 
-		File.WriteAllBytes(
-			pfxPath,
-			certificate.Export(X509ContentType.Pfx, AzureKeyVaultEmulatorBuilder.CertificatePassword)
-		);
-		File.WriteAllText(crtPath, ExportToPem(certificate));
+		// Write both files under temporary names and move them into place, so a concurrent reader never
+		// sees a partially written PFX/CRT pair.
+		var pfxTemporaryPath = $"{pfxPath}.{Guid.NewGuid():N}.tmp";
+		var crtTemporaryPath = $"{crtPath}.{Guid.NewGuid():N}.tmp";
+		try
+		{
+			File.WriteAllBytes(
+				pfxTemporaryPath,
+				certificate.Export(X509ContentType.Pfx, AzureKeyVaultEmulatorBuilder.CertificatePassword)
+			);
+			File.WriteAllText(crtTemporaryPath, ExportToPem(certificate));
+			File.Move(pfxTemporaryPath, pfxPath, overwrite: true);
+			File.Move(crtTemporaryPath, crtPath, overwrite: true);
+		}
+		finally
+		{
+			TryDelete(pfxTemporaryPath);
+			TryDelete(crtTemporaryPath);
+		}
 
 		return certificate;
 	}

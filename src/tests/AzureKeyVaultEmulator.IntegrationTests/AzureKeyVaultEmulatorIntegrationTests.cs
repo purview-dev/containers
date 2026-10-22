@@ -4,6 +4,7 @@ namespace Purview.Containers.AzureKeyVaultEmulator;
 
 // Trust-store installation is disabled: the module's own clients pin the emulator certificate, so the
 // tests never modify the host trust store.
+[NotInParallel]
 public class AzureKeyVaultEmulatorIntegrationTests
 {
 	[Test]

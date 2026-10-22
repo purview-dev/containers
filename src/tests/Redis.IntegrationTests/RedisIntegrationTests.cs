@@ -2,6 +2,7 @@ using StackExchange.Redis;
 
 namespace Purview.Containers.Redis;
 
+[NotInParallel]
 public class RedisIntegrationTests
 {
 	[Test]

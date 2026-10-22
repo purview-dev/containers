@@ -31,17 +31,48 @@ public class PortMappingTests
 	{
 		await WslcTest.SkipIfUnavailableAsync();
 
-		var hostPort = GetFreeTcpPort();
-		await using var container = new ContainerBuilder()
-			.WithImage("python:3-alpine")
-			.WithPortBinding(8080, hostPort)
-			.WithCommand("/bin/sh", "-c", "python3 -m http.server 8080")
-			.Build();
+		// The port is chosen by probing and then released before the container binds it, so another
+		// process can take it in between. Retry a couple of times rather than failing the suite on a
+		// lost race; the point of the test is that an explicit mapping is honoured, not the probe.
+		Container? container = null;
+		ushort hostPort = 0;
+		try
+		{
+			for (var attempt = 0; attempt < 3 && container is null; attempt++)
+			{
+				var candidatePort = GetFreeTcpPort();
+				var candidate = new ContainerBuilder()
+					.WithImage("python:3-alpine")
+					.WithPortBinding(8080, candidatePort)
+					.WithCommand("/bin/sh", "-c", "python3 -m http.server 8080")
+					.Build();
+				try
+				{
+					await candidate.StartAsync();
+					container = candidate;
+					hostPort = candidatePort;
+				}
+				catch
+				{
+					await candidate.DisposeAsync();
+					if (attempt == 2)
+					{
+						throw;
+					}
+				}
+			}
 
-		await container.StartAsync();
-
-		await Assert.That(container.GetMappedPublicPort(8080)).IsEqualTo(hostPort);
-		await WslcTest.WaitForTcpAsync(hostPort, TimeSpan.FromSeconds(30));
+			await Assert.That(container).IsNotNull();
+			await Assert.That(container!.GetMappedPublicPort(8080)).IsEqualTo(hostPort);
+			await WslcTest.WaitForTcpAsync(hostPort, TimeSpan.FromSeconds(30));
+		}
+		finally
+		{
+			if (container is not null)
+			{
+				await container.DisposeAsync();
+			}
+		}
 	}
 
 	[Test]

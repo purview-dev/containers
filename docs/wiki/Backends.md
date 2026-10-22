@@ -32,7 +32,7 @@ Service modules (`Purview.Containers.PostgreSql`, `Redis`, …) are backend-neut
 |  | WSL Containers | Docker |
 | --- | --- | --- |
 | **Package** | `Purview.Containers.Wsl` | `Purview.Containers.Docker` |
-| **Prerequisite** | Windows 10/11 with WSL Containers (`wsl --install --no-distribution`) | any reachable Docker daemon (Docker Desktop, Docker Engine in WSL2, a VM, or a CI runner) |
+| **Prerequisite** | Windows 11 (22H2 or later) or Windows Server 2025 with WSL Containers (`wsl --install --no-distribution`) | any reachable Docker daemon (Docker Desktop, Docker Engine in WSL2, a VM, or a CI runner) |
 | **Host OS** | Windows only | Windows, Linux, macOS |
 | **Project target framework** | `net10.0` or later, any platform (portable facade), or `net10.0-windows10.0.19041.0`, x64 or arm64 (implementation bound directly) | `net10.0` or later, any platform |
 | **How containers run** | the `Microsoft.WSL.Containers` managed API (daemonless) | the Docker Engine API via Testcontainers |
@@ -372,23 +372,50 @@ jobs:
 - Pinning `PURVIEW_CONTAINERS_BACKEND=docker` makes a runner without a usable daemon **fail loudly** with
   the probe report instead of quietly selecting something else.
 
-For a **Windows** job that should exercise WSLC, run the same code against `Purview.Containers.Wsl`:
+For a **Windows** job that should exercise WSLC, use a `windows-2025` runner (Windows Server 2025 with
+nested virtualisation). The WSL build with `wslc` is in the pre-release channel and its directory is not on
+`PATH`:
 
 ```yaml
   integration-windows:
     name: Integration tests (WSL Containers)
-    runs-on: windows-latest
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      PURVIEW_CONTAINERS_BACKEND: wsl
+      PURVIEW_CONTAINERS_REQUIRE_BACKEND: wsl
+      WSL_UTF8: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 11.0.x
-      - run: dotnet test --configuration Release
+      - name: Install WSL Containers
+        shell: pwsh
+        run: |
+          wsl --update --pre-release
+          wsl --version
+          $env:PATH = "C:\Program Files\WSL;$env:PATH"
+          & 'C:\Program Files\WSL\wslc.exe' version
+      - run: dotnet restore
+      - run: dotnet build --configuration Release --no-restore
+      - run: dotnet test --configuration Release --no-build --retry-failed-tests 2 --retry-failed-tests-delay 5s
 ```
 
-> WSL Containers is a Windows developer runtime: hosted GitHub runners do not guarantee a WSL Containers
-> installation, so the practical options are a **self-hosted Windows runner**, or running WSLC suites
-> locally and Docker suites in CI. Either way the test code is the same.
+> `windows-2025` is the only hosted runner that supports WSL Containers: Windows Server 2022 and Windows 10
+> are not supported. Windows runners bill at 2×, and a cold runner has to pull every image, so run the fast
+> contract suite on pull requests and the full service-module matrix nightly or on demand. If you run on a
+> self-hosted Windows runner instead, keep `PURVIEW_CONTAINERS_REQUIRE_BACKEND=wsl` so a host without WSLC
+> fails rather than silently skipping every test.
+
+### Retrying transient integration failures
+
+Container integration tests depend on the host's runtime. Retry at the test-project level with
+Microsoft.Testing.Platform's retry extension rather than with an assembly-level attribute: install
+`Microsoft.Testing.Extensions.Retry` in the integration test project and pass
+`--retry-failed-tests 2 --retry-failed-tests-delay 5s`. A retry restarts the test host, so WSLC gets a fresh
+session and Testcontainers gets a fresh resource reaper, and the delay gives the previous host time to
+release its image-store VHD.
 
 ## What differs in practice
 

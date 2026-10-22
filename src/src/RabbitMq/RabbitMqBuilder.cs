@@ -83,7 +83,11 @@ public class RabbitMqBuilder : ContainerBuilder<RabbitMqBuilder, RabbitMqContain
 		var waitStrategies =
 			configuration.WaitStrategies.Count > 0
 				? configuration.WaitStrategies
-				: new[] { (IWaitStrategy)Wait.ForLogMessage("Server startup complete") };
+				: new[]
+				{
+					(IWaitStrategy)
+						Wait.ForAll(Wait.ForLogMessage("Server startup complete"), Wait.ForTcpPort(AmqpPort)),
+				};
 		return configuration with
 		{
 			Username = _username,

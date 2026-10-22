@@ -34,7 +34,7 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 | `samples/getting-started` | Runnable consumer-shaped samples (WSLC and Docker) built with the solution; `just sample-wsl` / `just sample-docker` |
 | `mkdocs.yml` | Wiki site configuration (`docs_dir: docs/wiki`) |
 | `src/Directory.Build.props` / `src/Directory.Build.targets` | Solution-wide SDK import, package metadata and the shared package icon |
-| `purview-build.json` | Shared `Purview.Build` pipeline configuration: solution, test discovery/filter and the **exhaustive** pack-validation manifest |
+| `.config/purview-build.json` | Shared `Purview.Build` pipeline configuration: solution, test discovery/filter and the **exhaustive** pack-validation manifest |
 | `Justfile` | Supported local workflow commands |
 | `skills` | The agent skills this repository authors and publishes |
 | `.agents/skills` | Skills installed from other repositories by the skills CLI (gitignored; `skills-lock.json` is the tracked record) |
@@ -132,7 +132,7 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   `Purview.Containers` ships none of its own; `Core`'s and the backends' assets reach its consumers
   transitively. See
   [Consumer requirements and compatibility](#consumer-requirements-and-compatibility).
-- `PackValidation.RequireExplicitContent` defaults to `true`, so `purview-build.json`'s `RequiredContent` is
+- `PackValidation.RequireExplicitContent` defaults to `true`, so `.config/purview-build.json`'s `RequiredContent` is
   the **exhaustive** manifest: a produced package with no rule, or a packed entry matched by no glob, fails
   validation. Adding or removing packaged content means updating that map.
 - Validate with `just pack` and `just pipeline-pack-validate`.
@@ -140,14 +140,24 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 ## Testing
 
 - Test assemblies are categorised by the SDK: `*.UnitTests` → `Unit`, `*.IntegrationTests` → `Integration`.
-- `purview-build.json` filters the shared pipeline to `[Category=Unit]`, so it never needs a WSLC host. The
-  **Docker** integration suites (`Docker.IntegrationTests`, `Modules.DockerIntegrationTests`) are the one
-  exception: they target `net10.0` and run in the `.github/workflows/pr.yml` `integration-docker` job on
-  `ubuntu-latest`, which is the standing proof that the library and modules work off Windows/WSL. Keep
-  them portable; they remove the SDK's automatic `SharedTestingFramework` reference because that helper is
-  WSLC/Windows-only. The **WSLC** suites still never run in the shared pipeline.
-- WSLC integration tests run **serially** (`--max-parallel-test-modules 1` in the `Justfile`): a session
-  exclusively locks its image-store VHD, so parallel modules fail with `0x80070020`.
+- `.config/purview-build.json` keeps test discovery to `*UnitTests.csproj`, so the shared Ubuntu pipeline
+  never launches a Windows-targeted WSLC test app. `TestFilter` remains `/*/*/*/*` so widening discovery
+  runs every category; `just test` is the all-tests command. The
+  **Docker** integration suites (`Docker.IntegrationTests`, `Modules.Docker.IntegrationTests`) run in the
+  `.github/workflows/pr.yml` `integration-docker` job on `ubuntu-latest`. The **WSLC** contract suite runs
+  on a hosted `windows-2025` runner in the same workflow, and the full WSLC module matrix runs nightly in
+  `.github/workflows/integration-wsl.yml`. The suites' skip helpers honour
+  `PURVIEW_CONTAINERS_REQUIRE_BACKEND`, so a missing or incompatible runtime fails the job instead of
+  silently skipping every test.
+- Test projects run **serially** (`.config/purview-build.json` sets `Build:MaxTestParallelism` to `1`;
+  `just test` passes `--max-parallel-test-modules 1`): a session exclusively locks its image-store VHD, so
+  parallel assemblies fail with `0x80070020`. Within a project, container suites cap their own parallelism
+  (`[NotInParallel]` for the service modules and `ModuleDockerTests`, a `ParallelLimiter` of two for
+  `Wsl.IntegrationTests`) to avoid stampeding the Docker daemon and the WSLC session VM on a cold run.
+- Integration retries are **project-level run-time options**, not assembly attributes: the test projects
+  reference `Microsoft.Testing.Extensions.Retry` and the integration commands pass
+  `--retry-failed-tests 2 --retry-failed-tests-delay 5s`. A retry restarts the test host (fresh WSLC session); do
+  not reintroduce a TUnit `[Retry]` assembly attribute.
 - Use the shared `WslcTest` helper in `src/tests/SharedTestingFramework` for WSLC integration
   skip/availability checks; the Docker suites use their own `DockerTest` helper. Unit tests may use the
   modules' `BuildConfigurationForTesting()` internal hook.
@@ -180,12 +190,14 @@ Commit messages follow Conventional Commits enforced by the `commit-msg` lefthoo
   `purview-dev/build/.github/workflows/purview-build.yml`, with pack and validation enabled.
 - `.github/workflows/release.yml` runs the shared release pipeline with `release-mode: NuGet` on a push to
   `main`.
-- `.github/workflows/integration-wsl.yml` is a **manual** (`workflow_dispatch`) workflow that runs the
-  WSLC integration suites on a self-hosted Windows runner with the custom `wslc` label (documented in
-  [Testing](docs/wiki/Testing.md)); `.github/actionlint.yaml` declares that label. It is never attached to
-  `pull_request` or `push`.
+- `.github/workflows/integration-wsl.yml` runs the WSLC integration suites. The fast contract suite runs on
+  a hosted `windows-2025` runner on every pull request from `pr.yml`; the full service-module matrix runs
+  nightly on `windows-2025` and can be dispatched manually against either the hosted runner or a
+  self-hosted Windows runner with the custom `wslc` label (documented in [Testing](docs/wiki/Testing.md)).
+  `windows-2022` and Windows 10 do not support WSL Containers. `.github/actionlint.yaml` declares the
+  custom label.
 - The workflows pin `dotnet-version` to `global.json`'s `sdk.version`; keep them in sync, and keep
-  `purview-build.json` pointing at `src/Containers.slnx`. The shared workflow runs on
+  `.config/purview-build.json` pointing at `src/Containers.slnx`. The shared workflow runs on
   `ubuntu-latest`, which is why `EnableWindowsTargeting=true` must stay in `src/Directory.Build.props`.
 
 ## Completion checklist
@@ -195,7 +207,7 @@ Before handing work back:
 - Confirm the requested behaviour and scope are satisfied, and only intended files changed.
 - Review public API, package-content and dependency-direction implications.
 - Update the affected package `Sdk/README.md`, the root `README.md`, `docs/wiki` (plus `_Sidebar.md` and
-  `mkdocs.yml` for new pages), `AGENTS.md` and `purview-build.json` when the change affects them.
+  `mkdocs.yml` for new pages), `AGENTS.md` and `.config/purview-build.json` when the change affects them.
   `docs/wiki/Consumer-Requirements.md` is the contract every consumer-facing change has to keep
   accurate, and `just verify-consumers` is the check that proves it.
 - Watch for the packaging traps: a new packable project missing `<IsPackable>true</IsPackable>` or a

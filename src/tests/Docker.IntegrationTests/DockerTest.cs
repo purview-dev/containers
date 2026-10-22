@@ -9,6 +9,12 @@ namespace Purview.Containers.Docker;
 /// </summary>
 public static class DockerTest
 {
+	/// <summary>
+	/// Set to <c>docker</c> to make an unavailable daemon fail the test run instead of skipping it. CI
+	/// sets this so a runner without Docker cannot go green with zero coverage.
+	/// </summary>
+	public const string RequireBackendEnvironmentVariable = "PURVIEW_CONTAINERS_REQUIRE_BACKEND";
+
 	static int BackendRegistered;
 
 	/// <summary>Registers the Docker backend with the shared registry.</summary>
@@ -27,7 +33,22 @@ public static class DockerTest
 		var info = await DockerContainerBackend.Create().GetInfoAsync();
 		if (!info.IsUsable)
 		{
-			throw new SkipTestException($"Docker is unavailable: {string.Join("; ", info.MissingComponents)}");
+			var reason = $"Docker is unavailable: {string.Join("; ", info.MissingComponents)}";
+			if (IsBackendRequired())
+			{
+				throw new InvalidOperationException(
+					$"{reason} {RequireBackendEnvironmentVariable}=docker requires a reachable daemon."
+				);
+			}
+
+			throw new SkipTestException(reason);
 		}
 	}
+
+	static bool IsBackendRequired() =>
+		string.Equals(
+			Environment.GetEnvironmentVariable(RequireBackendEnvironmentVariable),
+			"docker",
+			StringComparison.OrdinalIgnoreCase
+		);
 }

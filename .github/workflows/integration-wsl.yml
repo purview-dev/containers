@@ -1,11 +1,13 @@
 name: Integration (WSL Containers)
 
-# Manual-only. The WSLC integration suites need a Windows host with WSL Containers installed, which no
-# GitHub-hosted runner provides, so this job runs on a self-hosted Windows runner carrying the custom
-# `wslc` label. It is deliberately not attached to pull_request or push: it is the deliberate, manual
-# proof that the WSLC backend and every service module run on WSL Containers. The Docker half of the
-# matrix runs on every pull request instead (see pr.yml, the `integration-docker` job) because it needs
-# only a daemon and therefore works on a hosted Linux runner.
+# The WSLC suites need Windows Server 2025 with nested virtualisation, which GitHub's `windows-2025`
+# hosted runners provide. The pre-release WSL channel carries wslc and its directory is not on PATH.
+#
+# Coverage:
+#   - every pull request: the WSLC contract suite, from pr.yml's `integration-wsl` job (fast)
+#   - nightly: the full hosted matrix (contract + every service module), from the schedule below
+#   - manually: either the hosted matrix or a self-hosted Windows runner carrying the custom `wslc`
+#     label (useful when a warm image store matters), selected with the `runner` input
 #
 # Runner prerequisites are documented in docs/wiki/Testing.md.
 on:
@@ -19,6 +21,20 @@ on:
         description: TUnit treenode filter. Defaults to every test.
         required: false
         default: "/*/*/*/*"
+      runner:
+        description: Runner to use for the full matrix.
+        type: choice
+        options: [hosted, self-hosted]
+        default: hosted
+      scope:
+        description: Test scope.
+        type: choice
+        options: [full, contract]
+        default: full
+  schedule:
+    # Nightly full matrix on a hosted windows-2025 runner (UTC). The contract suite already runs on
+    # every pull request; this is the standing proof that every service module works on WSLC.
+    - cron: "0 3 * * *"
 
 concurrency:
   # Never cancel a WSLC run in flight: it owns a session and its image store.
@@ -26,11 +42,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  integration-wsl:
-    name: Integration (WSL Containers)
-    # A self-hosted Windows x64 runner with WSL Containers installed and the custom `wslc` label.
-    runs-on: [self-hosted, wslc]
-    timeout-minutes: 60
+  integration-wsl-hosted:
+    name: Integration (WSL Containers, hosted)
+    # On a schedule there are no inputs, so default to the hosted full matrix. On manual dispatch the
+    # `runner` input decides between this job and the self-hosted one.
+    if: github.event_name == 'schedule' || inputs.runner != 'self-hosted'
+    runs-on: windows-2025
+    timeout-minutes: 90
+    env:
+      PURVIEW_CONTAINERS_BACKEND: wsl
+      PURVIEW_CONTAINERS_REQUIRE_BACKEND: wsl
+      WSL_UTF8: "1"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,11 +64,21 @@ jobs:
           # Keep in sync with `sdk.version` in global.json (and the other workflows).
           dotnet-version: "11.0.100-rc.2.26504.105"
 
-      - name: Verify the WSL Containers host
+      - name: Install WSL Containers
         shell: pwsh
         run: |
+          wsl --update --pre-release
+          $wslc = 'C:\Program Files\WSL\wslc.exe'
+          if (-not (Test-Path $wslc)) {
+            # The feature reached GA in some channels; fall back to the stable update before failing.
+            wsl --update
+          }
           wsl --version
-          wslc version
+          if (-not (Test-Path $wslc)) {
+            throw "wslc.exe was not installed at $wslc; the hosted runner did not get a WSL build with containers."
+          }
+          $env:PATH = "C:\Program Files\WSL;$env:PATH"
+          & $wslc version
 
       - name: Restore
         run: dotnet restore src/Containers.slnx
@@ -55,10 +87,11 @@ jobs:
         run: dotnet build src/Containers.slnx --configuration Release --no-restore
 
       - name: WSLC backend contract
-        # Real containers on a shared WSLC session; ~27 tests and ~4 minutes.
-        run: dotnet test src/tests/Wsl.IntegrationTests/Wsl.IntegrationTests.csproj --configuration Release --no-build --treenode-filter '${{ inputs.filter }}'
+        # Real containers on a shared WSLC session; the suite caps its own parallelism.
+        run: dotnet test src/tests/Wsl.IntegrationTests/Wsl.IntegrationTests.csproj --configuration Release --no-build --treenode-filter '${{ inputs.filter || '/*/*/*/*' }}' --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
 
       - name: Service modules on WSLC
+        if: inputs.scope != 'contract'
         # Each module pulls its image and starts a real service. One project at a time keeps the shared
         # WSLC image store uncontended (parallel sessions fail with 0x80070020). Every project runs so a
         # single failure does not hide the rest, and the step fails at the end if any of them did.
@@ -75,10 +108,83 @@ jobs:
             'src/tests/Nats.IntegrationTests/Nats.IntegrationTests.csproj'
           )
 
+          $filter = '${{ inputs.filter || '/*/*/*/*' }}'
           $failed = @()
           foreach ($project in $projects) {
             Write-Host "::group::$project"
-            dotnet test $project --configuration Release --no-build --treenode-filter '${{ inputs.filter }}'
+            dotnet test $project --configuration Release --no-build --treenode-filter $filter --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
+            if ($LASTEXITCODE -ne 0) {
+              $failed += $project
+            }
+            Write-Host "::endgroup::"
+          }
+
+          if ($failed.Count -gt 0) {
+            throw "WSLC integration suites failed: $($failed -join ', ')"
+          }
+
+  integration-wsl-self-hosted:
+    name: Integration (WSL Containers, self-hosted)
+    if: inputs.runner == 'self-hosted'
+    # A self-hosted Windows x64 runner with WSL Containers installed and the custom `wslc` label. It is
+    # only used on manual dispatch; a runner with a warm image store makes the full matrix much faster.
+    runs-on: [self-hosted, wslc]
+    timeout-minutes: 60
+    env:
+      PURVIEW_CONTAINERS_BACKEND: wsl
+      PURVIEW_CONTAINERS_REQUIRE_BACKEND: wsl
+      WSL_UTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          # Keep in sync with `sdk.version` in global.json (and the other workflows).
+          dotnet-version: "11.0.100-rc.2.26504.105"
+
+      - name: Verify the WSL Containers host
+        shell: pwsh
+        run: |
+          wsl --version
+          $env:PATH = "C:\Program Files\WSL;$env:PATH"
+          & 'C:\Program Files\WSL\wslc.exe' version
+
+      - name: Restore
+        run: dotnet restore src/Containers.slnx
+
+      - name: Build
+        run: dotnet build src/Containers.slnx --configuration Release --no-restore
+
+      - name: WSLC backend contract
+        # Real containers on a shared WSLC session; ~27 tests and ~4 minutes.
+        run: dotnet test src/tests/Wsl.IntegrationTests/Wsl.IntegrationTests.csproj --configuration Release --no-build --treenode-filter '${{ inputs.filter || '/*/*/*/*' }}' --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
+
+      - name: Service modules on WSLC
+        if: inputs.scope != 'contract'
+        # Each module pulls its image and starts a real service. One project at a time keeps the shared
+        # WSLC image store uncontended (parallel sessions fail with 0x80070020). Every project runs so a
+        # single failure does not hide the rest, and the step fails at the end if any of them did.
+        shell: pwsh
+        run: |
+          $projects = @(
+            'src/tests/AzureKeyVaultEmulator.IntegrationTests/AzureKeyVaultEmulator.IntegrationTests.csproj',
+            'src/tests/PostgreSql.IntegrationTests/PostgreSql.IntegrationTests.csproj',
+            'src/tests/Redis.IntegrationTests/Redis.IntegrationTests.csproj',
+            'src/tests/MsSql.IntegrationTests/MsSql.IntegrationTests.csproj',
+            'src/tests/MySql.IntegrationTests/MySql.IntegrationTests.csproj',
+            'src/tests/RabbitMq.IntegrationTests/RabbitMq.IntegrationTests.csproj',
+            'src/tests/Azurite.IntegrationTests/Azurite.IntegrationTests.csproj',
+            'src/tests/Nats.IntegrationTests/Nats.IntegrationTests.csproj'
+          )
+
+          $filter = '${{ inputs.filter || '/*/*/*/*' }}'
+          $failed = @()
+          foreach ($project in $projects) {
+            Write-Host "::group::$project"
+            dotnet test $project --configuration Release --no-build --treenode-filter $filter --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
             if ($LASTEXITCODE -ne 0) {
               $failed += $project
             }

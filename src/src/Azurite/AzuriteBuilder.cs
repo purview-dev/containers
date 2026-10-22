@@ -54,7 +54,16 @@ public class AzuriteBuilder : ContainerBuilder<AzuriteBuilder, AzuriteContainer,
 		var waitStrategies =
 			configuration.WaitStrategies.Count > 0
 				? configuration.WaitStrategies
-				: new[] { (IWaitStrategy)Wait.ForLogMessage("successfully listening") };
+				: new[]
+				{
+					(IWaitStrategy)
+						Wait.ForAll(
+							Wait.ForLogMessage("successfully listening"),
+							Wait.ForTcpPort(BlobPort),
+							Wait.ForTcpPort(QueuePort),
+							Wait.ForTcpPort(TablePort)
+						),
+				};
 		return configuration with { WaitStrategies = waitStrategies };
 	}
 

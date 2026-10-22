@@ -47,7 +47,14 @@ public class NatsBuilder : ContainerBuilder<NatsBuilder, NatsContainer, NatsConf
 		var waitStrategies =
 			configuration.WaitStrategies.Count > 0
 				? configuration.WaitStrategies
-				: new[] { (IWaitStrategy)Wait.ForLogMessage("Listening for client connections") };
+				: new[]
+				{
+					(IWaitStrategy)
+						Wait.ForAll(
+							Wait.ForLogMessage("Listening for client connections"),
+							Wait.ForTcpPort(ClientPort)
+						),
+				};
 		return configuration with { WaitStrategies = waitStrategies };
 	}
 

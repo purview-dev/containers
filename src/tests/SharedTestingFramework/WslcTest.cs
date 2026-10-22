@@ -6,6 +6,13 @@ namespace Purview.Containers;
 /// <summary>Shared helpers for integration tests that exercise real WSL Containers.</summary>
 public static class WslcTest
 {
+	/// <summary>
+	/// Set to <c>wsl</c> to make an unavailable or incompatible WSLC host fail the test run instead of
+	/// skipping it. CI sets this for the WSLC jobs so a mis-provisioned runner cannot go green with
+	/// zero coverage.
+	/// </summary>
+	public const string RequireBackendEnvironmentVariable = "PURVIEW_CONTAINERS_REQUIRE_BACKEND";
+
 	static int BackendRegistered;
 
 	/// <summary>
@@ -28,17 +35,57 @@ public static class WslcTest
 		var info = await WslContainerRuntime.Instance.GetInfoAsync();
 		if (!info.IsAvailable || !info.IsCompatible)
 		{
-			throw new SkipTestException(
-				$"WSL Containers unavailable. Missing: {string.Join(", ", info.MissingComponents)}"
-			);
+			var reason = $"WSL Containers unavailable. Missing: {string.Join(", ", info.MissingComponents)}";
+			if (IsBackendRequired())
+			{
+				throw new InvalidOperationException(
+					$"{reason} {RequireBackendEnvironmentVariable}=wsl requires a usable WSLC host."
+				);
+			}
+
+			throw new SkipTestException(reason);
 		}
 	}
 
-	/// <summary>Connects to a host TCP port, throwing when the timeout elapses.</summary>
+	/// <summary>
+	/// Connects to a host TCP port, retrying until <paramref name="timeout" /> elapses. A refused
+	/// connection fails immediately, so a single <c>ConnectAsync</c> is not a wait.
+	/// </summary>
 	public static async Task WaitForTcpAsync(int port, TimeSpan timeout)
 	{
-		using System.Net.Sockets.TcpClient client = new();
-		using CancellationTokenSource timeoutSource = new(timeout);
-		await client.ConnectAsync(System.Net.IPAddress.Loopback, port, timeoutSource.Token);
+		var deadline = DateTime.UtcNow + timeout;
+		Exception? lastError = null;
+		while (DateTime.UtcNow < deadline)
+		{
+			try
+			{
+				using System.Net.Sockets.TcpClient client = new();
+				using CancellationTokenSource attemptSource = new(TimeSpan.FromSeconds(2));
+				await client.ConnectAsync(System.Net.IPAddress.Loopback, port, attemptSource.Token);
+				return;
+			}
+			catch (Exception exception) when (exception is not OperationCanceledException)
+			{
+				lastError = exception;
+			}
+			catch (OperationCanceledException)
+			{
+				// A per-attempt connect timeout is just another not-yet-listening result.
+			}
+
+			await Task.Delay(TimeSpan.FromMilliseconds(250));
+		}
+
+		throw new System.TimeoutException(
+			$"TCP port {port} did not become reachable within {timeout}. Last error: "
+				+ $"{lastError?.GetType().Name}: {lastError?.Message}"
+		);
 	}
+
+	static bool IsBackendRequired() =>
+		string.Equals(
+			Environment.GetEnvironmentVariable(RequireBackendEnvironmentVariable),
+			"wsl",
+			StringComparison.OrdinalIgnoreCase
+		);
 }

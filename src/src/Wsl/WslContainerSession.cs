@@ -18,7 +18,7 @@ sealed class WslContainerSession : IContainerSession
 {
 	readonly Session _session;
 	readonly SemaphoreSlim _lifecycleGate = new(1, 1);
-	readonly ConcurrentDictionary<string, Task> _activePulls = new(StringComparer.Ordinal);
+	readonly ConcurrentDictionary<string, Lazy<Task>> _activePulls = new(StringComparer.Ordinal);
 	readonly string _storagePath;
 	readonly bool _deleteStorageOnTerminate;
 	int _started;
@@ -324,30 +324,38 @@ sealed class WslContainerSession : IContainerSession
 		return images.Any(image => reference.MatchesStoredName(image.Name));
 	}
 
-	Task PullDeduplicatedAsync(
+	async Task PullDeduplicatedAsync(
 		Image reference,
 		IProgress<ImagePullProgress>? progress,
 		RegistryCredentials? credentials,
 		CancellationToken cancellationToken
 	)
 	{
-		return _activePulls.GetOrAdd(
+		cancellationToken.ThrowIfCancellationRequested();
+
+		// The pull is shared by every caller waiting on the same image, so it must not inherit one
+		// caller's cancellation token: a test timing out would otherwise cancel the pull for every
+		// other test waiting on it. Callers stop waiting on their own token; the pull itself runs to
+		// completion (or fails) once.
+		var lazy = _activePulls.GetOrAdd(
 			reference.FullReference,
-			static (_, state) =>
-				state.Session.PullCoreAsync(
-					state.Reference,
-					state.Progress,
-					state.Credentials,
-					state.CancellationToken
-				),
-			(
-				Session: this,
-				Reference: reference,
-				Progress: progress,
-				Credentials: credentials,
-				CancellationToken: cancellationToken
+			_ => new Lazy<Task>(
+				() => PullCoreAsync(reference, progress, credentials, CancellationToken.None),
+				LazyThreadSafetyMode.ExecutionAndPublication
 			)
 		);
+		var pull = lazy.Value;
+
+		// Observe a fault even if every waiter cancelled, so it is not raised as an unobserved
+		// task exception at finalization.
+		_ = pull.ContinueWith(
+			static task => _ = task.Exception,
+			CancellationToken.None,
+			TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+			TaskScheduler.Default
+		);
+
+		await pull.WaitAsync(cancellationToken).ConfigureAwait(false);
 	}
 
 	async Task PullCoreAsync(

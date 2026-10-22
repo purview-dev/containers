@@ -3,6 +3,7 @@ using RabbitMQ.Client;
 
 namespace Purview.Containers.RabbitMq;
 
+[NotInParallel]
 public class RabbitMqIntegrationTests
 {
 	[Test]

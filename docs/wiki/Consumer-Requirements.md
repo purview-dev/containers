@@ -56,7 +56,7 @@ file, and because the defaults only fill in a value when you have not chosen one
 | 2 | **A Windows-specific target framework that names the OS version** (`net10.0-windows10.0.19041.0` or later) — *only when you want the implementation bound directly; a platform-neutral `net10.0` project binds the facade and still runs WSLC on a Windows host* | The `Microsoft.WSL.Containers` projection only ships Windows assets. `net10.0-windows` on its own is not enough. |
 | 3 | **64-bit** (`PlatformTarget` `x64`/`arm64`, or a matching `RuntimeIdentifier`) | The native `wslcsdk.dll` ships for `win-x64` and `win-arm64` only. |
 | 4 | **`WindowsSdkPackageVersion` at least `10.0.26100.80`** | The projection is compiled against `Microsoft.Windows.SDK.NET` `10.0.26100.79`; the pack the SDK resolves for a `10.0.19041.0` target framework is older. |
-| 5 | **A Windows 10/11 host with WSL Containers** to actually run containers | The library drives WSLC; it never installs or updates WSL for you. |
+| 5 | **A Windows 11 (22H2 or later) or Windows Server 2025 host with WSL Containers** to actually run containers | The library drives WSLC; it never installs or updates WSL for you. Windows 10 and Windows Server 2022 are not supported by WSL Containers. |
 
 ### 1. .NET 10 or later
 
@@ -113,8 +113,8 @@ for you, so you only need it if you want to override the value deliberately.
 
 ### 5. Host prerequisites
 
-The build requirements above are host-independent. Running containers needs a Windows 10/11 host
-with WSL Containers installed (`wsl --install --no-distribution`) — see
+The build requirements above are host-independent. Running containers needs a Windows 11 (22H2 or later)
+or Windows Server 2025 host with WSL Containers installed (`wsl --install --no-distribution`) — see
 [Getting Started](Getting-Started.md).
 
 ## What the packages do for you

@@ -1,3 +1,5 @@
+using Purview.Containers.Waiting;
+
 namespace Purview.Containers.Wsl;
 
 [Explicit]
@@ -49,9 +51,9 @@ public class VolumeTests
 			.WithImage("alpine:latest")
 			.WithVolumeMount(volume, "/data")
 			.WithCommand("/bin/sh", "-c", "echo shared-data > /data/file.txt; sleep 300")
+			.WithWaitStrategy(Wait.ForCommand("/bin/sh", "-c", "test -f /data/file.txt"))
 			.Build();
 		await writer.StartAsync(cancellationToken);
-		await Task.Delay(1500, cancellationToken);
 
 		await using var reader = new ContainerBuilder()
 			.WithImage("alpine:latest")

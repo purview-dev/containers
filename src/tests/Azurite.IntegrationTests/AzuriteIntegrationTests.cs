@@ -1,5 +1,6 @@
 namespace Purview.Containers.Azurite;
 
+[NotInParallel]
 public class AzuriteIntegrationTests
 {
 	[Test]

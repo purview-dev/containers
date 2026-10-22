@@ -8,7 +8,7 @@ points you at the test workflow.
 Everything runs on one of two backends; pick the one that matches your machine — see
 [Backends: WSLC or Docker](Backends.md) for the full comparison.
 
-- **WSL Containers backend:** Windows 10/11 with **WSL Containers** (`wsl --install --no-distribution`),
+- **WSL Containers backend:** Windows 11 (22H2 or later) or Windows Server 2025 with **WSL Containers** (`wsl --install --no-distribution`),
   verified against WSL **3.0.1.0**. A consuming project must be **.NET 10 or later**: a platform-neutral
   `net10.0` project binds the portable facade and gets automatic WSLC-or-Docker selection, while a Windows
   target framework (`net10.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. The

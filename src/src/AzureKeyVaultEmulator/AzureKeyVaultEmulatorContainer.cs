@@ -47,6 +47,7 @@ public sealed class AzureKeyVaultEmulatorContainer : ContainerBase
 	public string GetConnectionString() => GetVaultUri().ToString();
 
 	/// <summary>The certificate the emulator serves. Safe to call after <see cref="IContainer.StartAsync" />.</summary>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1024:Use properties where appropriate")]
 	public X509Certificate2 GetCertificate() =>
 		_certificate ?? throw new InvalidOperationException("Container has not been started. Call StartAsync() first.");
 

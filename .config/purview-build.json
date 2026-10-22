@@ -2,9 +2,15 @@
 	"Build": {
 		"Solution": "src/Containers.slnx",
 		"TestRoot": "src/tests",
+		// Discovery stays unit-only so the shared Ubuntu pipeline never launches a Windows-targeted WSLC
+		// test app. `just test` is the all-categories path; the TestFilter stays /*/*/*/* so widening
+		// discovery runs every category.
 		"TestPatterns": "*UnitTests.csproj",
 		"TestProjects": "*Tests.csproj",
-		"TestFilter": "/*/*/*/*[Category=Unit]"
+		// Test projects run one at a time whenever discovery is widened: a WSLC session exclusively
+		// locks its image-store VHD, and a parallel second process falls back to a cold isolated store.
+		"MaxTestParallelism": 1,
+		"TestFilter": "/*/*/*/*"
 	},
 	"PackValidation": {
 		// Explicit because Purview.Build 0.5.3 defaults RequiredCompilerFlags to empty. Earlier
