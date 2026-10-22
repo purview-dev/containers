@@ -2,6 +2,7 @@ using Microsoft.Data.SqlClient;
 
 namespace Purview.Containers.MsSql;
 
+[NotInParallel]
 public class MsSqlIntegrationTests
 {
 	[Test]

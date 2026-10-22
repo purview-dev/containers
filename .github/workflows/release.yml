@@ -5,6 +5,13 @@ on:
     branches: ["release/**"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+  # The shared release workflow pushes the same packages to nuget.org and, when
+  # PURVIEW_PUBLISH_GITHUB_PACKAGES=true, to GitHub Packages. A reusable workflow cannot grant
+  # more than its caller, so the permission is declared here.
+  packages: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

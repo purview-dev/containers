@@ -14,6 +14,6 @@ public class NatsBuilderTests
 		await Assert.That(configuration.PortBindings).Contains(p => p.ContainerPort == 4222 && p.AssignRandomHostPort);
 		await Assert.That(configuration.PortBindings).Contains(p => p.ContainerPort == 8222 && p.AssignRandomHostPort);
 		await Assert.That(configuration.WaitStrategies.Count).IsEqualTo(1);
-		await Assert.That(configuration.WaitStrategies[0]).IsTypeOf<LogMessageWaitStrategy>();
+		await Assert.That(configuration.WaitStrategies[0]).IsTypeOf<AllWaitStrategy>();
 	}
 }

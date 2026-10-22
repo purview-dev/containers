@@ -2,6 +2,7 @@ using NATS.Client.Core;
 
 namespace Purview.Containers.Nats;
 
+[NotInParallel]
 public class NatsIntegrationTests
 {
 	[Test]

@@ -1,5 +1,10 @@
 <Project>
 	<PropertyGroup>
+		<!--
+		  Must be set here, not left to the SDK default: NuGet imports Directory.Packages.props before
+		  the SDK props that would set these, so without this block every PackageReference fails with
+		  NU1015 ("no version specified").
+		-->
 		<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
 		<CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
 	</PropertyGroup>
@@ -24,6 +29,7 @@
 	<PropertyGroup>
 		<MicrosoftWSLContainersVersion>3.0.3</MicrosoftWSLContainersVersion>
 		<WindowsSdkRefPackageVersion>10.0.26100.80</WindowsSdkRefPackageVersion>
+		<TUnitVersion>1.76.0</TUnitVersion>
 	</PropertyGroup>
 
 	<ItemGroup Label="Transitive Pinning">
@@ -34,11 +40,19 @@
 		<PackageVersion Include="Testcontainers" Version="4.16.0" />
 		<PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.11.0" />
 		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.402" />
-		<PackageVersion Include="Purview.Telemetry.SourceGenerator" Version="5.0.4" />
-		<PackageVersion Include="TUnit" Version="1.75.0" />
-		<PackageVersion Include="TUnit.Core" Version="1.75.0" />
-		<PackageVersion Include="TUnit.Mocks" Version="1.75.0" />
-		<PackageVersion Include="Purview.Skills.Testing" Version="1.0.7" />
+		<PackageVersion Include="Purview.Telemetry.SourceGenerator" Version="5.0.5" />
+		<PackageVersion Include="TUnit" Version="$(TUnitVersion)" />
+		<PackageVersion Include="TUnit.Core" Version="$(TUnitVersion)" />
+		<PackageVersion Include="TUnit.Mocks" Version="$(TUnitVersion)" />
+		<!--
+		  Project/run-level retry for the container integration suites. This is deliberately a test-only
+		  dependency: Microsoft.Testing.Platform's retry extension reruns failed tests by restarting the
+		  test host, which is the right granularity for tests that depend on an external runtime. The
+		  package is licensed under the Microsoft Testing Platform Tools terms, which permit use in
+		  OSI-approved open-source projects; it never ships in a Purview package.
+		-->
+		<PackageVersion Include="Microsoft.Testing.Extensions.Retry" Version="2.5.1" />
+		<PackageVersion Include="Purview.Skills.Testing" Version="1.1.0" />
 		<PackageVersion Include="Bogus" Version="35.6.5" />
 		<PackageVersion Include="Azure.Core" Version="1.63.0" />
 		<PackageVersion Include="Azure.Security.KeyVault.Certificates" Version="4.9.2" />

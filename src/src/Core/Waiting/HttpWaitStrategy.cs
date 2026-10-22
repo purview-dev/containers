@@ -84,6 +84,10 @@ public sealed class HttpWaitStrategy(string path = "/") : WaitStrategy
 			{
 				ConnectTimeout = _requestTimeout,
 				PooledConnectionLifetime = TimeSpan.Zero,
+				// A readiness probe targets the container's mapped loopback port. Honouring a host
+				// HTTP(S)_PROXY would send it to a proxy that cannot reach the container, turning a
+				// healthy service into a five-minute timeout.
+				UseProxy = false,
 			};
 			if (_allowInsecureTls)
 			{

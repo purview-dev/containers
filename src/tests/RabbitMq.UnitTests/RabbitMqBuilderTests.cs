@@ -18,7 +18,7 @@ public class RabbitMqBuilderTests
 		await Assert.That(configuration.PortBindings).Contains(p => p.ContainerPort == 5672);
 		await Assert.That(configuration.PortBindings).Contains(p => p.ContainerPort == 15672);
 		await Assert.That(configuration.WaitStrategies.Count).IsEqualTo(1);
-		await Assert.That(configuration.WaitStrategies[0]).IsTypeOf<LogMessageWaitStrategy>();
+		await Assert.That(configuration.WaitStrategies[0]).IsTypeOf<AllWaitStrategy>();
 	}
 
 	[Test]

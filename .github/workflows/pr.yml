@@ -21,8 +21,10 @@ jobs:
       # ("A compatible .NET SDK was not found") and every step fails.
       # Keep in sync with `sdk.version` in global.json.
       dotnet-version: "11.0.100-rc.2.26504.105"
-      # Mirrors Build:TestFilter in purview-build.json: the SDK categorises unit test projects as Unit,
-      # so the WSLC integration suites are never selected and the runner needs no WSLC host.
+      # The repository default filter is /*/*/*/*, but test discovery stays unit-only and the shared
+      # pipeline runs on ubuntu-latest, so it has no WSLC host. This job narrows the filter to Unit
+      # anyway. The Docker suites run in the explicit job below; the WSLC contract runs on
+      # windows-2025 in the integration-wsl job.
       test-filter: "/*/*/*/*[Category=Unit]"
       # All library projects are packable, so pack and validate the produced packages.
       run-pack: true
@@ -32,11 +34,14 @@ jobs:
   # The shared pipeline filters to [Category=Unit] because the WSLC integration suites need a Windows
   # host. The Docker integration suites need only a Docker daemon, so they run here on the same Linux
   # runner a consumer would use - the standing proof that the library and every service module work off
-  # Windows/WSL. The suites skip themselves when no daemon is reachable, so a non-zero result is a real
-  # failure, not a missing runtime.
+  # Windows/WSL. The job requires the daemon, so a runner without one fails instead of skipping.
   integration-docker:
     name: Integration (Docker)
     runs-on: ubuntu-latest
+    env:
+      # Pin the backend and require it: a runner without a daemon must fail, not silently skip every test.
+      PURVIEW_CONTAINERS_BACKEND: docker
+      PURVIEW_CONTAINERS_REQUIRE_BACKEND: docker
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -44,6 +49,47 @@ jobs:
           # Keep in sync with `sdk.version` in global.json.
           dotnet-version: "11.0.100-rc.2.26504.105"
       - name: Docker backend
-        run: dotnet test src/tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*'
+        run: dotnet test src/tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*' --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
       - name: Service modules on Docker
-        run: dotnet test src/tests/Modules.Docker.IntegrationTests/Modules.Docker.IntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*'
+        run: dotnet test src/tests/Modules.Docker.IntegrationTests/Modules.Docker.IntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*' --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
+
+  # WSLC needs a Windows host with nested virtualisation. windows-2025 provides it (Windows Server
+  # 2025); wslc ships in the pre-release WSL channel and its directory is not on PATH. This is the
+  # contract suite only: the full module matrix is too slow for every pull request and runs in the
+  # nightly integration-wsl workflow instead.
+  integration-wsl:
+    name: Integration (WSLC contract)
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      PURVIEW_CONTAINERS_BACKEND: wsl
+      PURVIEW_CONTAINERS_REQUIRE_BACKEND: wsl
+      WSL_UTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          # Keep in sync with `sdk.version` in global.json.
+          dotnet-version: "11.0.100-rc.2.26504.105"
+      - name: Install WSL Containers
+        shell: pwsh
+        run: |
+          wsl --update --pre-release
+          $wslc = 'C:\Program Files\WSL\wslc.exe'
+          if (-not (Test-Path $wslc)) {
+            # The feature reached GA in some channels; fall back to the stable update before failing.
+            wsl --update
+          }
+          wsl --version
+          if (-not (Test-Path $wslc)) {
+            throw "wslc.exe was not installed at $wslc; the hosted runner did not get a WSL build with containers."
+          }
+          $env:PATH = "C:\Program Files\WSL;$env:PATH"
+          & $wslc version
+      - name: Restore
+        run: dotnet restore src/Containers.slnx
+      - name: Build
+        run: dotnet build src/Containers.slnx --configuration Release --no-restore
+      - name: WSLC backend contract
+        # Real containers on the shared WSLC session; the suite caps its own parallelism.
+        run: dotnet test src/tests/Wsl.IntegrationTests/Wsl.IntegrationTests.csproj --configuration Release --no-build --treenode-filter '/*/*/*/*' --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50

@@ -15,8 +15,11 @@ namespace Purview.Containers.Modules.Docker;
 /// connection, and RabbitMQ, Azurite and NATS for their startup log lines. Each test skips itself when no
 /// Docker daemon is reachable.
 /// </remarks>
+[NotInParallel]
 public class ModuleDockerTests
 {
+	const string RequireBackendEnvironmentVariable = "PURVIEW_CONTAINERS_REQUIRE_BACKEND";
+
 	static int BackendRegistered;
 
 	static async Task SkipIfUnavailableAsync()
@@ -29,7 +32,21 @@ public class ModuleDockerTests
 		var info = await DockerContainerBackend.Create().GetInfoAsync();
 		if (!info.IsUsable)
 		{
-			throw new SkipTestException($"Docker is unavailable: {string.Join("; ", info.MissingComponents)}");
+			var reason = $"Docker is unavailable: {string.Join("; ", info.MissingComponents)}";
+			if (
+				string.Equals(
+					Environment.GetEnvironmentVariable(RequireBackendEnvironmentVariable),
+					"docker",
+					StringComparison.OrdinalIgnoreCase
+				)
+			)
+			{
+				throw new InvalidOperationException(
+					$"{reason} {RequireBackendEnvironmentVariable}=docker requires a reachable daemon."
+				);
+			}
+
+			throw new SkipTestException(reason);
 		}
 	}
 

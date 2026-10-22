@@ -3,6 +3,7 @@ using PurviewContainerState = Purview.Containers.ContainerState;
 
 namespace Purview.Containers.PostgreSql;
 
+[NotInParallel]
 public class PostgreSqlIntegrationTests
 {
 	[Test]

@@ -2,6 +2,7 @@ using MySqlConnector;
 
 namespace Purview.Containers.MySql;
 
+[NotInParallel]
 public class MySqlIntegrationTests
 {
 	[Test]

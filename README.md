@@ -43,7 +43,8 @@ want to fix the runtime.
 
 **WSL Containers backend**
 
-- Windows 10/11 with **WSL Containers**, installed via `wsl --install --no-distribution` (verified against
+- Windows 11 (22H2 or later) or Windows Server 2025 with **WSL Containers**, installed via
+  `wsl --install --no-distribution` (verified against
   WSL 3.0.1.0).
 - A consuming project that is **.NET 10 or later**. A platform-neutral `net10.0` project binds the
   portable facade and gets automatic WSLC-or-Docker selection; a Windows target framework
@@ -255,16 +256,25 @@ in parallel makes the losers fail with `0x80070020`:
 The process cannot access the file because it is being used by another process.
 ```
 
-The runtime now verifies the store on first use and transparently falls back to an isolated
+The runtime verifies the store on first use and transparently falls back to an isolated
 per-process store (removed when that process's session terminates), but running test modules serially
-keeps the warm shared image cache (no per-process re-pull) and is the fastest option:
+keeps the warm shared image cache (no per-process re-pull) and is the fastest option. Test projects run
+one at a time (`.config/purview-build.json` sets `Build:MaxTestParallelism` to `1`); inside a project the
+container suites also cap their own parallelism so they do not stampede Testcontainers' resource reaper
+or the WSLC session VM.
 
 ```powershell
-just test                     # dotnet test, one test module at a time
+just test                     # dotnet test, one test module at a time, retrying failed tests twice
 
 # Visual Studio: Test > Options > untick "Run Tests in Parallel" (or set
 # "Maximum Parallel Test Projects" to 1) before running the WSLC integration tests.
 ```
+
+Failures are retried at the **test-project** level by Microsoft.Testing.Platform's retry extension: a retry
+restarts the test host, so WSLC gets a fresh session. There is no per-assembly retry attribute. In CI, the
+Docker suites run on every pull request, the WSLC contract suite runs on a hosted `windows-2025` runner, and
+the full WSLC service-module matrix runs nightly. Set `PURVIEW_CONTAINERS_REQUIRE_BACKEND=wsl|docker` to make
+a missing runtime fail instead of skip.
 
 To watch a container start end to end, run a sample — the same code, on either backend:
 

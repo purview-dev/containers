@@ -62,7 +62,7 @@ This wiki is the project documentation hub. The packages are published under the
 
 ## Requirements
 
-- **WSL Containers backend:** Windows 10/11 with **WSL Containers**, installed via
+- **WSL Containers backend:** Windows 11 (22H2 or later) or Windows Server 2025 with **WSL Containers**, installed via
   `wsl --install --no-distribution`. Verified against WSL **3.0.1.0**; `wsl --version` and `wslc version`
   should both report 3.0.1.0 or later.
 - **Docker backend:** any reachable Docker daemon (Docker Desktop, Docker Engine in WSL2, or a CI runner).

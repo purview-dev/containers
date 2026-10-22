@@ -1,3 +1,5 @@
+using Purview.Containers.Waiting;
+
 namespace Purview.Containers.Wsl;
 
 [Explicit]
@@ -11,6 +13,7 @@ public class AlpineLifecycleTests
 		await using var container = new ContainerBuilder()
 			.WithImage("alpine:latest")
 			.WithCommand("/bin/echo", "hello-from-alpine")
+			.WithWaitStrategy(Wait.ForLogMessage("hello-from-alpine"))
 			.Build();
 
 		await container.StartAsync();
@@ -29,6 +32,7 @@ public class AlpineLifecycleTests
 			.WithImage("alpine:latest")
 			.WithEnvironment("GREETING", "hello-env")
 			.WithCommand("/bin/sh", "-c", "echo $GREETING")
+			.WithWaitStrategy(Wait.ForLogMessage("hello-env"))
 			.Build();
 
 		await container.StartAsync();

@@ -57,15 +57,30 @@ public sealed class WslContainerRuntime : IContainerRuntime
 	public async Task<WslContainerRuntimeInfo> GetInfoAsync(CancellationToken cancellationToken = default)
 	{
 		await Task.Yield();
-		var version = WslcService.GetVersion();
-		var missing = WslcService.GetMissingComponents();
-		var compatible = !missing.Contains(Component.SdkNeedsUpdate);
-		return new WslContainerRuntimeInfo(
-			$"{version.Major}.{version.Minor}.{version.Revision}",
-			missing.Select(component => component.ToString()).ToArray(),
-			missing.Count == 0,
-			compatible
-		);
+		try
+		{
+			var version = WslcService.GetVersion();
+			var missing = WslcService.GetMissingComponents();
+			var compatible = !missing.Contains(Component.SdkNeedsUpdate);
+			return new WslContainerRuntimeInfo(
+				$"{version.Major}.{version.Minor}.{version.Revision}",
+				missing.Select(component => component.ToString()).ToArray(),
+				missing.Count == 0,
+				compatible
+			);
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException)
+		{
+			// The SDK projection or its native component may be absent even on Windows (for example a
+			// host with Docker but no WSL Containers). "Unavailable" is a result, not an exception:
+			// callers use this probe to decide whether to skip or select another backend.
+			return new WslContainerRuntimeInfo(
+				Version: string.Empty,
+				MissingComponents: [$"{exception.GetType().Name}: {exception.Message}"],
+				IsAvailable: false,
+				IsCompatible: false
+			);
+		}
 	}
 
 	/// <inheritdoc />
