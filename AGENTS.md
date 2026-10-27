@@ -191,7 +191,8 @@ Commit messages follow Conventional Commits enforced by the `commit-msg` lefthoo
   `purview-dev/build/.github/workflows/purview-build.yml`, with pack and validation enabled.
 - `.github/workflows/release.yml` runs the shared release pipeline with `release-mode: NuGet` on a push to a
   `release/**` branch (or a manual dispatch), **not** on a push to `main`. Cut a release by merging the
-  version bump into `main`, then pushing `release/<major>.<minor>` from it. `.config/purview-build.json`
+  version bump into `main`, then pushing a `release/v…` branch named after the version from it (for
+  example `release/v1.0.9` for `1.0.0-prerelease.9`). `.config/purview-build.json`
   sets the `TrunkReservesMinor` eligibility policy; a version whose `v<version>` tag already exists is
   skipped (`REL002`), so every release needs a new `package.json` version. See
   [Release Flow](docs/wiki/Release-Flow.md).
