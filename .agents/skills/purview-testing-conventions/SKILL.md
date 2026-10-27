@@ -4,7 +4,8 @@ description: >-
   Use when writing or reviewing tests in a .NET repository following the Purview conventions - TUnit
   and TUnit.Mocks, the AAA structure and naming, placing a test in the namespace of the class under
   test, CreateXXX construction helpers, building domain content through TestBuilder with Bogus, the
-  assertion surface, parameterised tests, and which tier a test project belongs to.
+  assertion surface, parameterised tests, which tier a test project belongs to, BDTest for
+  acceptance tests, and Purview.Containers for a suite that needs a real database or queue.
 metadata:
   product: Purview engineering playbook
   repository: purview-dev/engineering-playbook
@@ -17,18 +18,23 @@ metadata:
 | Framework | **TUnit**. Not xUnit, NUnit or MSTest. |
 | Substitutes | **TUnit.Mocks**. Not NSubstitute or Moq. |
 | Test data | **Bogus**, reached through `TestBuilder`. |
-| Structure | Explicit `// Arrange`, `// Act`, `// Assert`. |
+| Acceptance tests | **BDTest** over TUnit, via `BDTest.TUnit`. Not Gherkin, SpecFlow or Reqnroll. |
+| A real dependency | **`Purview.Containers`**. Not Testcontainers directly, never a shared instance. |
+| Structure | Explicit `// Arrange`, `// Act`, `// Assert` — Given/When/Then in an acceptance test. |
 | Naming | `{SubjectUnderTest}_{Scenario}_{Expectation}`, and `async Task`. |
 | Placement | One `{Class}Tests` class per class under test, **in the namespace of the class under test**. |
 | Construction | Dependencies and the system under test come from `CreateXXX` helpers with optional parameters. |
-| Cancellation | Pass a `CancellationToken` wherever a downstream method accepts one. |
+| Async | The async overload wherever the API offers one — in the test **and in every helper it calls**. Convert a sync helper, or state why it cannot be. |
+| Cancellation | If any method the test calls accepts a `CancellationToken`, the test's **last parameter** is one, forwarded to every call that accepts one. |
 | Domain content | Built through `TestBuilder`. Never inline. |
 
 ## Why these, specifically
 
 **One framework.** The SDK wires TUnit into any project whose name ends in a test suffix — that
 wiring is why a test project file is empty. A second framework means every project file grows a
-conditional and the pipeline grows a second discovery path.
+conditional and the pipeline grows a second discovery path. That is a rule about the **runner**, not
+the style of a test — `BDTest.TUnit` is an adapter *over* TUnit, so an acceptance suite does not break
+it.
 
 **Same namespace as the subject.** The test reads as part of the thing it describes, needs no `using`
 to reach the type, and **cannot silently test a different type with the same name**.
@@ -121,6 +127,80 @@ public async Task Create_GivenSlugThatIsNotALowercaseSlug_Throws(string value)
     await Assert.That(act).Throws<ArgumentException>();
 }
 ```
+
+## Async all the way down
+
+**Where an API offers an async overload, use it** — `File.ReadAllTextAsync`, not `File.ReadAllText`.
+**And the rule reaches through test helpers:** a helper calling such an API is itself converted. Being
+a helper is not an exemption.
+
+The build enforces the first half and cannot enforce the second, which is why the second needs saying:
+
+- `VSTHRD103` is an **`error`** and flags a sync call with an `Async`-suffixed equivalent **when the
+  call sits inside a `Task`-returning method**. In an `async Task` test, `File.ReadAllText` fails the
+  build.
+- A **sync helper is not `Task`-returning**, so the identical call inside it is invisible to the
+  analyzer. Pushing the call one level down turns a build error into nothing.
+
+It also compounds with the cancellation rule, which keys off whether anything in the chain accepts a
+`CancellationToken`: a sync helper accepts none, so it **silently removes the trigger** and the test is
+uncancellable while looking compliant. (TUnit also runs tests in parallel, so a blocking read holds a
+thread-pool thread an async read would release.)
+
+Converting — three things change together, and the first two are not optional:
+
+```csharp
+// Before — invisible to VSTHRD103, and the chain accepts no token
+static string Documentation => File.ReadAllText(DocumentationPath);
+
+// After
+static async Task<string> ReadDocumentationAsync(CancellationToken cancellationToken) =>
+    await File.ReadAllTextAsync(DocumentationPath, cancellationToken);
+```
+
+- It returns a `Task`, bringing every call inside it back under `VSTHRD103`.
+- It gains the **`Async` suffix** — `VSTHRD200` is an `error`, so the rename is enforced.
+- It takes a trailing `CancellationToken`, because the chain now accepts one; its callers declare and
+  forward one.
+
+**A property cannot be `async`, so it becomes a method** — that is the conversion, not an exemption.
+A read-only property hiding IO is the most common form of this violation.
+
+It genuinely cannot be converted when **no async overload exists** (`File.Exists`, `File.Delete`,
+`Directory.EnumerateFiles`; likewise `ArchitecturePolicy.Load()` and `PolicySchemaValidator.Validate()`,
+which `Purview.Architecture.Testing` ships synchronous-only) or when **a base type or interface fixes
+the signature**. State the reason at the call. Never fake it: `Task.Run` around a blocking call,
+`Task.FromResult` around a sync result, or `.Result` / `.GetAwaiter().GetResult()` to flatten a task —
+the last two are `VSTHRD002`, an `error`.
+
+## Cancellation
+
+Three parts, triggered by the **call chain** rather than by the test:
+
+1. **If any method the test calls accepts a `CancellationToken`, the test declares one.** Not only the
+   method under test — anything in the chain, including a `File.ReadAllTextAsync` or the delegate handed
+   to `Assert.That`.
+2. **It is the last parameter**, and TUnit supplies the value. With `[Arguments]`, the data binds to the
+   leading parameters and the token is supplied on top, so the attribute's positional order still matches
+   the signature:
+
+   ```csharp
+   [Test]
+   [Arguments("build-enforced", true)]
+   public async Task ListEnforcedByBuildAsync_GivenAConvention_FiltersIt(
+       string id,
+       bool enforcedByBuild,
+       CancellationToken cancellationToken
+   )
+   ```
+
+3. **It is forwarded to every call that accepts one.** Never `CancellationToken.None`, never `default`,
+   never a token the test creates. TUnit's token is the *test's* token — cancelled on timeout or on an
+   aborted run — so a call given `None` cannot be stopped, and **one hop that drops it makes the whole
+   chain uncancellable**, which is why partial forwarding is a failure and not a lesser version of the
+   rule. It is also the only place that proves the production code threads the token through at all.
+
+A test whose chain accepts no token takes no parameter; an unused token is noise, not compliance.
 
 ## Substitutes
 
@@ -224,14 +304,35 @@ string title = new('a', Convention.MaxTitleLength);    // new()       -> explici
 | Test projects are discovered and categorised | the build (name-suffix detection) |
 | A shared testing project is referenced, not executed | the build (`IsSharedTestingProject`) |
 | Style, including the `var` carve-out | the build (analyzers, `warning` or above) |
+| An acceptance suite is categorised `Acceptance` and kept out of the fast tier | the build (name-suffix detection) and the pipeline's `TestFilter` |
+| A container-backed suite fails rather than passes when its backend is missing in CI | the pipeline, when the backend is pinned with `PURVIEW_CONTAINERS_BACKEND` |
 | AAA structure, naming, `CreateXXX` helpers, `TestBuilder` usage | **review** |
-| A `CancellationToken` is passed through | **review** |
+| Given/When/Then chains end in `.BDTestAsync()` | **review** |
+| A real dependency comes from `Purview.Containers`, not a shared instance | **review** |
+| An async overload is used inside an `async Task` test | the build — `VSTHRD103` is `error` |
+| A converted helper carries the `Async` suffix | the build — `VSTHRD200` is `error` |
+| A **sync helper** calling an API with an async overload is converted | **review** — a non-`Task`-returning method is outside `VSTHRD103`'s scope |
+| A declared `CancellationToken` is the last parameter | the build — `CA1068` is `warning`, and a clean build has no warnings |
+| A test whose chain accepts a token declares one and forwards it everywhere | **review** |
+
+## Acceptance tests and container-backed tests
+
+An acceptance test — a behaviour somebody outside the team asked for, in their words — is written with
+**BDTest over TUnit** (`BDTest.TUnit`) in a `<Target>.AcceptanceTests` project, where Given/When/Then
+replaces the AAA comments. A suite that needs a real database, queue or emulator gets a throwaway
+container from **`Purview.Containers`** in its own `<Target>.IntegrationTests` project, skipping
+locally when no backend is usable and failing in CI.
+
+Read `references/acceptance-and-container-tests.md` before writing either: it carries the scenario and
+container shapes, and the two traps — a chain that never calls `.BDTestAsync()` runs no steps and still
+passes, and a suite that skips in CI turns a missing runtime into a green job.
 
 ## Tiers
 
-A test project's **name** carries its tier — the SDK categorises `*UnitTests` as `Unit` — so the
-pipeline's `TestFilter` selects a tier without a hand-written attribute. Split a slow suite into its
-own project rather than tagging individual tests.
+A test project's **name** carries its tier — the SDK categorises `*UnitTests` as `Unit`, and takes the
+word before `Tests` as a pattern, so `*AcceptanceTests` gives `Acceptance` with nothing added to the
+pipeline. The `TestFilter` then selects a tier without a hand-written attribute. Split a slow suite
+into its own project rather than tagging individual tests.
 
 Filtering uses TUnit's `--treenode-filter`, not `--filter`: these repositories run on
 Microsoft.Testing.Platform, where `dotnet test --filter` reports "Zero tests ran".
@@ -242,10 +343,11 @@ Microsoft.Testing.Platform, where `dotnet test --filter` reports "Zero tests ran
 - **A shared fixture.** Move it into `SharedTestingInfra` and make the class public — a shared
   testing project is a library, so its fixtures are legitimately public API and `CA1515` does not
   apply.
-- **A database or a container.** `Purview.Containers` gives throwaway Linux containers behind one
-  API, over WSL Containers or Docker. Give the suite its own project so the tier is in the name, and
-  make it skip itself when no backend is reachable. It is **experimental and prerelease** — pin the
-  version you adopt.
+- **A database or a container.** One `<Target>.IntegrationTests` project and one `Purview.Containers`
+  module. Do not build a fixture framework around it until a second suite needs the same container.
+- **A behaviour somebody outside the team asked for.** That, and not before, is when BDTest earns its
+  place: one `<Target>.AcceptanceTests` project with one story. Reach for the HTML report only once
+  somebody will read it.
 - **A package with a documented contract.** Add a consumer-verification script; see
   `purview-engineering-principles`.
 
