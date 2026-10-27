@@ -27,8 +27,8 @@ public sealed class AzuriteContainer : ContainerBase
 		return new Uri($"http://127.0.0.1:{GetMappedPublicPort(AzuriteBuilder.TablePort)}/{AzuriteAccount.Name}");
 	}
 
-	/// <summary>Azure Storage connection string for the emulator. The account key comes from
-	/// <see cref="AzuriteAccount.Key" /> (a placeholder until the consuming repository supplies it).</summary>
+	/// <summary>Azure Storage connection string for the emulator, authenticated with the well-known
+	/// <see cref="AzuriteAccount.Key" />.</summary>
 	public string GetConnectionString()
 	{
 		StringBuilder builder = new();

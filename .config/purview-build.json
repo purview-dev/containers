@@ -73,6 +73,12 @@
 				"README.md",
 				"purview-logo-light.png"
 			],
+			"purview.containers.azureservicebusemulator": [
+				"lib/$(TFM)/Purview.Containers.AzureServiceBusEmulator.dll",
+				"lib/$(TFM)/Purview.Containers.AzureServiceBusEmulator.xml",
+				"README.md",
+				"purview-logo-light.png"
+			],
 			"purview.containers.azurite": [
 				"lib/$(TFM)/Purview.Containers.Azurite.dll",
 				"lib/$(TFM)/Purview.Containers.Azurite.xml",

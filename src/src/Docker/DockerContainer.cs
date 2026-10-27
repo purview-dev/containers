@@ -39,14 +39,20 @@ public sealed class DockerContainer : IContainer
 	public string Image => _configuration.Image;
 
 	/// <inheritdoc />
+	public string? NetworkIp { get; private set; }
+
+	/// <inheritdoc />
 	public async Task StartAsync(CancellationToken cancellationToken = default)
 	{
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
 		await Handle.StartAsync(cancellationToken).ConfigureAwait(false);
 
+		// Testcontainers reports an unspecified address (or none) when the container has no network.
+		NetworkIp = Handle.IpAddress is { Length: > 0 } ip && ip != "0.0.0.0" ? ip : null;
+
 		if (_configuration.WaitStrategies.Count > 0)
 		{
-			WaitContext context = new(this, GetMappedPublicPorts(), networkIp: null);
+			WaitContext context = new(this, GetMappedPublicPorts(), NetworkIp);
 			await WaitStrategyRunner
 				.RunAsync(context, _configuration.WaitStrategies, _configuration.StartupTimeout, cancellationToken)
 				.ConfigureAwait(false);

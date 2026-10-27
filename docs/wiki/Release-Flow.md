@@ -4,7 +4,7 @@ How this repository builds, versions, validates and publishes `Purview.Container
 
 ## Versioning
 
-`package.json` at the repository root is the authoritative version (`1.0.0-prerelease.1` today). The SDK
+`package.json` at the repository root is the authoritative version. The SDK
 applies that value to `Version` and `PackageVersion` for every project, so a release is a `package.json`
 bump — never a manual project-file edit. `package.json` also carries the repository, homepage and issue URLs
 that end up in each nuspec.
@@ -50,11 +50,46 @@ the run with the failing module's output.
 
 - `.github/workflows/pr.yml` — pull requests build and test via the shared
   `purview-dev/build/.github/workflows/purview-build.yml`, with pack and validation enabled.
-- `.github/workflows/release.yml` — a push to `main` calls `purview-dev/build/.github/workflows/purview-release.yml`
-  with `release-mode: NuGet`, which packs, publishes to NuGet and creates the `v<version>` GitHub release.
+- `.github/workflows/release.yml` — a push to a **`release/**` branch** (or a manual `workflow_dispatch`)
+  calls `purview-dev/build/.github/workflows/purview-release.yml` with `release-mode: NuGet`. It evaluates
+  release eligibility and, when eligible, builds, tests, packs, publishes to NuGet and creates the
+  `v<version>` tag and GitHub release. A push to `main` does **not** release.
 
-Both workflows pin `dotnet-version` to the SDK in `global.json` (`11.0.100-rc.1.26425.128`); keep them in
-sync when the SDK is bumped, and keep `purview-build.json` pointing at `src/Containers.slnx`.
+Both workflows pin `dotnet-version` to the SDK in `global.json`; keep them in sync when the SDK is bumped,
+and keep `purview-build.json` pointing at `src/Containers.slnx`.
+
+## Cutting a release
+
+1. Bump `version` in `package.json` on a branch (keep the `-prerelease.N` suffix), and merge it into
+   `main` through a pull request.
+2. Push a release branch for that version's `<major>.<minor>` line from `main`, for example:
+
+   ```bash
+   git switch main && git pull
+   git push origin main:refs/heads/release/1.1
+   ```
+
+3. The Release workflow runs on that push. Further fixes for the same line are released by bumping
+   `package.json` again and pushing the `release/<major>.<minor>` branch.
+
+Check the decision locally before pushing with `dotnet tool run purview-build -- release-explain`. It runs
+nothing and publishes nothing; it reports the verdict and the rule that decided it.
+
+### Eligibility
+
+`.config/purview-build.json` selects the **`TrunkReservesMinor`** policy: `main` is the trunk, and
+`release/*` branches are the stable and servicing refs that publish. The tool evaluates these rules:
+
+| Rule | Checks |
+| --- | --- |
+| `REL001` | The version is valid for NuGet. |
+| `REL002` | No `v<version>` tag exists yet. A version that has already been released is **skipped**, so every release needs a new `package.json` version. |
+| `REL003` | Constrains stable (non-prerelease) versions; prereleases pass. |
+| `REL004` | Constrains versions with a non-zero PATCH component. |
+| `REL005` | The version is consistent with what already exists on its `<major>.<minor>` line. |
+
+The workflow fails on a `Fail` verdict, logs a notice and publishes nothing on `Skip`, and publishes only
+on `Release`.
 
 The shared workflow runs on **`ubuntu-latest`**, so the Linux agent builds the portable `net10.0` projects
 and the `net11.0-windows10.0.19041.0` test projects. That only works because `src/Directory.Build.props`

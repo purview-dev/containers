@@ -53,6 +53,9 @@ public abstract class ContainerBase : IContainer
 	public string Image => Configuration.Image;
 
 	/// <inheritdoc />
+	public string? NetworkIp => _container?.NetworkIp;
+
+	/// <inheritdoc />
 	public virtual async Task StartAsync(CancellationToken cancellationToken = default)
 	{
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
@@ -62,7 +65,7 @@ public abstract class ContainerBase : IContainer
 		}
 
 		var backend = Backend ?? await ContainerBackends.ResolveAsync(cancellationToken).ConfigureAwait(false);
-		_container = backend.CreateContainer(WithResolvedName());
+		_container = backend.CreateContainer(ConfigureForStart(WithResolvedName()));
 		await _container.StartAsync(cancellationToken).ConfigureAwait(false);
 		_configureConnectionStringProvider?.Invoke();
 	}
@@ -165,6 +168,13 @@ public abstract class ContainerBase : IContainer
 
 		GC.SuppressFinalize(this);
 	}
+
+	/// <summary>
+	/// Adjusts the configuration the backend container is created from, immediately before it is created. Use
+	/// it for values only known at start time (for example the address of a dependency the module started
+	/// first). The default returns <paramref name="configuration" /> unchanged.
+	/// </summary>
+	protected virtual IContainerConfiguration ConfigureForStart(IContainerConfiguration configuration) => configuration;
 
 	/// <summary>
 	/// Snapshots the configuration with the resolved container name so the backend creates the container

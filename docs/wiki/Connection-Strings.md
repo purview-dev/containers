@@ -20,10 +20,10 @@ string same = container.GetConnectionString(ConnectionMode.Host);     // explici
 | `Host` | Test host → container, using the mapped host port (`127.0.0.1:{port}`). | ✅ both backends |
 | `Container` | Container → container, using the container network. | ❌ not supported yet |
 
-`ConnectionMode.Container` throws `ConnectionStringModeNotSupportedException`. Neither backend supports
-container-to-container networking today: WSLC has no managed networks or inter-container DNS, and the
-Docker backend does not attach containers to a shared network. Multi-container wiring is deliberately
-deferred (see [Networking](Networking.md)).
+`ConnectionMode.Container` throws `ConnectionStringModeNotSupportedException`. WSLC has no managed networks
+or inter-container DNS, and the Docker backend does not attach containers to a shared network, so no
+module builds a container-to-container connection string. Containers can still reach each other by
+bridge IP (`IContainer.NetworkIp`) — see [Networking](Networking.md).
 
 ## How it works
 

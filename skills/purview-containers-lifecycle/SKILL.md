@@ -129,14 +129,17 @@ Verified WSLC behaviour, and the parts that surprise people:
   create/connect`, unlike the CLI.
 
 How the library models it: `GetMappedPublicPort(containerPort)` reads
-`Inspect().Ports["<port>/tcp"][0].HostPort`; `GetNetworkIp()` reads
-`Inspect().NetworkSettings.Networks.bridge.IPAddress` (Bridged only); TCP and HTTP waits connect to
+`Inspect().Ports["<port>/tcp"][0].HostPort`; `IContainer.NetworkIp` is the bridge IP after start
+(WSLC reads `Inspect().NetworkSettings.Networks.bridge.IPAddress`, Docker the Testcontainers
+`IpAddress`; `null` before start or without a network); TCP and HTTP waits connect to
 `127.0.0.1:<hostPort>`.
 
 **What not to model.** Do not invent Docker-style `Network` objects — the semantics are just "bridged
-with IPs". Do not claim container-name resolution works; it does not. Multi-container environments
-are deliberately deferred, and would wire containers together by passing each other's IPs from
-`GetNetworkIp()` into configuration or environment — which is why the core API does not preclude it.
+with IPs". Do not claim container-name resolution works; it does not. Containers are wired
+together by passing a dependency's `NetworkIp` into configuration or environment: a module that owns a
+dependency starts it first and injects the address from `ContainerBase.ConfigureForStart` (the Azure
+Service Bus Emulator does this with its SQL Server sidecar). A general multi-container environment
+builder is still deferred.
 
 ## Related skills
 

@@ -1,4 +1,6 @@
 using System.Globalization;
+using Azure.Messaging.ServiceBus;
+using Azure.Storage.Blobs;
 using Purview.Containers.Docker;
 using TUnit.Core.Exceptions;
 
@@ -132,6 +134,48 @@ public class ModuleDockerTests
 
 		await AssertStartedAsync(azurite, Azurite.AzuriteBuilder.BlobPort);
 		await Assert.That(azurite.GetBlobEndpoint().Port).IsGreaterThan(0);
+	}
+
+	[Test]
+	public async Task Azurite_AuthenticatesWithTheWellKnownAccountKey()
+	{
+		await SkipIfUnavailableAsync();
+
+		await using var azurite = new Azurite.AzuriteBuilder().Build();
+
+		await AssertStartedAsync(azurite, Azurite.AzuriteBuilder.BlobPort);
+
+		// Creating a container is a shared-key-signed request: Azurite rejects it unless the key is right.
+		// The service version is pinned because the SDK can be ahead of what the Azurite image supports.
+		BlobServiceClient client = new(
+			azurite.GetConnectionString(),
+			new BlobClientOptions(BlobClientOptions.ServiceVersion.V2024_11_04)
+		);
+		var container = await client.CreateBlobContainerAsync("authenticated");
+		var exists = await container.Value.ExistsAsync();
+
+		await Assert.That(exists.Value).IsTrue();
+	}
+
+	[Test]
+	public async Task AzureServiceBusEmulator_SendsAndReceivesAMessage()
+	{
+		await SkipIfUnavailableAsync();
+
+		// No custom Config.json: the image's default configuration declares the queue 'queue.1'.
+		await using var emulator = new AzureServiceBusEmulator.AzureServiceBusEmulatorBuilder().AcceptLicense().Build();
+
+		await AssertStartedAsync(emulator, AzureServiceBusEmulator.AzureServiceBusEmulatorBuilder.AmqpPort);
+
+		await using ServiceBusClient client = new(emulator.GetConnectionString());
+		await using var sender = client.CreateSender("queue.1");
+		await sender.SendMessageAsync(new ServiceBusMessage("hello"));
+
+		await using var receiver = client.CreateReceiver("queue.1");
+		var message = await receiver.ReceiveMessageAsync(TimeSpan.FromSeconds(30));
+
+		await Assert.That(message).IsNotNull();
+		await Assert.That(message!.Body.ToString()).IsEqualTo("hello");
 	}
 
 	[Test]

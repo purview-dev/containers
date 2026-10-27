@@ -10,6 +10,8 @@ public sealed class FakeContainer : IContainer
 
 	public string Image { get; init; } = "fake:latest";
 
+	public string? NetworkIp { get; init; }
+
 	public string Logs { get; set; } = string.Empty;
 
 	public IReadOnlyDictionary<ushort, ushort> PortMappings { get; init; } = new Dictionary<ushort, ushort>();

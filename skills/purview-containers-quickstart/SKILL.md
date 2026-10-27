@@ -129,8 +129,8 @@ await connection.OpenAsync();
 No image names, no ports, no `docker`, no `wslc`. The default image, the random host port mapping and
 the readiness check all come from the module.
 
-Modules: PostgreSQL, Redis, SQL Server, MySQL, RabbitMQ, Azurite, NATS and the Azure Key Vault
-Emulator. Each ships a README inside its own package.
+Modules: PostgreSQL, Redis, SQL Server, MySQL, RabbitMQ, Azurite, NATS, the Azure Key Vault
+Emulator and the Azure Service Bus Emulator. Each ships a README inside its own package.
 
 ## Connection strings
 

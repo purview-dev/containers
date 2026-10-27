@@ -48,8 +48,8 @@ validates it as you type:
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/purview-dev/build-sdk/main/architecture-policy.schema.json",
-  "version": 1,
+  "$schema": "https://raw.githubusercontent.com/purview-dev/architests/main/architecture-policy.schema.json",
+  "version": 2,
   "sourceRoots": ["src"],
   "responsibilities": [
     {

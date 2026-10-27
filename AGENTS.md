@@ -5,7 +5,8 @@
 This repository contains `Purview.Containers`, a Testcontainers-style library for .NET that runs throwaway
 Linux containers for integration testing on **Microsoft WSL Containers (WSLC)** — the Windows runtime with
 no Docker installation — or on **Docker** through Testcontainers, plus the service modules (`PostgreSql`,
-`Redis`, `MsSql`, `RabbitMq`, `Azurite`, `Nats`, `MySql`, `AzureKeyVaultEmulator`).
+`Redis`, `MsSql`, `RabbitMq`, `Azurite`, `Nats`, `MySql`, `AzureKeyVaultEmulator`,
+`AzureServiceBusEmulator`).
 `docs/wiki/Backends.md` is the consumer guide to choosing and configuring a backend; keep it up to date
 whenever a target framework, a backend package or the `buildTransitive` assets change.
 
@@ -188,8 +189,12 @@ Commit messages follow Conventional Commits enforced by the `commit-msg` lefthoo
 - `package.json` is the authoritative release and package version. Do not diverge project versions by hand.
 - `.github/workflows/pr.yml` builds and tests pull requests through the shared
   `purview-dev/build/.github/workflows/purview-build.yml`, with pack and validation enabled.
-- `.github/workflows/release.yml` runs the shared release pipeline with `release-mode: NuGet` on a push to
-  `main`.
+- `.github/workflows/release.yml` runs the shared release pipeline with `release-mode: NuGet` on a push to a
+  `release/**` branch (or a manual dispatch), **not** on a push to `main`. Cut a release by merging the
+  version bump into `main`, then pushing `release/<major>.<minor>` from it. `.config/purview-build.json`
+  sets the `TrunkReservesMinor` eligibility policy; a version whose `v<version>` tag already exists is
+  skipped (`REL002`), so every release needs a new `package.json` version. See
+  [Release Flow](docs/wiki/Release-Flow.md).
 - `.github/workflows/integration-wsl.yml` runs the WSLC integration suites. The fast contract suite runs on
   a hosted `windows-2025` runner on every pull request from `pr.yml`; the full service-module matrix runs
   nightly on `windows-2025` and can be dispatched manually against either the hosted runner or a
