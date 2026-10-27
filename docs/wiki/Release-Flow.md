@@ -62,15 +62,16 @@ and keep `purview-build.json` pointing at `src/Containers.slnx`.
 
 1. Bump `version` in `package.json` on a branch (keep the `-prerelease.N` suffix), and merge it into
    `main` through a pull request.
-2. Push a release branch for that version's `<major>.<minor>` line from `main`, for example:
+2. Push a release branch named after the version from `main`. The convention is `release/v<major>.<minor>.<N>`,
+   where `N` is the prerelease number, for example `release/v1.0.9` for `1.0.0-prerelease.9`:
 
    ```bash
    git switch main && git pull
-   git push origin main:refs/heads/release/1.1
+   git push origin main:refs/heads/release/v1.0.9
    ```
 
-3. The Release workflow runs on that push. Further fixes for the same line are released by bumping
-   `package.json` again and pushing the `release/<major>.<minor>` branch.
+3. The Release workflow runs on that push. Each release is a new `package.json` version and a new
+   release branch.
 
 Check the decision locally before pushing with `dotnet tool run purview-build -- release-explain`. It runs
 nothing and publishes nothing; it reports the verdict and the rule that decided it.
