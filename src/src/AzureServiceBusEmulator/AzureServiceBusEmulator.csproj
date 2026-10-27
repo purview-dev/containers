@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<IsPackable>true</IsPackable>
+		<Description>Azure Service Bus Emulator module for Purview.Containers: throwaway Service Bus emulators (queues, topics, subscriptions) with their SQL Server dependency, on WSL Containers or Docker.</Description>
+		<PackageTags>wsl;containers;docker;servicebus;azure;emulator;messaging;testing;integration</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Authors>Purview</Authors>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../Core/Core.csproj" />
+		<!-- The emulator stores its state in SQL Server: the module starts one through the MsSql module, so the
+		     sidecar gets the same real-connection readiness check. -->
+		<ProjectReference Include="../MsSql/MsSql.csproj" />
+	</ItemGroup>
+</Project>

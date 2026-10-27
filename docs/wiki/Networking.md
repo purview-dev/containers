@@ -20,9 +20,9 @@ WSLC networking behaviour and how `Purview.Containers` models it.
 
 1. **Default `NetworkingMode = Bridged`** for containers that bind ports (or, by default, for all containers to be useful). This is baked into `ContainerBuilder` defaults.
 2. `GetMappedPublicPort(containerPort)` reads `Inspect().Ports["<port>/tcp"][0].HostPort`.
-3. `GetNetworkIp()` reads `Inspect().NetworkSettings.Networks.bridge.IPAddress` (Bridged only).
+3. `IContainer.NetworkIp` is the container's bridge IP after start: WSLC reads `Inspect().NetworkSettings.Networks.bridge.IPAddress` (Bridged only), and Docker reports the Testcontainers `IpAddress` (the default bridge). It is `null` before start or without a network.
 4. TCP/HTTP wait strategies connect to `127.0.0.1:<hostPort>` (IPv4 only).
-5. **Multi-container environments are deliberately deferred.** Because there is no native DNS/alias, a future `ContainerEnvironmentBuilder` would wire containers together by passing each other's IPs (from `GetNetworkIp()`) into configuration/env. The core API must not preclude this (it doesn't — `GetNetworkIp` + environment are enough).
+5. **Containers are wired together by IP.** Because there is no native DNS/alias, a dependent container is given its dependency's `NetworkIp` through configuration or environment. A module that owns a dependency starts it first and overrides `ContainerBase.ConfigureForStart` to inject the address, as the Azure Service Bus Emulator does with its SQL Server sidecar (`SQL_SERVER=<sidecar IP>`). A general `ContainerEnvironmentBuilder` is still deferred.
 
 ## What NOT to model
 

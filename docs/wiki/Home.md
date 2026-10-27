@@ -34,12 +34,13 @@ This wiki is the project documentation hub. The packages are published under the
 | `Purview.Containers.Docker` | The Docker backend: the same containers on any reachable Docker daemon, driven by Testcontainers. |
 | `Purview.Containers.PostgreSql` | PostgreSQL container (`postgres:17`), `pg_isready` readiness, Npgsql connection string. |
 | `Purview.Containers.Redis` | Redis-compatible container (`redis:7`), `redis-cli ping` readiness; also usable with Valkey/Garnet. |
-| `Purview.Containers.MsSql` | SQL Server container (`mssql/server:2022-latest`), host-side `SqlClient` readiness, explicit EULA acceptance. |
+| `Purview.Containers.MsSql` | SQL Server container (`mssql/server:2025-latest`), host-side `SqlClient` readiness, explicit EULA acceptance. |
 | `Purview.Containers.RabbitMq` | RabbitMQ container (`rabbitmq:3-management`), AMQP + management endpoints. |
 | `Purview.Containers.Azurite` | Azure Storage emulator (`azure-storage/azurite`), blob/queue/table endpoints. |
 | `Purview.Containers.Nats` | NATS broker (`nats:2`), client + monitoring endpoints. |
 | `Purview.Containers.MySql` | MySQL container (`mysql:8`), host-side `MySqlConnector` readiness. |
 | `Purview.Containers.AzureKeyVaultEmulator` | Azure Key Vault emulator (`jamesgoulddev/azure-keyvault-emulator`), secrets/keys/certificates endpoints and certificate-pinned Azure SDK clients. |
+| `Purview.Containers.AzureServiceBusEmulator` | Azure Service Bus emulator (`azure-messaging/servicebus-emulator`) with its SQL Server sidecar, AMQP and management connection strings, explicit EULA acceptance. |
 
 ## Feature highlights
 

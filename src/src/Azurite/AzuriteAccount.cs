@@ -6,8 +6,11 @@ public static class AzuriteAccount
 	/// <summary>The well-known Azurite storage account name.</summary>
 	public const string Name = "devstoreaccount1";
 
-	// The well-known Azurite devstoreaccount1 key is intentionally NOT embedded in this library.
-	// The consuming repository supplies it here (or via a runtime configuration point) before
-	// authenticated operations are exercised.
-	public const string Key = "<azurite-devstoreaccount1-key-placeholder>";
+	/// <summary>
+	/// The well-known Azurite <c>devstoreaccount1</c> key. It is a published constant of the emulator (the
+	/// same value the Azure Storage Emulator used), not a credential: it only ever authenticates against a
+	/// local emulator.
+	/// </summary>
+	public const string Key =
+		"Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
 }

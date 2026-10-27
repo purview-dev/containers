@@ -2,7 +2,7 @@
 
 `Purview.Containers` has **one API and two interchangeable backends**. The same test code, the same service
 modules (`Purview.Containers.PostgreSql`, `Redis`, `MsSql`, `RabbitMq`, `Azurite`, `Nats`, `MySql`,
-`AzureKeyVaultEmulator`), and
+`AzureKeyVaultEmulator`, `AzureServiceBusEmulator`), and
 the same connection-string accessors run on either runtime — you choose which one by the package you
 reference, and can override it in code or from the environment.
 

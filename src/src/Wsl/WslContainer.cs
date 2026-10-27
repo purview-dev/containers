@@ -56,6 +56,9 @@ public class WslContainer : IContainer
 	public string Image => Configuration.Image;
 
 	/// <inheritdoc />
+	public string? NetworkIp => _networkIp;
+
+	/// <inheritdoc />
 	public virtual async Task StartAsync(CancellationToken cancellationToken = default)
 	{
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);

@@ -12,7 +12,7 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 	public const ushort MsSqlPort = 1433;
 
 	/// <summary>Default image.</summary>
-	public const string MsSqlImage = "mcr.microsoft.com/mssql/server:2022-latest";
+	public const string MsSqlImage = "mcr.microsoft.com/mssql/server:2025-latest";
 
 	Secret _password = Secret.From("YourStrong!Passw0rd");
 	string _database = "master";

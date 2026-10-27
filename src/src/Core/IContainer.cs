@@ -15,6 +15,13 @@ public interface IContainer : IConnectionStringProvider, IAsyncDisposable
 	/// <summary>The image the container was created from.</summary>
 	string Image { get; }
 
+	/// <summary>
+	/// The container's bridge-network IP address, available after start. Other containers on the same backend
+	/// reach this one at that address (there is no container-name DNS). <c>null</c> before start, or when the
+	/// container has no network (<see cref="Networking.ContainerNetworkingMode.None" />).
+	/// </summary>
+	string? NetworkIp { get; }
+
 	/// <summary>Starts the container: ensures the image, creates and starts the init process.</summary>
 	Task StartAsync(CancellationToken cancellationToken = default);
 

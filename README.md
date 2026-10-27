@@ -27,8 +27,8 @@ The WSLC backend is built directly against the `Microsoft.WSL.Containers` NuGet 
 > [Consumer Requirements](docs/wiki/Consumer-Requirements.md) before adopting it.
 
 > **Status: preview.** Backend-neutral abstractions, two backends (WSL Containers and Docker), wait
-> strategies, the `Image`/`Tag` parser, registry auth, observability, hardening, and **eight service
-> modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite, NATS, MySQL, Azure Key Vault Emulator). On WSLC, **images are shared
+> strategies, the `Image`/`Tag` parser, registry auth, observability, hardening, and **nine service
+> modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite, NATS, MySQL, Azure Key Vault Emulator, Azure Service Bus Emulator). On WSLC, **images are shared
 > by default** (`StorageMode.Shared`): sessions reuse a stable image store
 > (`%LOCALAPPDATA%\Purview\WslContainers\images`) so images are pulled once, not per session;
 > `StorageMode.PerSession` provides isolation. Move the store with `PURVIEW_CONTAINERS_STORAGE_PATH` or
@@ -147,7 +147,8 @@ src/
     Docker/       Docker backend (Purview.Containers.Docker)
     Containers/   umbrella package (Purview.Containers): Core + both backends
     PostgreSql/   Redis/    MsSql/    MySql/
-    RabbitMq/     Azurite/  Nats/     AzureKeyVaultEmulator/   service modules
+    RabbitMq/     Azurite/  Nats/     AzureKeyVaultEmulator/
+    AzureServiceBusEmulator/                                  service modules
   tests/          TUnit unit + integration projects (WSLC and Docker suites)
 samples/
   getting-started/    runnable samples (WslSample, DockerSample, AutoSample)
@@ -177,7 +178,7 @@ The project documentation lives in [`docs/wiki`](docs/wiki/Home.md) and is publi
 Every package also ships its own `README.md` (from `src/src/<Project>/Sdk/README.md`), so
 `dotnet add package Purview.Containers.<Module>` brings documentation specific to that package.
 
-All eight service modules work today:
+All nine service modules work today:
 
 ```csharp
 await using var postgres = new PostgreSqlBuilder()
@@ -230,7 +231,7 @@ await using var azurite = new AzuriteBuilder().Build();
 
 await azurite.StartAsync();    // waits for the blob/queue/table listeners
 
-// Supply the Azurite devstoreaccount1 key in AzuriteAccount.Key for authenticated operations.
+// Carries the well-known devstoreaccount1 key, so the Azure Storage clients authenticate as-is.
 string connectionString = azurite.GetConnectionString();
 Uri blob = azurite.GetBlobEndpoint();
 ```
@@ -243,6 +244,17 @@ await keyVault.StartAsync();   // waits for the HTTPS listener
 // Clients are already wired for the emulator (pinned certificate, emulated credential).
 var secrets = keyVault.GetSecretClient();
 await secrets.SetSecretAsync("mySecret", "myValue");
+```
+
+```csharp
+await using var serviceBus = new AzureServiceBusEmulatorBuilder()
+    .AcceptLicense()           // explicit: the emulator and SQL Server EULAs
+    .Build();
+
+await serviceBus.StartAsync(); // starts its SQL Server sidecar, then waits for GET /health
+
+await using var client = new ServiceBusClient(serviceBus.GetConnectionString());
+await client.CreateSender("queue.1").SendMessageAsync(new ServiceBusMessage("hello"));
 ```
 
 ## Running the tests
