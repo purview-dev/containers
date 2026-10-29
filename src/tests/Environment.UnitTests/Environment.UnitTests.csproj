@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<PlatformTarget>AnyCPU</PlatformTarget>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Remove="..\SharedTestingFramework\SharedTestingFramework.csproj" />
+		<ProjectReference Include="..\..\src\Aspire\Aspire.csproj" />
+		<Using Include="Purview.Containers.Environment" />
+	</ItemGroup>
+</Project>

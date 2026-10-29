@@ -45,6 +45,20 @@ propagated; synchronous native WSLC calls cannot be forcibly interrupted. See
 
 ## Prerequisites
 
+### Standalone bind sharing and Aspire
+
+`Purview.Containers.Environment` resolves bind paths for Docker-compatible CLI consumers without
+referencing the umbrella package, Testcontainers or WSLC. It verifies native paths, running WSL
+translations and explicit shared-remote mappings against the daemon using two-way file markers.
+`Purview.Containers.Aspire` adds opt-in `builder.AddContainerEnvironment()` integration for any
+Aspire AppHost. Both target `net10.0`; the adapter requires Aspire 13.6.4 or later.
+These are separate from the existing Docker backend's automatic WSL2 path handling.
+Docker Engine inside a WSL distribution is not Microsoft WSL Containers.
+See the [environment package guide](src/src/Environment/Sdk/README.md) and
+[Aspire adapter guide](src/src/Aspire/Sdk/README.md) for setup, permissions and remote-host limits.
+
+### Container backends
+
 Pick a backend — see [Backends: WSLC or Docker](docs/wiki/Backends.md) for the comparison — or skip the
 choice: reference the umbrella `Purview.Containers` and it brings the abstractions plus both backends,
 selecting WSLC on Windows and Docker elsewhere automatically. Pick a single backend below only when you
@@ -156,6 +170,8 @@ src/
     Core/         backend-neutral abstractions (Purview.Containers.Core)
     Wsl/          WSL Containers backend (Purview.Containers.Wsl)
     Docker/       Docker backend (Purview.Containers.Docker)
+    Environment/  standalone verified CLI bind sharing (no backend dependencies)
+    Aspire/       optional Aspire adapter over Environment
     Containers/   umbrella package (Purview.Containers): Core + both backends
     PostgreSql/   Redis/    MsSql/    MySql/
     RabbitMq/     Azurite/  Nats/     AzureKeyVaultEmulator/
@@ -312,7 +328,7 @@ just sample-docker            # needs a Docker daemon
 ### Verifying the consumer contract
 
 ```powershell
-just verify-consumers          # pack, then build 21 throwaway consumer projects against ./artifacts
+just verify-consumers          # pack, then build 23 throwaway consumer projects against ./artifacts
 just verify-consumers -Keep    # same, keeping the generated projects for inspection
 ```
 

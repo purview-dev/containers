@@ -27,6 +27,18 @@
 		// (assets/images/purview-logo-light.png, linked as Sdk/purview-logo-light.png). A package with
 		// no rule here, or an entry matching none of its globs, fails validation.
 		"RequiredContent": {
+			"purview.containers.environment": [
+				"lib/$(TFM)/Purview.Containers.Environment.dll",
+				"lib/$(TFM)/Purview.Containers.Environment.xml",
+				"README.md",
+				"purview-logo-light.png"
+			],
+			"purview.containers.aspire": [
+				"lib/$(TFM)/Purview.Containers.Aspire.dll",
+				"lib/$(TFM)/Purview.Containers.Aspire.xml",
+				"README.md",
+				"purview-logo-light.png"
+			],
 			// Purview.Containers is the umbrella: it has no buildTransitive of its own, it just depends on
 			// Core + Wsl + Docker, whose assets flow transitively.
 			"purview.containers": [

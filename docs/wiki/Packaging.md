@@ -3,6 +3,10 @@
 Every project under `src/src` is packable and ships as `Purview.Containers.*`; test projects
 never pack. Packages are produced into `./artifacts` with a matching `.snupkg`.
 
+The optional `Purview.Containers.Environment` and `Purview.Containers.Aspire` packages also ship
+portable `net10.0` assets, their own READMEs and the shared icon. Environment is BCL-only; Aspire
+depends only on Environment and `Aspire.Hosting`. Neither is pulled in by the umbrella package.
+
 ## What a package contains
 
 Each package ships exactly:

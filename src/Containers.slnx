@@ -10,6 +10,8 @@
 		<File Path="Directory.Build.targets" />
 	</Folder>
 	<Folder Name="/src/">
+		<Project Path="src/Aspire/Aspire.csproj" />
+		<Project Path="src/Environment/Environment.csproj" />
 		<Project Path="src/AzureKeyVaultEmulator/AzureKeyVaultEmulator.csproj" />
 		<Project Path="src/AzureServiceBusEmulator/AzureServiceBusEmulator.csproj" />
 		<Project Path="src/Azurite/Azurite.csproj" />
@@ -32,6 +34,7 @@
 	</Folder>
 
 	<Folder Name="/tests/">
+		<Project Path="tests/Environment.UnitTests/Environment.UnitTests.csproj" />
 		<Project Path="tests/AzureKeyVaultEmulator.IntegrationTests/AzureKeyVaultEmulator.IntegrationTests.csproj" />
 		<Project Path="tests/AzureKeyVaultEmulator.UnitTests/AzureKeyVaultEmulator.UnitTests.csproj" />
 		<Project Path="tests/AzureServiceBusEmulator.IntegrationTests/AzureServiceBusEmulator.IntegrationTests.csproj" />

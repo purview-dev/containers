@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<IsPackable>true</IsPackable>
+		<Description>Aspire bind mount integration for verified local, WSL and shared remote container environments.</Description>
+		<PackageTags>containers;aspire;docker;wsl;bind-mounts</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Authors>Purview</Authors>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="Aspire.Hosting" />
+		<ProjectReference Include="..\Environment\Environment.csproj" />
+	</ItemGroup>
+</Project>

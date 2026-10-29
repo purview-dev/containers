@@ -33,6 +33,8 @@
 	  19  plain net10.0 + WSL backend (portable facade, auto)         -> builds, wsl registration generated
 	  20  net10.0 + Redis/PostgreSql + both backends (auto)           -> builds, both registrations generated
 	  21  net10.0 + umbrella Purview.Containers + modules (one ref)   -> builds, both registrations generated
+	  22  net10.0 + standalone environment resolver                  -> builds, no backend required
+	  23  net10.0 + Aspire adapter                                  -> builds, no backend required
 
 .PARAMETER FeedPath
 	Folder holding the packed .nupkg files. Defaults to <repo>/artifacts.
@@ -454,6 +456,36 @@ $cases = @(
 		-Items $umbrellaItems `
 		-Sources @{ 'Smoke.Auto.cs' = $autoSource } `
 		-RequireText @('WslContainerBackend.Create()', 'DockerContainerBackend.Create()')
+
+	New-ConsumerCase -Id '22' -Name 'net10.0 + standalone environment resolver' `
+		-Framework '<TargetFramework>net10.0</TargetFramework>' `
+		-Package 'Purview.Containers.Environment' `
+		-Sources @{ 'Smoke.cs' = @'
+using Purview.Containers.Environment;
+public static class Program
+{
+	public static void Main()
+	{
+		using var resolver = new ContainerEnvironmentResolver(new ContainerEnvironmentOptions());
+		_ = new ContainerBindMount(System.IO.Path.GetTempPath(), "/data", IsReadOnly: true).ToString();
+	}
+}
+'@ }
+
+	New-ConsumerCase -Id '23' -Name 'net10.0 + Aspire bind-sharing adapter' `
+		-Framework '<TargetFramework>net10.0</TargetFramework>' `
+		-Package 'Purview.Containers.Aspire' `
+		-Sources @{ 'Smoke.cs' = @'
+using Aspire.Hosting;
+public static class Program
+{
+	public static void Main()
+	{
+		var builder = DistributedApplication.CreateBuilder([]);
+		builder.AddContainerEnvironment();
+	}
+}
+'@ }
 )
 
 

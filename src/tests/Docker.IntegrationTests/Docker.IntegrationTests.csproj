@@ -12,7 +12,6 @@
 
 	<ItemGroup>
 		<Compile Include="../BackendContractTests.cs" Link="BackendContractTests.cs" />
-		<ProjectReference Include="../../src/Docker/Docker.csproj" />
 	</ItemGroup>
 
 	<!--

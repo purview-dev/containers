@@ -30,6 +30,17 @@ for operation deadlines, resource ownership and native cancellation limits.
 | `Purview.Containers.<Module>` | `net10.0`, any platform | Service modules. Restore anywhere; needs a backend package to actually run. |
 | `Purview.Containers.Wsl` | `net10.0` and `net10.0-windows10.0.19041.0` | The WSL Containers backend: a portable facade plus the Windows implementation. **The requirements on this page are its contract.** |
 | `Purview.Containers.Docker` | `net10.0`, any platform | The Docker backend (Testcontainers). Needs a reachable Docker daemon, not a Windows target framework. |
+| `Purview.Containers.Environment` | `net10.0`, any platform | Standalone Docker-compatible CLI bind-sharing resolver; no Aspire, Testcontainers or WSLC dependency. |
+| `Purview.Containers.Aspire` | `net10.0`, any platform | Optional adapter requiring Aspire 13.6.4+ and the Environment package; no backend dependency. |
+
+The standalone resolver requires a reachable Linux-container daemon through its selected CLI, working
+credential helpers on `PATH`, and client write access to bind-source directories for verification markers.
+Preload `alpine:3.19` offline or set `CONTAINER_ENVIRONMENT_PROBE_IMAGE`. Windows WSL fallback only
+queries already-running distributions; remote hosts require a genuinely shared filesystem and explicit
+`CONTAINER_ENVIRONMENT_PATH_MAPPINGS`. No snapshot fallback or endpoint rewriting is performed.
+See the [resolver guide](https://github.com/purview-dev/containers/blob/main/src/src/Environment/Sdk/README.md) and
+[Aspire guide](https://github.com/purview-dev/containers/blob/main/src/src/Aspire/Sdk/README.md).
+The portable package contracts are exercised by `just verify-consumers` cases 22 and 23.
 
 Everything below describes the **WSL Containers backend**. A consumer of a different backend (for
 example `Purview.Containers.Docker`) needs only a portable `net10.0` project: the
