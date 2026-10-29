@@ -147,8 +147,9 @@ string same             = container.GetConnectionString(ConnectionMode.Host);
 | `Host` | test host → container, via the mapped host port (`127.0.0.1:{port}`) | both backends |
 | `Container` | container → container, via the container network | **not supported** — throws `ConnectionStringModeNotSupportedException` |
 
-Container-to-container is deliberately deferred: WSLC has no managed networks or inter-container DNS,
-and the Docker backend does not attach containers to a shared network.
+Built-in container-to-container connection-string providers remain deferred. Both backends now support
+explicit managed networks and aliases (`CreateNetworkAsync`, `WithNetwork`, `WithNetworkAliases`).
+Use an explicit alias/service port to construct a container-to-container URL.
 
 **Use `127.0.0.1`, never `localhost`.** `localhost` resolves to `::1` first on .NET, and while most
 clients fall back to IPv4, `Microsoft.Data.SqlClient` **hangs** on `::1` without falling back — which
@@ -179,3 +180,4 @@ provider producing an empty string throws `ConnectionStringNotAvailableException
 `purview-containers-lifecycle` for start/stop/dispose semantics, wait strategies and networking;
 `purview-containers-testing` for suite layout, serial execution and CI; and
 `purview-containers-consumer-requirements` for the target-framework contract and the `PCC` guards.
+Use `purview-containers-capabilities` for copy, builds, managed networks, reuse and cancellation defaults.

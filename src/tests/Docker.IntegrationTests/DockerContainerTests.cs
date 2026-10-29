@@ -30,6 +30,87 @@ public class DockerContainerTests
 		return builder.Build();
 	}
 
+	static Container BuildWithMount(string source, bool readOnly) =>
+		new ContainerBuilder()
+			.WithBackend(DockerContainerBackend.Create())
+			.WithImage(Image)
+			.WithCommand("/bin/sh", "-c", "echo ready && sleep 60")
+			.WithBindMount(source, "/mounted", readOnly)
+			.Build();
+
+	[Test]
+	[Arguments(false)]
+	[Arguments(true)]
+	public async Task Start_BindMount_ReadsHostFilesWithoutPathConfiguration(
+		bool mountFile,
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		await SkipIfUnavailableAsync();
+		var directory = Path.Combine(Path.GetTempPath(), $"purview bind {Guid.NewGuid():N}");
+		Directory.CreateDirectory(directory);
+		var file = Path.Combine(directory, "input.txt");
+
+		try
+		{
+			await File.WriteAllTextAsync(file, "host-content", cancellationToken);
+			await using var container = BuildWithMount(mountFile ? file : directory, readOnly: true);
+
+			// Act
+			await container.StartAsync(cancellationToken);
+			var read = await container.ExecAsync(
+				["cat", mountFile ? "/mounted" : "/mounted/input.txt"],
+				cancellationToken: cancellationToken
+			);
+			var write = await container.ExecAsync(
+				["sh", "-c", mountFile ? "echo changed > /mounted" : "echo changed > /mounted/input.txt"],
+				cancellationToken: cancellationToken
+			);
+
+			// Assert
+			await Assert.That(read.IsSuccess).IsTrue();
+			await Assert.That(read.Stdout).Contains("host-content");
+			await Assert.That(write.IsSuccess).IsFalse();
+			await Assert.That(await File.ReadAllTextAsync(file, cancellationToken)).IsEqualTo("host-content");
+		}
+		finally
+		{
+			Directory.Delete(directory, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task Start_WritableBindMount_WritesBackToTheHost(CancellationToken cancellationToken)
+	{
+		// Arrange
+		await SkipIfUnavailableAsync();
+		var directory = Path.Combine(Path.GetTempPath(), $"purview bind {Guid.NewGuid():N}");
+		Directory.CreateDirectory(directory);
+
+		try
+		{
+			await using var container = BuildWithMount(directory, readOnly: false);
+
+			// Act
+			await container.StartAsync(cancellationToken);
+			var write = await container.ExecAsync(
+				["sh", "-c", "printf container-content > /mounted/output.txt"],
+				cancellationToken: cancellationToken
+			);
+
+			// Assert
+			await Assert.That(write.IsSuccess).IsTrue();
+			await Assert
+				.That(await File.ReadAllTextAsync(Path.Combine(directory, "output.txt"), cancellationToken))
+				.IsEqualTo("container-content");
+		}
+		finally
+		{
+			Directory.Delete(directory, recursive: true);
+		}
+	}
+
 	[Test]
 	public async Task GetInfoAsync_ReportsTheDockerServerVersion()
 	{

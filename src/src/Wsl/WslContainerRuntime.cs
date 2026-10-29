@@ -56,6 +56,7 @@ public sealed class WslContainerRuntime : IContainerRuntime
 	/// <inheritdoc />
 	public async Task<WslContainerRuntimeInfo> GetInfoAsync(CancellationToken cancellationToken = default)
 	{
+		cancellationToken.ThrowIfCancellationRequested();
 		await Task.Yield();
 		try
 		{
@@ -86,6 +87,7 @@ public sealed class WslContainerRuntime : IContainerRuntime
 	/// <inheritdoc />
 	public async Task<IContainerSession> GetSessionAsync(CancellationToken cancellationToken = default)
 	{
+		cancellationToken.ThrowIfCancellationRequested();
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
 		var local = GetOrCreateSession();
 		if (Volatile.Read(ref _storeVerified) == 1)

@@ -36,6 +36,7 @@
 		<PackageVersion Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
 	</ItemGroup>
 	<ItemGroup>
+		<PackageVersion Include="Aspire.Hosting" Version="13.6.4" />
 		<PackageVersion Include="Microsoft.WSL.Containers" Version="$(MicrosoftWSLContainersVersion)" />
 		<PackageVersion Include="Testcontainers" Version="4.16.0" />
 		<PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.11.0" />
@@ -52,7 +53,7 @@
 		  OSI-approved open-source projects; it never ships in a Purview package.
 		-->
 		<PackageVersion Include="Microsoft.Testing.Extensions.Retry" Version="2.5.1" />
-		<PackageVersion Include="Purview.Skills.Testing" Version="1.1.0" />
+		<PackageVersion Include="Purview.Skills.Testing" Version="1.2.0" />
 		<PackageVersion Include="Bogus" Version="35.6.5" />
 		<PackageVersion Include="Azure.Core" Version="1.63.0" />
 		<PackageVersion Include="Azure.Security.KeyVault.Certificates" Version="4.9.2" />

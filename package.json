@@ -1,6 +1,6 @@
 {
 	"name": "containers",
-	"version": "1.0.0-prerelease.9",
+	"version": "1.0.0-prerelease.10",
 	"description": "Testcontainers-style library for .NET that runs throwaway Linux containers for integration testing, on Microsoft WSL Containers or Docker.",
 	"license": "MIT",
 	"author": {

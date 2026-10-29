@@ -17,6 +17,7 @@ WaitContext { IContainer Container; string? NetworkIp; int? GetHostPort(ushort);
 
 Wait (factory)
   ForContainerRunning()
+  ForExitCode(long expectedExitCode = 0)
   ForTcpPort(ushort containerPort, TimeSpan? connectTimeout = null)
   ForHttp(string path = "/") → HttpWaitStrategy { ForPort, ForScheme, ForStatusCode, ForStatusPredicate, ForHeader, AllowInsecureTls }
   ForLogMessage(string) | ForLogMessage(Regex)
@@ -28,8 +29,11 @@ WaitStrategy.WithTimeout / .WithInterval / .WithRetries   (fluent)
 ```
 
 - Waits run inside `StartAsync()` after the container starts. `StartAsync` only returns once every configured strategy is ready (or throws `ContainerTimeoutException`).
-- Default timeout = the container's `StartupTimeout` (5 min, overridable via `.WithStartupTimeout(...)` or per-strategy `.WithTimeout(...)`).
-- Timeout failure produces a diagnostic including container name, image, state, mapped ports, the strategy type, the last check error, and a tail of stdout/stderr (bounded, secret-redacted).
+- Default timeout = the container's `StartupTimeout` (5 min). This is also the total managed startup
+  budget, including image/create/start and all strategies; per-strategy timeouts can shorten it, not
+  extend it. `Wait.ForExitCode(expected)` supports one-shot completion.
+- Timeout failure produces a diagnostic including container name, image, state, mapped ports, the strategy type, the last check error, and a bounded tail of stdout/stderr. Application output can contain secrets; diagnostics are not automatically safe to publish.
+- An unexpected one-shot exit fails immediately with `ContainerExitCodeException`.
 
 ## Strategies
 

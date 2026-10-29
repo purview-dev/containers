@@ -2,8 +2,9 @@
 
 The **WSL Containers (WSLC) backend** for [`Purview.Containers.Core`](https://www.nuget.org/packages/Purview.Containers.Core):
 throwaway Linux containers for .NET integration testing built directly on the `Microsoft.WSL.Containers`
-managed API, with **no Docker installation** and no `wslc.exe`/`wsl.exe`/`docker` CLI, Docker.DotNet or
-Testcontainers dependency.
+managed API, with **no Docker installation**, Docker.DotNet or Testcontainers dependency. Capabilities
+missing from the SDK use a bounded `wslc` CLI fallback in the same session: entrypoint/user/labels,
+managed networks/aliases, reuse, file copy and Dockerfile builds require `wslc` on PATH.
 
 ```bash
 dotnet add package Purview.Containers.Wsl
@@ -26,7 +27,7 @@ code on Docker in Linux CI, reference
 
 ## Requirements
 
-- Windows 10/11 with **WSL Containers** (`wsl --install --no-distribution`), verified against WSL 3.0.1.0.
+- Windows 11 or Windows Server 2025 with **WSL Containers** (`wsl --install --no-distribution`).
 - **A .NET 10 project.** The recommended target framework is platform-neutral (`net10.0`): it binds the
   facade and gives you automatic WSLC-or-Docker selection. A Windows target framework
   (`net10.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. Anything older than
@@ -46,6 +47,7 @@ code on Docker in Linux CI, reference
 ## Quick start
 
 ```csharp
+using Purview.Containers;
 using Purview.Containers.Wsl;
 using Purview.Containers.Waiting;
 
@@ -71,6 +73,10 @@ invalid images, ports and mounts fail during configuration rather than at pull t
 | `WithName`, `WithHostname`, `WithDomainName` | Container identity. Names are generated uniquely when unset. |
 | `WithEnvironment(string, string)`, `WithEnvironment(IReadOnlyDictionary<string, string>)` | Init-process environment. |
 | `WithCommand(params string[])`, `WithWorkingDirectory` | Init-process argv (no shell) and working directory. |
+| `WithEntrypoint`, `WithUser`, `WithLabel` | Init-process overrides and non-secret metadata (CLI creation). |
+| `WithNetwork`, `WithNetworkAliases`, `WithReuse` | Managed network attachment/DNS aliases and explicit session-scoped reuse. |
+| `WithResourceMapping` | Pre-start file/directory copy, including empty directories. |
+| `WithExecTimeout`, `WithStopTimeout`, `WithCleanupTimeout`, `WithOperationTimeout` | Positive finite managed deadlines. |
 | `WithPortBinding(ushort, bool assignRandomHostPort)`, `WithPortBinding(ushort, ushort hostPort, ...)`, `WithPortBinding(PortBinding)` | Host port mappings; random host ports use native `windowsPort=0` allocation. |
 | `WithBindMount(string hostPath, string containerPath, bool readOnly = false)` | Bind-mount a Windows directory. |
 | `WithVolumeMount(string name, string containerPath, bool readOnly = false)` | Named volume on the session VHD. |
@@ -78,10 +84,26 @@ invalid images, ports and mounts fail during configuration rather than at pull t
 
 ## Container API
 
+Both backends expose `CopyAsync`, `ReadFileAsync`, `WaitForExitAsync`, `Wait.ForExitCode`,
+`CreateNetworkAsync` and `BuildImageAsync`, plus explicit `DeleteAsync`. WSLC reuse via
+`WithName(...).WithReuse()` is session-scoped, not cross-process. Dispose containers before owned
+networks/images. The defaults are five minutes for total startup, one minute for exec/exit waits and
+copy/read/log snapshots, 15 seconds for stop and 30 seconds for cleanup; fluent timeout overrides
+are available. Exec/stop cancellation is propagated, not returned as a successful result.
+
+Synchronous native SDK calls cannot be interrupted safely. Managed waits and CLI processes are
+bounded, but a blocked native call can outlive cancellation. CLI creation currently rejects privileged
+mode combined with CLI-only features and multi-line environment values. See
+[capabilities and cancellation](https://github.com/purview-dev/containers/blob/main/docs/wiki/Backend-Capabilities.md).
+
 `IContainer` (and `WslContainer`) exposes `StartAsync`, `StopAsync`, `ExecAsync`, `GetMappedPublicPort`,
 `GetMappedPublicPorts`, `GetLogsAsync(LogOutput?)` and a tailing `IAsyncEnumerable<ContainerLogEntry>`
 `GetLogsAsync(CancellationToken)`. `Id`, `Name`, `State` and `Image` describe the running container.
-`DisposeAsync` stops and deletes the container and is idempotent; it never terminates the shared session.
+`DisposeAsync` normally stops and deletes the container; reusable containers are retained. It is
+idempotent and never terminates the shared session.
+Stopping signals the init process with SIGTERM, waits up to 10 seconds, then escalates to SIGKILL
+with a further 5-second exit wait. The grace period uses managed polling rather than the native
+blocking `Container.Stop` call and does not hold up other containers' session operations.
 
 ## Wait strategies
 
@@ -90,6 +112,7 @@ invalid images, ports and mounts fail during configuration rather than at pull t
 | Factory | Ready when |
 | -- | -- |
 | `Wait.ForContainerRunning()` | The init process is running (started, not necessarily a ready service). |
+| `Wait.ForExitCode(expected)` | A one-shot init process exits with the expected code; a mismatch fails immediately. |
 | `Wait.ForTcpPort(port)` | A TCP connection to the mapped host port succeeds. |
 | `Wait.ForHttp(path)` | An HTTP(S) request succeeds; configure `ForPort`, `ForStatusCode`, `ForHeader`, `AllowInsecureTls`. |
 | `Wait.ForLogMessage(string)` / `Wait.ForLogMessage(Regex)` | Accumulated init-process output matches. |
@@ -98,8 +121,10 @@ invalid images, ports and mounts fail during configuration rather than at pull t
 | `Wait.ForAll(...)` / `Wait.ForAny(...)` | All / any contained strategy succeeds. |
 
 Every strategy supports `.WithTimeout(...)`, `.WithInterval(...)` and `.WithRetries(...)`. The default
-timeout is the container's `StartupTimeout` (5 minutes). Timeouts throw `ContainerTimeoutException` with
-a diagnostic naming the container, image, state, mapped ports, strategy and a bounded, secret-redacted log tail.
+timeout is the container's `StartupTimeout` (5 minutes total). Strategy exhaustion throws
+`ContainerTimeoutException`; caller cancellation or the overall startup deadline throws
+`OperationCanceledException`. Diagnostics include a bounded log tail that can contain application
+secrets: do not publish it indiscriminately.
 
 ## Runtime, sessions and storage
 
@@ -133,7 +158,8 @@ hatch is the opt-in accessor for `Inspect()` and raw handles.
 
 `System.Diagnostics.ActivitySource("Purview.Containers")` emits session, pull, container lifecycle, exec
 and wait spans. Credentials and other sensitive values are wrapped in `Secret` and redacted from `ToString()`
-and diagnostics.
+and their formatted diagnostics. Application logs are not automatically secret-safe; CLI failures omit
+raw command/build output.
 
 ## Documentation
 

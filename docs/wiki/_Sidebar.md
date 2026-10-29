@@ -2,6 +2,7 @@
 - [Getting Started](Getting-Started.md)
 - [Using in Your Tests (auto)](Using-in-Your-Tests.md)
 - [Backends: WSLC or Docker](Backends.md)
+- [Capabilities and Cancellation](Backend-Capabilities.md)
 - [Consumer Requirements](Consumer-Requirements.md)
 - [Architecture](Architecture.md)
 - [Lifecycle](Lifecycle.md)

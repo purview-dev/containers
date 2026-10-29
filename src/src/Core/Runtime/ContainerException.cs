@@ -35,6 +35,10 @@ public class ContainerStartupException(string message, Exception innerException)
 /// <summary>An operation did not complete within its configured timeout.</summary>
 public class ContainerTimeoutException(string message) : ContainerException(message) { }
 
+/// <summary>A completed one-shot init process returned an unexpected exit code.</summary>
+public class ContainerExitCodeException(long expected, long actual)
+	: ContainerException($"The container exited with code {actual}; expected {expected}.") { }
+
 /// <summary>
 /// No container backend is registered, or the explicitly selected backend cannot be used on this host.
 /// </summary>

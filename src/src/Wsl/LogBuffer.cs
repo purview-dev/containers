@@ -26,6 +26,7 @@ sealed class LogBuffer
 	readonly StringBuilder _stdoutPending = new();
 	readonly StringBuilder _stderrPending = new();
 	int _attached;
+	Process? _process;
 
 	public void Attach(Process process)
 	{
@@ -36,11 +37,24 @@ sealed class LogBuffer
 
 		process.OutputReceived += OnStdout;
 		process.ErrorReceived += OnStderr;
-		process.Exited += _ =>
-		{
-			FlushRemaining();
-			Complete();
-		};
+		process.Exited += OnExited;
+		_process = process;
+	}
+
+	void OnExited(int exitCode)
+	{
+		FlushRemaining();
+		Complete();
+	}
+
+	public void Detach()
+	{
+		if (_process is not { } process)
+			return;
+		process.OutputReceived -= OnStdout;
+		process.ErrorReceived -= OnStderr;
+		process.Exited -= OnExited;
+		_process = null;
 	}
 
 	public IReadOnlyList<ContainerLogEntry> Snapshot()

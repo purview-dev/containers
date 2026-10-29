@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Purview.Containers;
 
 /// <summary>
@@ -5,6 +7,11 @@ namespace Purview.Containers;
 /// <see cref="StartAsync" /> and delegates every <see cref="IContainer" /> member to it, which keeps the
 /// module packages backend-neutral: a module package depends on this abstraction assembly only.
 /// </summary>
+[SuppressMessage(
+	"Usage",
+	"CA2213:Disposable fields should be disposed",
+	Justification = "The gate has no native wait handle and remains usable by concurrent callers unwinding after disposal."
+)]
 public abstract class ContainerBase : IContainer
 {
 	IContainer? _container;
@@ -12,6 +19,9 @@ public abstract class ContainerBase : IContainer
 	Action? _configureConnectionStringProvider;
 	int _started;
 	int _disposed;
+	int _cleanupStarted;
+	readonly CancellationTokenSource _startupCancellation = new();
+	readonly SemaphoreSlim _lifecycleGate = new(1, 1);
 
 	/// <summary>
 	/// Creates a container bound to a backend. Prefer building via a module builder. When
@@ -56,24 +66,72 @@ public abstract class ContainerBase : IContainer
 	public string? NetworkIp => _container?.NetworkIp;
 
 	/// <inheritdoc />
+	[SuppressMessage(
+		"Design",
+		"CA1031:Do not catch general exception types",
+		Justification = "Failed-start cleanup must preserve the original startup/cancellation exception."
+	)]
 	public virtual async Task StartAsync(CancellationToken cancellationToken = default)
 	{
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
-		if (Interlocked.Exchange(ref _started, 1) == 1)
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(
+			cancellationToken,
+			_startupCancellation.Token
+		);
+		deadline.CancelAfter(Configuration.StartupTimeout);
+		await _lifecycleGate.WaitAsync(deadline.Token).ConfigureAwait(false);
+		try
 		{
-			return;
+			ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
+			deadline.Token.ThrowIfCancellationRequested();
+			if (Volatile.Read(ref _started) == 1)
+				return;
+			var backend = Backend ?? await ContainerBackends.ResolveAsync(deadline.Token).ConfigureAwait(false);
+			_container = backend.CreateContainer(ConfigureForStart(WithResolvedName()));
+			await _container.StartAsync(deadline.Token).ConfigureAwait(false);
+			_configureConnectionStringProvider?.Invoke();
+			Volatile.Write(ref _started, 1);
 		}
-
-		var backend = Backend ?? await ContainerBackends.ResolveAsync(cancellationToken).ConfigureAwait(false);
-		_container = backend.CreateContainer(ConfigureForStart(WithResolvedName()));
-		await _container.StartAsync(cancellationToken).ConfigureAwait(false);
-		_configureConnectionStringProvider?.Invoke();
+		catch
+		{
+			if (_container is not null)
+			{
+				try
+				{
+					await _container
+						.DisposeAsync()
+						.AsTask()
+						.WaitAsync(Configuration.CleanupTimeout, CancellationToken.None)
+						.ConfigureAwait(false);
+				}
+				catch { }
+			}
+			Volatile.Write(ref _disposed, 1);
+			throw;
+		}
+		finally
+		{
+			_lifecycleGate.Release();
+		}
 	}
 
 	/// <inheritdoc />
-	public virtual Task StopAsync(CancellationToken cancellationToken = default)
+	public virtual async Task StopAsync(CancellationToken cancellationToken = default)
 	{
-		return _container?.StopAsync(cancellationToken) ?? Task.CompletedTask;
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(Configuration.StopTimeout);
+		await _lifecycleGate.WaitAsync(deadline.Token).ConfigureAwait(false);
+		try
+		{
+			ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
+			deadline.Token.ThrowIfCancellationRequested();
+			if (_container is not null)
+				await _container.StopAsync(deadline.Token).ConfigureAwait(false);
+		}
+		finally
+		{
+			_lifecycleGate.Release();
+		}
 	}
 
 	/// <inheritdoc />
@@ -154,19 +212,47 @@ public abstract class ContainerBase : IContainer
 	}
 
 	/// <inheritdoc />
+	public virtual Task CopyAsync(string source, string target, CancellationToken cancellationToken = default) =>
+		Container.CopyAsync(source, target, cancellationToken);
+
+	/// <inheritdoc />
+	public virtual Task DeleteAsync(CancellationToken cancellationToken = default) =>
+		Container.DeleteAsync(cancellationToken);
+
+	/// <inheritdoc />
+	public virtual Task<byte[]> ReadFileAsync(string path, CancellationToken cancellationToken = default) =>
+		Container.ReadFileAsync(path, cancellationToken);
+
+	/// <inheritdoc />
+	public virtual Task<long> WaitForExitAsync(CancellationToken cancellationToken = default) =>
+		Container.WaitForExitAsync(cancellationToken);
+
+	/// <inheritdoc />
 	public virtual async ValueTask DisposeAsync()
 	{
-		if (Interlocked.Exchange(ref _disposed, 1) == 1)
+		Volatile.Write(ref _disposed, 1);
+		if (Interlocked.Exchange(ref _cleanupStarted, 1) == 1)
 		{
 			return;
 		}
 
-		if (_container is not null)
+		using CancellationTokenSource deadline = new(Configuration.CleanupTimeout);
+		await _startupCancellation.CancelAsync().ConfigureAwait(false);
+		var entered = false;
+		try
 		{
-			await _container.DisposeAsync().ConfigureAwait(false);
+			await _lifecycleGate.WaitAsync(deadline.Token).ConfigureAwait(false);
+			entered = true;
+			if (_container is not null)
+				await _container.DisposeAsync().AsTask().WaitAsync(deadline.Token).ConfigureAwait(false);
+			GC.SuppressFinalize(this);
 		}
-
-		GC.SuppressFinalize(this);
+		finally
+		{
+			if (entered)
+				_lifecycleGate.Release();
+			_startupCancellation.Dispose();
+		}
 	}
 
 	/// <summary>

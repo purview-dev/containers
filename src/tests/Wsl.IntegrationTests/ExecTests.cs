@@ -73,11 +73,12 @@ public class ExecTests
 			.Build();
 		await container.StartAsync();
 
-		var result = await container.ExecAsync(
-			["/bin/sleep", "60"],
-			new ExecOptions { Timeout = TimeSpan.FromSeconds(2) }
-		);
-
-		await Assert.That(result.ExitCode).IsNotEqualTo(0);
+		await Assert
+			.That(async () =>
+				await container
+					.ExecAsync(["/bin/sleep", "60"], new ExecOptions { Timeout = TimeSpan.FromSeconds(2) })
+					.ConfigureAwait(false)
+			)
+			.Throws<OperationCanceledException>();
 	}
 }

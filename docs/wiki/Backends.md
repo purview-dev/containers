@@ -35,11 +35,38 @@ Service modules (`Purview.Containers.PostgreSql`, `Redis`, …) are backend-neut
 | **Prerequisite** | Windows 11 (22H2 or later) or Windows Server 2025 with WSL Containers (`wsl --install --no-distribution`) | any reachable Docker daemon (Docker Desktop, Docker Engine in WSL2, a VM, or a CI runner) |
 | **Host OS** | Windows only | Windows, Linux, macOS |
 | **Project target framework** | `net10.0` or later, any platform (portable facade), or `net10.0-windows10.0.19041.0`, x64 or arm64 (implementation bound directly) | `net10.0` or later, any platform |
-| **How containers run** | the `Microsoft.WSL.Containers` managed API (daemonless) | the Docker Engine API via Testcontainers |
+| **How containers run** | the managed SDK, with `wslc` CLI fallback for SDK-missing features | the Docker Engine API via Testcontainers |
 | **Images** | a shared store (`%LOCALAPPDATA%\Purview\WslContainers\images`) reused across runs; the location is configurable | the daemon's own image store |
 | **Leak protection** | session disposal plus a process-exit hook | the Testcontainers resource reaper (Ryuk) |
 | **Check the host** | `wsl --version`, `wslc version` | `docker info` |
 | **Typical fit** | local Windows development without Docker Desktop, fastest cold start | CI runners, non-Windows hosts, teams already running Docker |
+
+## Windows bind mounts with Docker Engine in WSL2
+
+When a Windows process connects to a Docker Engine inside a local WSL2 distribution over loopback TCP,
+the Docker backend automatically translates Windows drive paths in `WithBindMount` to paths in that
+distribution. No environment variable or code change is needed:
+
+```csharp
+await using var container = new ContainerBuilder()
+    .WithImage("alpine:3.19")
+    .WithBindMount(@"P:\project\data", "/data", readOnly: true)
+    .Build();
+```
+
+The backend verifies the connected daemon's identity against the engines in running WSL distributions,
+then asks the matching distribution's `wslpath` to translate the source. It does not assume the default
+distribution or hard-code `/mnt`, so a custom drive mount root is honoured. Read-only and writable
+mounts, including single-file mounts, retain their requested access mode.
+
+The owning distribution must have `docker` and `wslpath` available to its default user, and that user
+must be able to query the engine through `/var/run/docker.sock`. If no local daemon matches, sources
+are left unchanged rather than guessed. Docker Desktop, non-loopback remote daemons, native Linux
+paths and named volumes are unaffected. Once an engine is identified, a failed path translation is
+reported rather than silently sending an invalid Windows source to Linux.
+
+This behaviour applies to containers created through `Purview.Containers.Docker`; it does not intercept
+other libraries or direct `docker` CLI invocations.
 
 ## Image store location (WSLC)
 
@@ -429,14 +456,19 @@ release its image-store VHD.
 | Named volumes | ✅ (session VHD) | ✅ (Docker volumes) |
 | GPU exposure | ✅ (`EnableGPU` session setting) | depends on the daemon and host runtime |
 | `ExecOptions.WorkingDirectory` / `Timeout` | ✅ | ✅ |
-| `ExecOptions.Environment` | ✅ | ❌ `ContainerNotSupportedException` |
-| Log tailing | streamed while the init process runs | polled until the container stops |
+| `ExecOptions.Environment` | ✅ | ✅ |
+| Entrypoint/user/labels, copy, builds, networks/aliases | ✅ CLI fallback | ✅ Testcontainers |
+| Reuse | session-scoped, explicit name | Testcontainers reuse |
+| Log tailing | polled until the container stops | polled until the container stops |
 | Leak protection | session disposal + process-exit hook | Testcontainers resource reaper (Ryuk) |
 | Image store | shared WSLC store, warm across runs | the daemon's store |
 | Lifetime cost | one process-wide session, cheap start | first pull per image, per daemon |
 
 Unsupported options throw `ContainerNotSupportedException` rather than being ignored, so a difference
 between backends never turns into a silently weaker test.
+
+See [Capabilities and Cancellation](Backend-Capabilities.md) for shared APIs, managed deadlines,
+resource ownership and the synchronous-native-call cancellation limitation.
 
 ## Troubleshooting
 
@@ -477,6 +509,4 @@ image stores.
 - [Consumer Requirements](Consumer-Requirements.md) — the target-framework contract, the guards and the workarounds.
 - [Architecture](Architecture.md#backend-selection) — how resolution and registration work internally.
 - [Modules](Modules.md) — the service modules and their readiness strategies.
-
-
 

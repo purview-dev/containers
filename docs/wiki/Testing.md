@@ -52,8 +52,8 @@ skip into a failure — the CI integration jobs do. See [Backends: WSLC or Docke
 consumer-facing setup and CI examples.
 
 ```powershell
-just test src/tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj                            # Docker contract
-just test src/tests/Modules.Docker.IntegrationTests/Modules.Docker.IntegrationTests.csproj             # the nine modules on Docker
+dotnet test --project src/tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj --treenode-filter '/*/*/*/*'
+dotnet test --project src/tests/Modules.Docker.IntegrationTests/Modules.Docker.IntegrationTests.csproj --treenode-filter '/*/*/*/*'
 ```
 
 ## Why test modules run serially
@@ -125,6 +125,12 @@ immediately instead of surfacing as container timeouts. `actionlint` is told abo
 `.github/actionlint.yaml`.
 
 ## Expectations
+
+`src/tests/BackendContractTests.cs` is compiled into both backend integration projects. It checks
+exec settings, exact file/directory mappings, delayed and failed one-shot exits, streamed stdout/stderr,
+network aliases, builds, reuse, cancellation and bounded readiness cleanup. Run both complete projects
+for shared capability changes. The unit tier also covers uncooperative readiness and disposal during
+startup; it cannot substitute for real runtime validation.
 
 - The `Wsl.IntegrationTests` module runs many real containers in one session and can take several
   minutes, because WSLC serialises container operations. Slow-test warnings while it runs are expected.

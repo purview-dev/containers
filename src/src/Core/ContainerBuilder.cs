@@ -37,6 +37,17 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 	readonly List<IWaitStrategy> _waitStrategies = [];
 	RegistryCredentials? _registryCredentials;
 	IConnectionStringProvider<TContainer, TConfiguration>? _connectionStringProvider;
+	string[] _entrypoint = [];
+	string? _user;
+	readonly Dictionary<string, string> _labels = new(StringComparer.Ordinal);
+	string? _network;
+	string[] _networkAliases = [];
+	bool _reuse;
+	readonly List<ContainerResourceMapping> _resourceMappings = [];
+	TimeSpan _execTimeout = TimeSpan.FromMinutes(1);
+	TimeSpan _stopTimeout = TimeSpan.FromSeconds(15);
+	TimeSpan _cleanupTimeout = TimeSpan.FromSeconds(30);
+	TimeSpan _operationTimeout = TimeSpan.FromMinutes(1);
 
 	/// <summary>The backend the built container will use. When <c>null</c> it is resolved at start time via <see cref="ContainerBackends.ResolveAsync" />.</summary>
 	protected IContainerBackend? Backend { get; private set; }
@@ -150,6 +161,90 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 		ArgumentNullException.ThrowIfNull(command);
 		_command.Clear();
 		_command.AddRange(command);
+		return (TBuilder)this;
+	}
+
+	/// <summary>Overrides the image entrypoint.</summary>
+	public TBuilder WithEntrypoint(params string[] entrypoint)
+	{
+		ArgumentNullException.ThrowIfNull(entrypoint);
+		_entrypoint = [.. entrypoint];
+		return (TBuilder)this;
+	}
+
+	/// <summary>Sets the Linux user or uid[:gid].</summary>
+	public TBuilder WithUser(string user)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(user);
+		_user = user;
+		return (TBuilder)this;
+	}
+
+	/// <summary>Adds non-secret metadata to the container.</summary>
+	public TBuilder WithLabel(string key, string value)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(key);
+		_labels[key] = value;
+		return (TBuilder)this;
+	}
+
+	/// <summary>Attaches to an existing managed network.</summary>
+	public TBuilder WithNetwork(string network)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(network);
+		_network = network;
+		return (TBuilder)this;
+	}
+
+	/// <summary>Sets DNS aliases on the selected managed network.</summary>
+	public TBuilder WithNetworkAliases(params string[] aliases)
+	{
+		ArgumentNullException.ThrowIfNull(aliases);
+		_networkAliases = [.. aliases];
+		return (TBuilder)this;
+	}
+
+	/// <summary>Retains the container on disposal. Requires an explicit name; WSLC reuse is session-scoped.</summary>
+	public TBuilder WithReuse(bool reuse = true)
+	{
+		_reuse = reuse;
+		return (TBuilder)this;
+	}
+
+	/// <summary>Copies a host file or directory to the container before startup.</summary>
+	public TBuilder WithResourceMapping(string source, string target)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(source);
+		ArgumentException.ThrowIfNullOrWhiteSpace(target);
+		_resourceMappings.Add(new(source, target));
+		return (TBuilder)this;
+	}
+
+	/// <summary>Sets the default exec/exit-wait deadline (one minute by default).</summary>
+	public TBuilder WithExecTimeout(TimeSpan timeout)
+	{
+		_execTimeout = timeout;
+		return (TBuilder)this;
+	}
+
+	/// <summary>Sets the total stop budget (15 seconds by default).</summary>
+	public TBuilder WithStopTimeout(TimeSpan timeout)
+	{
+		_stopTimeout = timeout;
+		return (TBuilder)this;
+	}
+
+	/// <summary>Sets the managed cleanup budget (30 seconds by default).</summary>
+	public TBuilder WithCleanupTimeout(TimeSpan timeout)
+	{
+		_cleanupTimeout = timeout;
+		return (TBuilder)this;
+	}
+
+	/// <summary>Sets the file operation/log-snapshot deadline (one minute by default).</summary>
+	public TBuilder WithOperationTimeout(TimeSpan timeout)
+	{
+		_operationTimeout = timeout;
 		return (TBuilder)this;
 	}
 
@@ -317,20 +412,31 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 			Name = _name,
 			Hostname = _hostname,
 			DomainName = _domainName,
-			Environment = _environment,
-			Command = _command,
+			Environment = new Dictionary<string, string>(_environment, StringComparer.Ordinal),
+			Command = _command.ToArray(),
 			WorkingDirectory = _workingDirectory,
-			PortBindings = _portBindings,
-			BindMounts = _bindMounts,
-			NamedVolumes = _namedVolumes,
+			PortBindings = _portBindings.ToArray(),
+			BindMounts = _bindMounts.ToArray(),
+			NamedVolumes = _namedVolumes.ToArray(),
 			NetworkingMode = _networkingMode,
 			Privileged = _privileged,
 			EnableGPU = _enableGPU,
 			EnableAutoRemove = _enableAutoRemove,
 			PullPolicy = _pullPolicy,
 			StartupTimeout = _startupTimeout,
-			WaitStrategies = _waitStrategies,
+			WaitStrategies = _waitStrategies.ToArray(),
 			RegistryCredentials = _registryCredentials,
+			Entrypoint = [.. _entrypoint],
+			User = _user,
+			Labels = new Dictionary<string, string>(_labels, StringComparer.Ordinal),
+			Network = _network,
+			NetworkAliases = [.. _networkAliases],
+			Reuse = _reuse,
+			ResourceMappings = _resourceMappings.ToArray(),
+			ExecTimeout = _execTimeout,
+			StopTimeout = _stopTimeout,
+			CleanupTimeout = _cleanupTimeout,
+			OperationTimeout = _operationTimeout,
 		};
 	}
 
@@ -349,6 +455,42 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 			throw new ContainerConfigurationException(
 				$"Startup timeout must be positive; got {configuration.StartupTimeout}."
 			);
+		}
+
+		foreach (
+			var timeout in new[]
+			{
+				configuration.ExecTimeout,
+				configuration.StopTimeout,
+				configuration.CleanupTimeout,
+				configuration.OperationTimeout,
+				configuration.StartupTimeout,
+			}
+		)
+		{
+			if (timeout <= TimeSpan.Zero || timeout.TotalMilliseconds > uint.MaxValue - 1)
+			{
+				throw new ContainerConfigurationException(
+					"Operation deadlines must be positive, finite timer durations."
+				);
+			}
+		}
+
+		if (configuration.Reuse && (string.IsNullOrWhiteSpace(configuration.Name) || configuration.EnableAutoRemove))
+		{
+			throw new ContainerConfigurationException(
+				"Reuse requires an explicit name and cannot be combined with auto-remove."
+			);
+		}
+
+		if (configuration.NetworkAliases.Count > 0 && string.IsNullOrWhiteSpace(configuration.Network))
+		{
+			throw new ContainerConfigurationException("Network aliases require WithNetwork(...).");
+		}
+
+		if (configuration.Network is not null && configuration.NetworkingMode == ContainerNetworkingMode.None)
+		{
+			throw new ContainerConfigurationException("A managed network cannot be combined with NetworkingMode.None.");
 		}
 
 		foreach (var portBinding in configuration.PortBindings)

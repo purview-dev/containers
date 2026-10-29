@@ -5,6 +5,9 @@ namespace Purview.Containers.Waiting;
 /// <summary>Factory for composable wait strategies.</summary>
 public static class Wait
 {
+	/// <summary>Waits for a one-shot init process to exit with the expected code.</summary>
+	public static WaitStrategy ForExitCode(long exitCode = 0) => new ExitCodeWaitStrategy(exitCode);
+
 	/// <summary>Waits until the container init process is running. This only means the process started, not that a service is ready.</summary>
 	public static WaitStrategy ForContainerRunning()
 	{
