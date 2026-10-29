@@ -1,4 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using DotNet.Testcontainers.Configurations;
 using Purview.Containers.Runtime;
 using Purview.Containers.Waiting;
 using TcContainer = DotNet.Testcontainers.Containers.IContainer;
@@ -14,26 +16,39 @@ namespace Purview.Containers.Docker;
 public sealed class DockerContainer : IContainer
 {
 	readonly IContainerConfiguration _configuration;
+	readonly Func<CancellationToken, Task<TcContainer>> _create;
+	TcContainer? _handle;
 	int _disposed;
+	bool _deleted;
+	readonly CancellationTokenSource _lifetime = new();
+	Task<long>? _exitTask;
 
-	internal DockerContainer(IContainerConfiguration configuration, TcContainer container, string name)
+	internal DockerContainer(
+		IContainerConfiguration configuration,
+		Func<CancellationToken, Task<TcContainer>> create,
+		string name
+	)
 	{
 		_configuration = configuration;
-		Handle = container;
+		_create = create;
 		Name = name;
 	}
 
 	/// <summary>The container Testcontainers created for this adapter.</summary>
-	internal TcContainer Handle { get; }
+	internal TcContainer Handle => _handle ?? throw new InvalidOperationException("Container has not been started.");
 
 	/// <inheritdoc />
-	public string Id => Handle.Id;
+	public string Id => _handle?.Id ?? string.Empty;
 
 	/// <inheritdoc />
 	public string Name { get; }
 
 	/// <inheritdoc />
-	public ContainerState State => ToState(Handle.State);
+	public ContainerState State =>
+		_deleted ? ContainerState.Deleted
+		: _handle is null ? ContainerState.Created
+		: _exitTask?.IsCompletedSuccessfully == true ? ContainerState.Exited
+		: ToState(Handle.State);
 
 	/// <inheritdoc />
 	public string Image => _configuration.Image;
@@ -42,28 +57,60 @@ public sealed class DockerContainer : IContainer
 	public string? NetworkIp { get; private set; }
 
 	/// <inheritdoc />
+	[SuppressMessage(
+		"Design",
+		"CA1031",
+		Justification = "Failed-start cleanup must preserve the original error or cancellation."
+	)]
 	public async Task StartAsync(CancellationToken cancellationToken = default)
 	{
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
-		await Handle.StartAsync(cancellationToken).ConfigureAwait(false);
-
-		// Testcontainers reports an unspecified address (or none) when the container has no network.
-		NetworkIp = Handle.IpAddress is { Length: > 0 } ip && ip != "0.0.0.0" ? ip : null;
-
-		if (_configuration.WaitStrategies.Count > 0)
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(_configuration.StartupTimeout);
+		deadline.Token.ThrowIfCancellationRequested();
+		try
 		{
-			WaitContext context = new(this, GetMappedPublicPorts(), NetworkIp);
-			await WaitStrategyRunner
-				.RunAsync(context, _configuration.WaitStrategies, _configuration.StartupTimeout, cancellationToken)
-				.ConfigureAwait(false);
+			_handle ??= await _create(deadline.Token).ConfigureAwait(false);
+			await Handle.StartAsync(deadline.Token).ConfigureAwait(false);
+			_exitTask = ObserveExitAsync();
+			_ = _exitTask.ContinueWith(
+				static task => _ = task.Exception,
+				CancellationToken.None,
+				TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+				TaskScheduler.Default
+			);
+
+			// Testcontainers reports an unspecified address (or none) when the container has no network.
+			NetworkIp = Handle.IpAddress is { Length: > 0 } ip && ip != "0.0.0.0" ? ip : null;
+
+			if (_configuration.WaitStrategies.Count > 0)
+			{
+				WaitContext context = new(this, GetMappedPublicPorts(), NetworkIp);
+				await WaitStrategyRunner
+					.RunAsync(context, _configuration.WaitStrategies, _configuration.StartupTimeout, deadline.Token)
+					.ConfigureAwait(false);
+			}
+		}
+		catch
+		{
+			try
+			{
+				await DisposeAsync().ConfigureAwait(false);
+			}
+			catch { }
+			throw;
 		}
 	}
 
 	/// <inheritdoc />
-	public Task StopAsync(CancellationToken cancellationToken = default)
+	public async Task StopAsync(CancellationToken cancellationToken = default)
 	{
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
-		return Handle.StopAsync(cancellationToken);
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(_configuration.StopTimeout);
+		deadline.Token.ThrowIfCancellationRequested();
+		if (_handle is not null)
+			await Handle.StopAsync(deadline.Token).ConfigureAwait(false);
 	}
 
 	/// <inheritdoc />
@@ -75,6 +122,8 @@ public sealed class DockerContainer : IContainer
 	{
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
 		ArgumentNullException.ThrowIfNull(command);
+		if (command.Length == 0)
+			throw new ArgumentException("Command cannot be empty.", nameof(command));
 
 		if (options?.EnableStandardInput == true)
 		{
@@ -83,34 +132,58 @@ public sealed class DockerContainer : IContainer
 			);
 		}
 
-		if (options?.Environment is { Count: > 0 })
-		{
-			throw new ContainerNotSupportedException(
-				"ExecOptions.Environment is not supported by the Docker backend; set it on the container instead."
-			);
-		}
-
 		using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-		if (options?.Timeout is TimeSpan timeout)
+		timeoutSource.CancelAfter(options?.Timeout ?? _configuration.ExecTimeout);
+		timeoutSource.Token.ThrowIfCancellationRequested();
+
+		// Testcontainers' argv overload cannot supply exec settings and logs argv. Send environment
+		// separately through its Docker client transport rather than embedding secrets in a shell command.
+		using var client = TestcontainersSettings
+			.OS.DockerEndpointAuthConfig.GetDockerClientBuilder(Guid.NewGuid())
+			.Build();
+		var created = await client
+			.Exec.CreateContainerExecAsync(
+				Handle.Id,
+				new global::Docker.DotNet.Models.ContainerExecCreateParameters
+				{
+					Cmd = command,
+					Env = options?.Environment?.Select(pair => $"{pair.Key}={pair.Value}").ToList() ?? [],
+					WorkingDir = options?.WorkingDirectory ?? string.Empty,
+					AttachStdout = true,
+					AttachStderr = true,
+				},
+				timeoutSource.Token
+			)
+			.ConfigureAwait(false);
+		using var stream = await client
+			.Exec.StartContainerExecAsync(
+				created.ID,
+				new global::Docker.DotNet.Models.ContainerExecStartParameters(),
+				timeoutSource.Token
+			)
+			.ConfigureAwait(false);
+		var (stdout, stderr) = await stream.ReadOutputToEndAsync(timeoutSource.Token).ConfigureAwait(false);
+		var inspect = await client
+			.Exec.InspectContainerExecAsync(created.ID, timeoutSource.Token)
+			.ConfigureAwait(false);
+		while (inspect.Running)
 		{
-			timeoutSource.CancelAfter(timeout);
+			await Task.Delay(50, timeoutSource.Token).ConfigureAwait(false);
+			inspect = await client
+				.Exec.InspectContainerExecAsync(created.ID, timeoutSource.Token)
+				.ConfigureAwait(false);
 		}
-
-		// Testcontainers exposes a single argv exec overload, so a requested working directory is applied
-		// by executing through the shell.
-		var argv = options?.WorkingDirectory is string workingDirectory
-			? ["sh", "-c", $"cd {Quote(workingDirectory)} && {string.Join(' ', command.Select(Quote))}"]
-			: command;
-
-		var result = await Handle.ExecAsync(argv, timeoutSource.Token).ConfigureAwait(false);
-		return new ExecResult(result.ExitCode ?? -1, result.Stdout, result.Stderr);
+		return new ExecResult(inspect.ExitCode ?? -1, stdout, stderr);
 	}
 
 	/// <inheritdoc />
 	public ushort GetMappedPublicPort(ushort containerPort)
 	{
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
-		return Handle.GetMappedPublicPort(containerPort);
+		var binding = _configuration.PortBindings.FirstOrDefault(binding => binding.ContainerPort == containerPort);
+		return Handle.GetMappedPublicPort(
+			$"{containerPort}/{(binding?.Protocol == Networking.PortProtocol.Udp ? "udp" : "tcp")}"
+		);
 	}
 
 	/// <inheritdoc />
@@ -120,7 +193,9 @@ public sealed class DockerContainer : IContainer
 		Dictionary<ushort, ushort> mappings = [];
 		foreach (var binding in _configuration.PortBindings)
 		{
-			mappings[binding.ContainerPort] = Handle.GetMappedPublicPort(binding.ContainerPort);
+			mappings[binding.ContainerPort] = Handle.GetMappedPublicPort(
+				$"{binding.ContainerPort}/{(binding.Protocol == Networking.PortProtocol.Udp ? "udp" : "tcp")}"
+			);
 		}
 
 		return mappings;
@@ -172,23 +247,37 @@ public sealed class DockerContainer : IContainer
 
 		// Testcontainers exposes no positioned log stream, so the accumulated output is polled and new lines
 		// are emitted until the container is no longer running.
-		var emitted = 0;
+		var emittedStdout = 0;
+		var emittedStderr = 0;
 		while (true)
 		{
+			var exited = State is not ContainerState.Running;
 			var (stdout, stderr) = await ReadLogsAsync(cancellationToken).ConfigureAwait(false);
-			var lines = Split(stdout, stderr);
-			for (; emitted < lines.Count; emitted++)
-			{
-				yield return lines[emitted];
-			}
+			foreach (var entry in NewLogEntries(stdout, LogOutput.Stdout, ref emittedStdout, exited))
+				yield return entry;
+			foreach (var entry in NewLogEntries(stderr, LogOutput.Stderr, ref emittedStderr, exited))
+				yield return entry;
 
-			if (State is not ContainerState.Running)
+			if (exited)
 			{
 				yield break;
 			}
 
 			await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken).ConfigureAwait(false);
 		}
+	}
+
+	static ContainerLogEntry[] NewLogEntries(string content, LogOutput stream, ref int emitted, bool exited)
+	{
+		var lines = content.Split('\n');
+		var completeCount = exited && lines[^1].Length > 0 ? lines.Length : lines.Length - 1;
+		var entries = lines
+			.Skip(emitted)
+			.Take(Math.Max(0, completeCount - emitted))
+			.Select(line => new ContainerLogEntry(DateTimeOffset.UtcNow, stream, line.TrimEnd('\r')))
+			.ToArray();
+		emitted = completeCount;
+		return entries;
 	}
 
 	/// <inheritdoc />
@@ -199,43 +288,102 @@ public sealed class DockerContainer : IContainer
 			return;
 		}
 
-		await Handle.DisposeAsync().ConfigureAwait(false);
-		GC.SuppressFinalize(this);
+		try
+		{
+			await _lifetime.CancelAsync().ConfigureAwait(false);
+			if (_handle is not null)
+				await Handle.DisposeAsync().AsTask().WaitAsync(_configuration.CleanupTimeout).ConfigureAwait(false);
+			if (!_configuration.Reuse)
+				_deleted = true;
+		}
+		finally
+		{
+			_lifetime.Dispose();
+			GC.SuppressFinalize(this);
+		}
 	}
 
-	Task<(string Stdout, string Stderr)> ReadLogsAsync(CancellationToken cancellationToken)
+	/// <inheritdoc />
+	public async Task CopyAsync(string source, string target, CancellationToken cancellationToken = default)
+	{
+		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(_configuration.OperationTimeout);
+		await DockerFileCopy.CopyAsync(Handle.Id, source, target, deadline.Token).ConfigureAwait(false);
+	}
+
+	/// <inheritdoc />
+	public async Task DeleteAsync(CancellationToken cancellationToken = default)
+	{
+		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(_configuration.CleanupTimeout);
+		deadline.Token.ThrowIfCancellationRequested();
+		if (_handle is not null && !_deleted)
+		{
+			using var client = TestcontainersSettings
+				.OS.DockerEndpointAuthConfig.GetDockerClientBuilder(Guid.NewGuid())
+				.Build();
+			try
+			{
+				await client
+					.Containers.RemoveContainerAsync(
+						Handle.Id,
+						new global::Docker.DotNet.Models.ContainerRemoveParameters
+						{
+							Force = true,
+							RemoveVolumes = true,
+						},
+						deadline.Token
+					)
+					.ConfigureAwait(false);
+			}
+			catch (global::Docker.DotNet.DockerApiException exception)
+				when (exception.StatusCode == System.Net.HttpStatusCode.NotFound) { }
+			_deleted = true;
+		}
+	}
+
+	/// <inheritdoc />
+	public async Task<byte[]> ReadFileAsync(string path, CancellationToken cancellationToken = default)
+	{
+		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(_configuration.OperationTimeout);
+		return await Handle.ReadFileAsync(path, deadline.Token).ConfigureAwait(false);
+	}
+
+	/// <inheritdoc />
+	public async Task<long> WaitForExitAsync(CancellationToken cancellationToken = default)
+	{
+		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(_configuration.ExecTimeout);
+		return await (_exitTask ?? throw new InvalidOperationException("Container has not been started."))
+			.WaitAsync(deadline.Token)
+			.ConfigureAwait(false);
+	}
+
+	async Task<long> ObserveExitAsync()
+	{
+		using var client = TestcontainersSettings
+			.OS.DockerEndpointAuthConfig.GetDockerClientBuilder(Guid.NewGuid())
+			.Build();
+		var result = await client.Containers.WaitContainerAsync(Handle.Id, _lifetime.Token).ConfigureAwait(false);
+		return result.StatusCode;
+	}
+
+	async Task<(string Stdout, string Stderr)> ReadLogsAsync(CancellationToken cancellationToken)
 	{
 		// Docker filters logs by a time window and compares it against UTC log timestamps, so both bounds are
 		// UTC: the epoch (DateTime.MinValue is not a valid Docker timestamp) and now plus a small margin that
 		// absorbs second-level truncation.
-		return Handle.GetLogsAsync(
-			DateTime.UnixEpoch,
-			DateTime.UtcNow.AddMinutes(1),
-			timestampsEnabled: false,
-			cancellationToken
-		);
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(_configuration.OperationTimeout);
+		return await Handle
+			.GetLogsAsync(DateTime.UnixEpoch, DateTime.UtcNow.AddMinutes(1), timestampsEnabled: false, deadline.Token)
+			.ConfigureAwait(false);
 	}
-
-	static List<ContainerLogEntry> Split(string stdout, string stderr)
-	{
-		List<ContainerLogEntry> entries = [];
-		Append(entries, stdout, LogOutput.Stdout);
-		Append(entries, stderr, LogOutput.Stderr);
-		return entries;
-	}
-
-	static void Append(List<ContainerLogEntry> entries, string content, LogOutput stream)
-	{
-		foreach (var line in content.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-		{
-			entries.Add(new ContainerLogEntry(DateTimeOffset.Now, stream, line.TrimEnd('\r')));
-		}
-	}
-
-	static string Quote(string value) =>
-		value.Contains('\'', StringComparison.Ordinal)
-			? $"\"{value.Replace("\"", "\\\"", StringComparison.Ordinal)}\""
-			: $"'{value}'";
 
 	static ContainerState ToState(TcStates state) =>
 		state switch

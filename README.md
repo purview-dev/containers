@@ -19,7 +19,16 @@ A Testcontainers-style library for .NET that runs throwaway Linux containers for
 > **[Backends: WSLC or Docker](docs/wiki/Backends.md)** — comparison, side-by-side project setup, CI
 > example and troubleshooting.
 
-The WSLC backend is built directly against the `Microsoft.WSL.Containers` NuGet package (the WSLC managed C# API) — no `wslc.exe`/`wsl.exe`/`docker` CLI. The Docker backend is built on [Testcontainers for .NET](https://dotnet.testcontainers.org/).
+The WSLC backend uses `Microsoft.WSL.Containers` for ordinary lifecycle operations and a bounded
+`wslc` CLI fallback for entrypoint/user/labels, managed networks, reuse, resource copy and image builds.
+It requires no Docker installation. The Docker backend is built on
+[Testcontainers for .NET](https://dotnet.testcontainers.org/).
+
+Both backends expose file copy/read, one-shot exit waits, managed bridge networks/aliases and
+Dockerfile builds through the same contract. Startup has a five-minute total budget; exec defaults
+to one minute, stop to 15 seconds and cleanup to 30 seconds, all configurable. Cancellation is
+propagated; synchronous native WSLC calls cannot be forcibly interrupted. See
+[Capabilities and Cancellation](docs/wiki/Backend-Capabilities.md) for APIs, ownership and limits.
 
 > **Experimental.** This project is an experiment in running throwaway containers through Microsoft
 > WSL Containers. The public API, defaults and packaging rules can change between prereleases, and
@@ -54,6 +63,8 @@ want to fix the runtime.
 **Docker backend**
 
 - Any reachable Docker daemon, and a `net10.0` (or later) project on any platform.
+- Windows bind mounts are translated automatically for a verified local Docker Engine inside WSL2;
+  no consumer path setting is needed. See [WSL2 bind mounts](docs/wiki/Backends.md#windows-bind-mounts-with-docker-engine-in-wsl2).
 
 .NET SDK 11 is required to build this repository (it pins `11.0.100-rc.1`); SDK 10 is enough for a Docker
 consumer.

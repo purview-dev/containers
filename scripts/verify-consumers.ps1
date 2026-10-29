@@ -300,6 +300,26 @@ public static class Program
 		return container.GetMappedPublicPort(6379);
 	}
 
+	public static async Task CapabilitiesAsync(IContainerBackend backend, CancellationToken ct)
+	{
+		await using var network = await backend.CreateNetworkAsync(new NetworkConfiguration(), ct);
+		await using var image = await backend.BuildImageAsync(new ImageBuildConfiguration
+		{
+			ContextDirectory = Path.GetFullPath("fixture"),
+			Name = "consumer:smoke",
+		}, ct);
+		await using var container = new ContainerBuilder(backend).WithImage(image.Name)
+			.WithName("consumer-smoke").WithReuse().WithNetwork(network.Name).WithNetworkAliases("worker")
+			.WithEntrypoint("/bin/sh").WithCommand("-c", "exit 0").WithUser("1000:1000").WithLabel("suite", "smoke")
+			.WithResourceMapping(Path.GetFullPath("fixture.json"), "/tmp/fixture.json")
+			.WithExecTimeout(TimeSpan.FromSeconds(10)).WithStopTimeout(TimeSpan.FromSeconds(5))
+			.WithCleanupTimeout(TimeSpan.FromSeconds(10)).WithOperationTimeout(TimeSpan.FromSeconds(10))
+			.WithWaitStrategy(Wait.ForExitCode()).Build();
+		await container.StartAsync(ct);
+		_ = await container.WaitForExitAsync(ct);
+		await container.DeleteAsync(ct);
+	}
+
 	public static void Main() { }
 }
 '@
@@ -565,4 +585,3 @@ Write-Host ("{0}/{1} consumer checks passed." -f ($results.Count - $failed.Count
 if ($failed.Count -gt 0) {
 	exit 1
 }
-

@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using Microsoft.WSL.Containers;
 using Purview.Containers.Images;
 using Purview.Containers.Wsl.Diagnostics;
@@ -138,6 +140,7 @@ sealed class WslContainerSession : IContainerSession
 
 	public async Task TerminateAsync(CancellationToken cancellationToken = default)
 	{
+		cancellationToken.ThrowIfCancellationRequested();
 		if (Interlocked.Exchange(ref _terminated, 1) == 1)
 		{
 			return;
@@ -221,6 +224,130 @@ sealed class WslContainerSession : IContainerSession
 		}
 	}
 
+	internal async Task<MsContainer> CreateConfiguredContainerAsync(
+		ContainerConfiguration configuration,
+		string name,
+		CancellationToken cancellationToken
+	)
+	{
+		await EnsureStartedAsync(cancellationToken).ConfigureAwait(false);
+		await _lifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+		string? environmentFile = null;
+		var owner = Guid.NewGuid().ToString("N");
+		try
+		{
+			ThrowIfTerminated();
+			var hash = WslCreateArguments.ReuseHash(configuration);
+			if (configuration.Reuse)
+			{
+				var inspect = await WslCommand
+					.RunAsync(Name, ["inspect", "--format", "json", name], cancellationToken, allowFailure: true)
+					.ConfigureAwait(false);
+				if (inspect.ExitCode == 0)
+				{
+					using var document = JsonDocument.Parse(inspect.Output);
+					var labels = document.RootElement[0].GetProperty("Config").GetProperty("Labels");
+					if (!labels.TryGetProperty("purview.containers.reuse", out var value) || value.GetString() != hash)
+						throw new WslContainerException(
+							"A reusable container with this name exists but has different configuration."
+						);
+					if (document.RootElement[0].GetProperty("State").GetProperty("Status").GetString() == "exited")
+						await WslCommand.RunAsync(Name, ["start", name], cancellationToken).ConfigureAwait(false);
+					return _session.OpenContainer(name, ProcessOutputMode.Event);
+				}
+			}
+
+			if (configuration.Environment.Count > 0)
+			{
+				WslCreateArguments.ValidateEnvironment(configuration);
+				environmentFile = Path.GetTempFileName();
+				await File.WriteAllLinesAsync(
+						environmentFile,
+						configuration.Environment.Select(pair => $"{pair.Key}={pair.Value}"),
+						cancellationToken
+					)
+					.ConfigureAwait(false);
+			}
+			var args = WslCreateArguments.Build(configuration, name, hash, owner, environmentFile);
+			await WslCommand.RunAsync(Name, args, cancellationToken).ConfigureAwait(false);
+			return _session.OpenContainer(name, ProcessOutputMode.Event);
+		}
+		catch
+		{
+			// Cancellation can arrive after the CLI created the object but before it returned its ID.
+			if (!configuration.Reuse)
+			{
+				using CancellationTokenSource cleanup = new(configuration.CleanupTimeout);
+				try
+				{
+					var inspect = await WslCommand
+						.RunAsync(Name, ["inspect", "--format", "json", name], cleanup.Token, allowFailure: true)
+						.ConfigureAwait(false);
+					if (inspect.ExitCode == 0)
+					{
+						using var document = JsonDocument.Parse(inspect.Output);
+						var labels = document.RootElement[0].GetProperty("Config").GetProperty("Labels");
+						if (
+							labels.TryGetProperty("purview.containers.owner", out var value)
+							&& value.GetString() == owner
+						)
+							await WslCommand
+								.RunAsync(Name, ["remove", "--force", name], cleanup.Token, allowFailure: true)
+								.ConfigureAwait(false);
+					}
+				}
+				catch { }
+			}
+			throw;
+		}
+		finally
+		{
+			try
+			{
+				if (environmentFile is not null)
+					File.Delete(environmentFile);
+			}
+			finally
+			{
+				_lifecycleGate.Release();
+			}
+		}
+	}
+
+	internal async Task RunCommandAsync(string[] arguments, TimeSpan timeout, CancellationToken cancellationToken)
+	{
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(timeout);
+		await _lifecycleGate.WaitAsync(deadline.Token).ConfigureAwait(false);
+		try
+		{
+			ThrowIfTerminated();
+			await WslCommand.RunAsync(Name, arguments, deadline.Token, captureOutput: false).ConfigureAwait(false);
+		}
+		finally
+		{
+			_lifecycleGate.Release();
+		}
+	}
+
+	internal async Task<WslCommand.Result> RunCopyCommandAsync(
+		string[] arguments,
+		CancellationToken cancellationToken,
+		Stream? input = null
+	)
+	{
+		await _lifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+		try
+		{
+			ThrowIfTerminated();
+			return await WslCommand.RunAsync(Name, arguments, cancellationToken, input).ConfigureAwait(false);
+		}
+		finally
+		{
+			_lifecycleGate.Release();
+		}
+	}
+
 	internal async Task StartContainerAsync(MsContainer container, CancellationToken cancellationToken)
 	{
 		using var activity = WslContainerActivity.Source.StartActivity("wslcontainer.container.start");
@@ -246,16 +373,66 @@ sealed class WslContainerSession : IContainerSession
 	{
 		using var activity = WslContainerActivity.Source.StartActivity("wslcontainer.container.stop");
 		activity?.SetTag("container.id", container.Id);
+		// Native Container.Stop can block beyond its timeout while holding the session gate.
+		// Signal PID 1 directly and poll with managed delays so other containers can still make progress.
+		await SignalContainerAsync(container, signal, cancellationToken).ConfigureAwait(false);
+		if (await WaitForContainerExitAsync(container, timeout, cancellationToken).ConfigureAwait(false))
+		{
+			return;
+		}
+
+		await SignalContainerAsync(container, Signal.SIGKILL, cancellationToken).ConfigureAwait(false);
+		if (
+			!await WaitForContainerExitAsync(container, TimeSpan.FromSeconds(5), cancellationToken)
+				.ConfigureAwait(false)
+		)
+		{
+			throw new TimeoutException("The WSL container did not exit after SIGKILL.");
+		}
+	}
+
+	async Task SignalContainerAsync(MsContainer container, Signal signal, CancellationToken cancellationToken)
+	{
 		await _lifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
 		try
 		{
 			ThrowIfTerminated();
-			container.Stop(signal, timeout);
+			if (container.State == Microsoft.WSL.Containers.ContainerState.Running)
+			{
+				container.InitProcess.Signal(signal);
+			}
 		}
 		finally
 		{
 			_lifecycleGate.Release();
 		}
+	}
+
+	async Task<bool> WaitForContainerExitAsync(
+		MsContainer container,
+		TimeSpan timeout,
+		CancellationToken cancellationToken
+	)
+	{
+		var stopwatch = Stopwatch.StartNew();
+		while (container.State == Microsoft.WSL.Containers.ContainerState.Running)
+		{
+			ThrowIfTerminated();
+			cancellationToken.ThrowIfCancellationRequested();
+			var remaining = timeout - stopwatch.Elapsed;
+			if (remaining <= TimeSpan.Zero)
+			{
+				return false;
+			}
+
+			await Task.Delay(
+					remaining < TimeSpan.FromMilliseconds(100) ? remaining : TimeSpan.FromMilliseconds(100),
+					cancellationToken
+				)
+				.ConfigureAwait(false);
+		}
+
+		return true;
 	}
 
 	internal async Task DeleteContainerAsync(
@@ -340,7 +517,7 @@ sealed class WslContainerSession : IContainerSession
 		var lazy = _activePulls.GetOrAdd(
 			reference.FullReference,
 			_ => new Lazy<Task>(
-				() => PullCoreAsync(reference, progress, credentials, CancellationToken.None),
+				() => PullWithDeadlineAsync(reference, progress, credentials),
 				LazyThreadSafetyMode.ExecutionAndPublication
 			)
 		);
@@ -356,6 +533,18 @@ sealed class WslContainerSession : IContainerSession
 		);
 
 		await pull.WaitAsync(cancellationToken).ConfigureAwait(false);
+	}
+
+	async Task PullWithDeadlineAsync(
+		Image reference,
+		IProgress<ImagePullProgress>? progress,
+		RegistryCredentials? credentials
+	)
+	{
+		using CancellationTokenSource deadline = new(TimeSpan.FromMinutes(5));
+		await PullCoreAsync(reference, progress, credentials, deadline.Token)
+			.WaitAsync(deadline.Token)
+			.ConfigureAwait(false);
 	}
 
 	async Task PullCoreAsync(

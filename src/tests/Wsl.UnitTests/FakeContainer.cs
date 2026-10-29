@@ -17,8 +17,11 @@ public sealed class FakeContainer : IContainer
 	public IReadOnlyDictionary<ushort, ushort> PortMappings { get; init; } = new Dictionary<ushort, ushort>();
 
 	public Func<string[], ExecResult>? Exec { get; set; }
+	public Func<CancellationToken, Task>? Starting { get; init; }
+	public Action? Disposing { get; init; }
 
-	public Task StartAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+	public Task StartAsync(CancellationToken cancellationToken = default) =>
+		Starting?.Invoke(cancellationToken) ?? Task.CompletedTask;
 
 	public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
@@ -79,5 +82,9 @@ public sealed class FakeContainer : IContainer
 		yield break;
 	}
 
-	public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+	public ValueTask DisposeAsync()
+	{
+		Disposing?.Invoke();
+		return ValueTask.CompletedTask;
+	}
 }

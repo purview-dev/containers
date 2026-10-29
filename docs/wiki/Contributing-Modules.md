@@ -87,4 +87,6 @@ public class MyServiceBuilder : ContainerBuilder<MyServiceBuilder, MyServiceCont
 - Module is thin: no session management, no port allocation logic, no output buffering.
 - Default networking is `Bridged` (from the core defaults); ports use native random allocation unless a fixed host port is explicitly requested.
 - The module is **backend-neutral** (`net10.0`, references `Purview.Containers.Core` only) and therefore does **not** bring a backend or inherit its consumer requirements. A consumer references the module *and* a backend package (`Purview.Containers.Wsl` for WSLC, `Purview.Containers.Docker` for Docker). See [Consumer Requirements](Consumer-Requirements.md).
-- If a Testcontainers capability has no WSLC equivalent (e.g. UDP, TTY, `--user`), throw `ContainerNotSupportedException` at build/validation rather than silently ignoring it.
+- If a capability has no implemented WSLC equivalent (e.g. UDP or interactive capture stdin), throw
+  `ContainerNotSupportedException` rather than silently ignoring it. User overrides and managed
+  networks are implemented through the session-scoped CLI fallback.

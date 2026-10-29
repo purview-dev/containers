@@ -3,7 +3,8 @@
 Purview.Containers is a Testcontainers-style library for .NET that runs throwaway Linux containers for
 integration testing on **Microsoft WSL Containers (WSLC)** with **no Docker installation**, or on
 **Docker** through Testcontainers. The WSLC backend is built directly against the
-`Microsoft.WSL.Containers` managed package — no `wslc.exe`/`wsl.exe`/`docker` CLI.
+`Microsoft.WSL.Containers` managed package, with a bounded `wslc` CLI fallback for SDK-missing
+capabilities. See [Capabilities and Cancellation](Backend-Capabilities.md).
 
 This wiki is the project documentation hub. The packages are published under the
 `Purview.Containers.*` package IDs.

@@ -17,6 +17,12 @@ that exist for it, and of how each of them is verified.
 
 ## Which package requires what
 
+The WSLC SDK-only path keeps its existing prerequisites. Entry-point/user/label overrides, managed
+networks, reuse, file copy and Dockerfile builds additionally require the installed `wslc` CLI on PATH.
+The CLI operates in the SDK-owned session/store, not the user's default CLI session. Missing CLI support
+fails explicitly, without switching backends. See [Capabilities and Cancellation](Backend-Capabilities.md)
+for operation deadlines, resource ownership and native cancellation limits.
+
 | Package | Target framework | Notes |
 | --- | --- | --- |
 | `Purview.Containers` | `net10.0`, any platform | The umbrella: brings `Purview.Containers.Core` plus both backends. One reference; no target-framework requirement beyond .NET 10. |
@@ -29,6 +35,12 @@ Everything below describes the **WSL Containers backend**. A consumer of a diffe
 example `Purview.Containers.Docker`) needs only a portable `net10.0` project: the
 abstractions and the service modules are portable `net10.0` assets. For how to use and switch between the
 backends, see [Backends: WSLC or Docker](Backends.md).
+
+For Windows bind mounts targeting a local WSL2 Docker Engine, the Docker backend automatically
+translates drive paths after verifying the daemon's identity. No consumer configuration is required;
+the owning distribution's default user must be able to run `docker info` against
+`/var/run/docker.sock` and use `wslpath`. See
+[WSL2 bind mounts](Backends.md#windows-bind-mounts-with-docker-engine-in-wsl2) for the detection boundary.
 
 ## Copy this into your project
 
@@ -277,5 +289,3 @@ rather than part of the `[Category=Unit]` filter.
 - [Packaging](Packaging.md) — what each package contains, including the `buildTransitive` assets.
 - [Testing](Testing.md) — the Linux CI run, the unit filter and the serial WSLC rule.
 - [Modules](Modules.md) — the service modules that inherit these defaults.
-
-

@@ -21,6 +21,64 @@ public class ContainerBuilderTests
 	static readonly string[] Expected = ["sleep", "10"];
 
 	[Test]
+	public async Task BuildConfiguration_BuilderChanges_DoNotMutateBuiltConfiguration()
+	{
+		// Arrange
+		var builder = new TestBuilder()
+			.WithImage("alpine")
+			.WithCommand("sleep", "1")
+			.WithEnvironment("VALUE", "original")
+			.WithLabel("label", "original");
+		var configuration = builder.BuildConfig();
+
+		// Act
+		builder.WithCommand("false").WithEnvironment("VALUE", "changed").WithLabel("label", "changed");
+
+		// Assert
+		await Assert.That(configuration.Command[0]).IsEqualTo("sleep");
+		await Assert.That(configuration.Environment["VALUE"]).IsEqualTo("original");
+		await Assert.That(configuration.Labels["label"]).IsEqualTo("original");
+	}
+
+	[Test]
+	public async Task Build_InvalidNewOptions_FailsBeforeBackendCreation()
+	{
+		// Arrange
+		var missingName = new TestBuilder().WithImage("alpine").WithReuse();
+		var missingNetwork = new TestBuilder().WithImage("alpine").WithNetworkAliases("peer");
+		var invalidTimeout = new TestBuilder().WithImage("alpine").WithExecTimeout(Timeout.InfiniteTimeSpan);
+
+		// Act / Assert
+		await Assert.That(() => missingName.Build()).Throws<ContainerConfigurationException>();
+		await Assert.That(() => missingNetwork.Build()).Throws<ContainerConfigurationException>();
+		await Assert.That(() => invalidTimeout.Build()).Throws<ContainerConfigurationException>();
+	}
+
+	[Test]
+	[Arguments(-1d)]
+	[Arguments(0d)]
+	[Arguments(4294967295d)]
+	public async Task OperationOptions_InvalidDeadline_RejectsInfiniteOrNonPositiveWaits(double milliseconds)
+	{
+		// Arrange
+		var timeout = TimeSpan.FromMilliseconds(milliseconds);
+
+		// Act / Assert
+		await Assert.That(() => new ExecOptions { Timeout = timeout }).Throws<ArgumentOutOfRangeException>();
+		await Assert.That(() => new NetworkConfiguration { Timeout = timeout }).Throws<ArgumentOutOfRangeException>();
+		await Assert
+			.That(() =>
+				new ImageBuildConfiguration
+				{
+					ContextDirectory = ".",
+					Name = "unused",
+					Timeout = timeout,
+				}
+			)
+			.Throws<ArgumentOutOfRangeException>();
+	}
+
+	[Test]
 	public async Task BuildConfiguration_PopulatesAllCommonFields()
 	{
 		var configuration = new TestBuilder()

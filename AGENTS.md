@@ -52,6 +52,21 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 
 ## Runtime invariants
 
+- Shared extended APIs cover entrypoint/user/labels, exec overrides, resource copy, one-shot exit waits,
+  managed bridge networks/aliases, builds and reuse. WSLC must target the SDK-owned session with a
+  bounded `wslc` subprocess for SDK-missing capabilities; ordinary SDK-only consumers need no CLI.
+- Never swallow caller cancellation as a successful exec/stop. Startup is a total five-minute managed
+  budget; exec defaults to one minute, stop to 15 seconds and cleanup to 30 seconds. Synchronous WSLC
+  native calls cannot be safely interrupted; never advertise hard zero-hang guarantees.
+- Reuse is explicit, named and incompatible with auto-remove. Docker follows Testcontainers;
+  WSLC reuse is session-scoped. Explicit deletion bypasses reuse retention. Dispose containers before
+  managed networks or built images. CLI diagnostics must not echo environment/build output.
+- Restart an exited WSLC reusable container through the CLI **before** reopening its SDK event handle.
+  Calling native `Start()` after attaching that handle fails with "Process handle has already been attached".
+- Docker pre-start resource archives run inside Testcontainers' synchronous `Created` event, before init
+  startup, with the startup cancellation token. Do not use its directory mapping overload: it drops empty
+  directories. Both backends share the archive builder and preserve exact file targets.
+
 - **One shared, process-wide session** (`WslContainerRuntime.Instance`), lazily started, named
   `wslc-{pid}-{random8}`. Container isolation comes from unique names and unique host ports, not from extra
   sessions.
@@ -74,6 +89,10 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 - **`DisposeAsync` is idempotent** and never terminates the shared session; a process-exit hook disposes the
   session so its name is released.
 - **Secrets use `Secret`** and must never reach logs, names, `ToString()` or diagnostics (they are redacted).
+- **Docker bind sources on Windows** are translated only for a verified local WSL2 engine: match the
+  connected loopback TCP daemon's ID against running distributions before invoking that distribution's
+  `wslpath`. Never assume the default distribution or `/mnt`, rewrite remote/Desktop paths, or change
+  named volumes and mount access modes.
 
 ## Consumer requirements and compatibility
 
@@ -243,6 +262,7 @@ npx skills add purview-dev/containers
 | `skills/purview-containers-lifecycle/` | start/stop/dispose semantics, cleanup guarantees, wait strategies, WSLC networking |
 | `skills/purview-containers-testing/` | the test tiers, why modules run serially, pinning a backend, the CI shape |
 | `skills/purview-containers-consumer-requirements/` | the target-framework contract, `PCC0001`/`PCC0002` and the other consumer build errors |
+| `skills/purview-containers-capabilities/` | parity APIs, networks/aliases, copy, builds, reuse, cancellation and SDK/CLI boundaries |
 
 Every skill carries the `purview-containers` prefix. Skills install into one flat directory per
 agent, shared with every skill a developer has installed from anywhere, so an unprefixed name

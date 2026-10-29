@@ -26,7 +26,21 @@ separate package.
 | Diagnostics | `Secret`, `SecretRedactor`, `ContainerState`, `ExecResult`, `ContainerLogEntry` |
 | Errors | `Purview.Containers.Runtime`: `ContainerException` and its specialisations |
 
-## Backend selection
+## Additional capabilities and deadlines
+
+The shared contract includes entrypoint/user/labels, exec environment overrides, pre-start
+`WithResourceMapping`, runtime `CopyAsync`/`ReadFileAsync`, `Wait.ForExitCode`/`WaitForExitAsync`,
+`IContainerBackend.CreateNetworkAsync`/`BuildImageAsync`, and explicit `DeleteAsync`.
+Networks/images return an `IContainerResource`; dispose attached containers first.
+Reuse requires `WithName(...).WithReuse()` and changes disposal ownership.
+
+Defaults: total startup 5 minutes; exec/exit wait 1 minute; stop 15 seconds; cleanup 30 seconds;
+copy/read/log snapshots 1 minute. Fluent timeout overrides and cancellation tokens are supported.
+Native synchronous WSLC calls cannot be safely interrupted; these are managed deadlines, not a
+hard runtime isolation guarantee. See the
+[capability contract](https://github.com/purview-dev/containers/blob/main/docs/wiki/Backend-Capabilities.md).
+
+## Backend registration
 
 A container is produced by an `IContainerBackend`. Backend packages register themselves into the
 consuming assembly through the `buildTransitive` assets shipped here:

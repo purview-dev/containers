@@ -6,4 +6,8 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<Authors>Purview</Authors>
 	</PropertyGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="Purview.Containers.Docker" />
+		<InternalsVisibleTo Include="Purview.Containers.Wsl" />
+	</ItemGroup>
 </Project>
