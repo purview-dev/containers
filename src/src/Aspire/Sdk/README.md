@@ -2,8 +2,7 @@
 
 > **Experimental.** Pin the exact prerelease version; the API and defaults may change.
 
-Apply verified container bind-source resolution to any Aspire AppHost. No AspireC4 types or
-resource names are used.
+Apply verified container bind-source resolution to any Aspire AppHost.
 
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
