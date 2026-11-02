@@ -11,7 +11,7 @@
       "source": "purview-dev/engineering-playbook",
       "sourceType": "github",
       "skillPath": "skills/purview-architecture-testing/SKILL.md",
-      "computedHash": "e9bc98e7f6eca4160b4632427e5003359edbd69c70857c9b0d863aeb144c1ba1"
+      "computedHash": "5907c6bf28788b755b752041e2f0cd88222604a949988d487c25940b6284fce4"
     },
     "purview-buildsdk-adoption": {
       "source": "purview-dev/build-sdk",
@@ -113,7 +113,7 @@
       "source": "purview-dev/engineering-playbook",
       "sourceType": "github",
       "skillPath": "skills/purview-testing-conventions/SKILL.md",
-      "computedHash": "c04e8ae03a96367d9dc5d0414b960bd389904de3756fe9f333dc8bcdfa3e2f7d"
+      "computedHash": "388b0a79b565ed45a8513d77e8ed6e3d4491f96b43328cb09933cec7811c10f6"
     }
   }
 }

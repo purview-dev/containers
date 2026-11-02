@@ -74,6 +74,18 @@ public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPr
 			$"The WSL Containers backend cannot run here. {WslPayload.FailureReason}"
 		);
 
+	/// <inheritdoc />
+	public Task<IContainerResource> CreateNetworkAsync(
+		NetworkConfiguration? configuration = null,
+		CancellationToken cancellationToken = default
+	) => Resolve().CreateNetworkAsync(configuration, cancellationToken);
+
+	/// <inheritdoc />
+	public Task<IContainerResource> BuildImageAsync(
+		ImageBuildConfiguration configuration,
+		CancellationToken cancellationToken = default
+	) => Resolve().BuildImageAsync(configuration, cancellationToken);
+
 	static ContainerBackendInfo Unavailable(string reason) =>
 		new("wsl", IsAvailable: false, IsCompatible: false, Version: string.Empty, MissingComponents: [reason]);
 }

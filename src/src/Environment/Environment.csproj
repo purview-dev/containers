@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<IsPackable>true</IsPackable>
+		<Description>Verified client-to-container-daemon bind mount resolution for local, WSL and shared remote Docker environments.</Description>
+		<PackageTags>containers;docker;wsl;bind-mounts;environment</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Authors>Purview</Authors>
+	</PropertyGroup>
+</Project>

@@ -140,6 +140,7 @@ that leans on the Testcontainers modules ports across unchanged:
 | Azurite | Azure Storage string: `DefaultEndpointsProtocol=http`, `AccountName`, `AccountKey`, `Blob/Queue/TableEndpoint` | `GetBlobEndpoint()`, `GetQueueEndpoint()`, `GetTableEndpoint()` |
 | NATS | `nats://host:port` | `GetClientEndpoint()`, `GetMonitoringEndpoint()` |
 | Azure Key Vault Emulator | Vault URI: `https://127.0.0.1:{port}` | `GetVaultUri()`, `GetCertificate()`, `GetSecretClient()`, `GetKeyClient()`, `GetCertificateClient()` |
+| Azure Service Bus Emulator | Service Bus string: `Endpoint=sb://127.0.0.1:{amqpPort}`, `SharedAccessKeyName`, `SharedAccessKey`, `UseDevelopmentEmulator=true` | `GetManagementConnectionString()` (for `ServiceBusAdministrationClient`), `SqlServer` |
 
 ## Module status
 
@@ -147,12 +148,13 @@ that leans on the Testcontainers modules ports across unchanged:
 |---|---|---|---|---|
 | PostgreSQL | `postgres:17` | `pg_isready` | Npgsql | ✅ implemented |
 | Redis | `redis:7` | `redis-cli ping` | StackExchange.Redis | ✅ implemented — also usable with Valkey/Garnet via `WithImage` |
-| SQL Server | `mcr.microsoft.com/mssql/server:2022-latest` | host `SqlClient` connection | Microsoft.Data.SqlClient | ✅ implemented — requires `.AcceptLicense()`; the connection string defaults to `Database=master` (`WithDatabase(...)` to change it); session needs ≥ 2000 MB memory |
+| SQL Server | `mcr.microsoft.com/mssql/server:2025-latest` | host `SqlClient` connection | Microsoft.Data.SqlClient | ✅ implemented — requires `.AcceptLicense()`; the connection string defaults to `Database=master` (`WithDatabase(...)` to change it); session needs ≥ 2000 MB memory |
 | RabbitMQ | `rabbitmq:3-management` | log `"Server startup complete"` | RabbitMQ.Client | ✅ implemented — AMQP + management endpoints |
-| Azurite | `mcr.microsoft.com/azure-storage/azurite` | log `"successfully listening"` | Azure.Storage.* | ✅ implemented — blob/queue/table endpoints; the well-known `devstoreaccount1` key is a placeholder in `AzuriteAccount.Key` until the consuming repo supplies it |
+| Azurite | `mcr.microsoft.com/azure-storage/azurite` | log `"successfully listening"` | Azure.Storage.* | ✅ implemented — blob/queue/table endpoints; the connection string carries the well-known `devstoreaccount1` key (`AzuriteAccount.Key`) |
 | NATS | `nats:2` | log `"Listening for client connections"` | NATS.Client.Core | ✅ implemented — client + monitoring endpoints |
 | MySQL | `mysql:8` | host `MySqlConnector` connection | MySqlConnector | ✅ implemented — uses a real connection poll (the image logs `"ready for connections"` during its temporary init server) |
 | Azure Key Vault Emulator | `jamesgoulddev/azure-keyvault-emulator:3.1.3` (`3.1.3-arm` on ARM64) | HTTPS `GET /` | Azure.Security.KeyVault.* | ✅ implemented — secrets/keys/certificates clients that pin the emulator certificate; a self-signed certificate is generated (and by default installed into the host trust store) and mounted at `/certs`; persistence requires a fixed host port |
+| Azure Service Bus Emulator | `mcr.microsoft.com/azure-messaging/servicebus-emulator:latest` | HTTP `GET /health` on 5300 | Azure.Messaging.ServiceBus | ✅ implemented — requires `.AcceptLicense()` (emulator and SQL Server EULAs); starts a SQL Server 2025 sidecar first (`WithSqlServerImage` to change it) and reaches it by bridge IP (`IContainer.NetworkIp`); entities from `WithConfig`/`WithConfigFile` or the image default; session needs ≥ 2000 MB memory for the sidecar |
 
 Note on RabbitMQ readiness: the default wait uses the canonical **`Server startup complete`** log signal rather than `rabbitmq-diagnostics ping` — under WSLC the exec-based probe races with the Erlang cookie setup and can trigger a startup failure (`eacces` reading `.erlang.cookie`). WSLC auto-provisions image `VOLUME` declarations on an ext4 device by default; bind-mounting a Windows directory onto one replaces it with drvfs, which ignores Unix `chown` and breaks permission-sensitive images — do not bind-mount onto image volumes unless you intend that.
 

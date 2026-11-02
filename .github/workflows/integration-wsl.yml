@@ -99,6 +99,7 @@ jobs:
         run: |
           $projects = @(
             'src/tests/AzureKeyVaultEmulator.IntegrationTests/AzureKeyVaultEmulator.IntegrationTests.csproj',
+            'src/tests/AzureServiceBusEmulator.IntegrationTests/AzureServiceBusEmulator.IntegrationTests.csproj',
             'src/tests/PostgreSql.IntegrationTests/PostgreSql.IntegrationTests.csproj',
             'src/tests/Redis.IntegrationTests/Redis.IntegrationTests.csproj',
             'src/tests/MsSql.IntegrationTests/MsSql.IntegrationTests.csproj',
@@ -171,6 +172,7 @@ jobs:
         run: |
           $projects = @(
             'src/tests/AzureKeyVaultEmulator.IntegrationTests/AzureKeyVaultEmulator.IntegrationTests.csproj',
+            'src/tests/AzureServiceBusEmulator.IntegrationTests/AzureServiceBusEmulator.IntegrationTests.csproj',
             'src/tests/PostgreSql.IntegrationTests/PostgreSql.IntegrationTests.csproj',
             'src/tests/Redis.IntegrationTests/Redis.IntegrationTests.csproj',
             'src/tests/MsSql.IntegrationTests/MsSql.IntegrationTests.csproj',

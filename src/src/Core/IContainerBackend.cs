@@ -15,4 +15,16 @@ public interface IContainerBackend
 
 	/// <summary>Reports availability, version and missing components for diagnostics and selection.</summary>
 	Task<ContainerBackendInfo> GetInfoAsync(CancellationToken cancellationToken = default);
+
+	/// <summary>Creates a bridge network. Dispose it after every attached container.</summary>
+	Task<IContainerResource> CreateNetworkAsync(
+		NetworkConfiguration? configuration = null,
+		CancellationToken cancellationToken = default
+	) => throw new Runtime.ContainerNotSupportedException("This backend does not support managed networks.");
+
+	/// <summary>Builds an image from a host-side Dockerfile context. Dispose it after its containers.</summary>
+	Task<IContainerResource> BuildImageAsync(
+		ImageBuildConfiguration configuration,
+		CancellationToken cancellationToken = default
+	) => throw new Runtime.ContainerNotSupportedException("This backend does not support image builds.");
 }

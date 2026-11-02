@@ -45,7 +45,7 @@ await connection.OpenAsync();
 
 | Member | Purpose |
 | -- | -- |
-| `MsSqlBuilder()` / `MsSqlBuilder(string image)` | Default image `mcr.microsoft.com/mssql/server:2022-latest`, or a custom image. |
+| `MsSqlBuilder()` / `MsSqlBuilder(string image)` | Default image `mcr.microsoft.com/mssql/server:2025-latest`, or a custom image. |
 | `MsSqlBuilder.MsSqlPort` (1433) | Container port, mapped to a random host port. |
 | `WithPassword(string)` | Sets `MSSQL_SA_PASSWORD` (default `YourStrong!Passw0rd`); stored as a redacted `Secret`. |
 | `WithDatabase(string)` | Sets the initial catalog the connection string points at (default `master`, matching Testcontainers). The database must already exist. |

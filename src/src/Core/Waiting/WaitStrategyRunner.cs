@@ -55,7 +55,7 @@ public static class WaitStrategyRunner
 			bool ready;
 			try
 			{
-				ready = await strategy.UntilAsync(context, token).ConfigureAwait(false);
+				ready = await strategy.UntilAsync(context, token).WaitAsync(token).ConfigureAwait(false);
 				if (ready)
 				{
 					return;
@@ -66,6 +66,10 @@ public static class WaitStrategyRunner
 				break;
 			}
 			catch (OperationCanceledException)
+			{
+				throw;
+			}
+			catch (ContainerExitCodeException)
 			{
 				throw;
 			}
@@ -131,7 +135,12 @@ public static class WaitStrategyRunner
 
 		try
 		{
-			var logs = await context.Container.GetLogsAsync(stream: null, cancellationToken).ConfigureAwait(false);
+			using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+			deadline.CancelAfter(TimeSpan.FromSeconds(2));
+			var logs = await context
+				.Container.GetLogsAsync(stream: null, deadline.Token)
+				.WaitAsync(deadline.Token)
+				.ConfigureAwait(false);
 			var tail = logs.Length > 2000 ? logs[^2000..] : logs;
 			if (tail.Length > 0)
 			{

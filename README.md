@@ -19,7 +19,16 @@ A Testcontainers-style library for .NET that runs throwaway Linux containers for
 > **[Backends: WSLC or Docker](docs/wiki/Backends.md)** — comparison, side-by-side project setup, CI
 > example and troubleshooting.
 
-The WSLC backend is built directly against the `Microsoft.WSL.Containers` NuGet package (the WSLC managed C# API) — no `wslc.exe`/`wsl.exe`/`docker` CLI. The Docker backend is built on [Testcontainers for .NET](https://dotnet.testcontainers.org/).
+The WSLC backend uses `Microsoft.WSL.Containers` for ordinary lifecycle operations and a bounded
+`wslc` CLI fallback for entrypoint/user/labels, managed networks, reuse, resource copy and image builds.
+It requires no Docker installation. The Docker backend is built on
+[Testcontainers for .NET](https://dotnet.testcontainers.org/).
+
+Both backends expose file copy/read, one-shot exit waits, managed bridge networks/aliases and
+Dockerfile builds through the same contract. Startup has a five-minute total budget; exec defaults
+to one minute, stop to 15 seconds and cleanup to 30 seconds, all configurable. Cancellation is
+propagated; synchronous native WSLC calls cannot be forcibly interrupted. See
+[Capabilities and Cancellation](docs/wiki/Backend-Capabilities.md) for APIs, ownership and limits.
 
 > **Experimental.** This project is an experiment in running throwaway containers through Microsoft
 > WSL Containers. The public API, defaults and packaging rules can change between prereleases, and
@@ -27,14 +36,28 @@ The WSLC backend is built directly against the `Microsoft.WSL.Containers` NuGet 
 > [Consumer Requirements](docs/wiki/Consumer-Requirements.md) before adopting it.
 
 > **Status: preview.** Backend-neutral abstractions, two backends (WSL Containers and Docker), wait
-> strategies, the `Image`/`Tag` parser, registry auth, observability, hardening, and **eight service
-> modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite, NATS, MySQL, Azure Key Vault Emulator). On WSLC, **images are shared
+> strategies, the `Image`/`Tag` parser, registry auth, observability, hardening, and **nine service
+> modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite, NATS, MySQL, Azure Key Vault Emulator, Azure Service Bus Emulator). On WSLC, **images are shared
 > by default** (`StorageMode.Shared`): sessions reuse a stable image store
 > (`%LOCALAPPDATA%\Purview\WslContainers\images`) so images are pulled once, not per session;
 > `StorageMode.PerSession` provides isolation. Move the store with `PURVIEW_CONTAINERS_STORAGE_PATH` or
 > `WslContainerRuntimeOptions.StoragePath`. Runnable samples live in `samples/getting-started`.
 
 ## Prerequisites
+
+### Standalone bind sharing and Aspire
+
+`Purview.Containers.Environment` resolves bind paths for Docker-compatible CLI consumers without
+referencing the umbrella package, Testcontainers or WSLC. It verifies native paths, running WSL
+translations and explicit shared-remote mappings against the daemon using two-way file markers.
+`Purview.Containers.Aspire` adds opt-in `builder.AddContainerEnvironment()` integration for any
+Aspire AppHost. Both target `net10.0`; the adapter requires Aspire 13.6.4 or later.
+These are separate from the existing Docker backend's automatic WSL2 path handling.
+Docker Engine inside a WSL distribution is not Microsoft WSL Containers.
+See the [environment package guide](src/src/Environment/Sdk/README.md) and
+[Aspire adapter guide](src/src/Aspire/Sdk/README.md) for setup, permissions and remote-host limits.
+
+### Container backends
 
 Pick a backend — see [Backends: WSLC or Docker](docs/wiki/Backends.md) for the comparison — or skip the
 choice: reference the umbrella `Purview.Containers` and it brings the abstractions plus both backends,
@@ -54,6 +77,8 @@ want to fix the runtime.
 **Docker backend**
 
 - Any reachable Docker daemon, and a `net10.0` (or later) project on any platform.
+- Windows bind mounts are translated automatically for a verified local Docker Engine inside WSL2;
+  no consumer path setting is needed. See [WSL2 bind mounts](docs/wiki/Backends.md#windows-bind-mounts-with-docker-engine-in-wsl2).
 
 .NET SDK 11 is required to build this repository (it pins `11.0.100-rc.1`); SDK 10 is enough for a Docker
 consumer.
@@ -145,9 +170,12 @@ src/
     Core/         backend-neutral abstractions (Purview.Containers.Core)
     Wsl/          WSL Containers backend (Purview.Containers.Wsl)
     Docker/       Docker backend (Purview.Containers.Docker)
+    Environment/  standalone verified CLI bind sharing (no backend dependencies)
+    Aspire/       optional Aspire adapter over Environment
     Containers/   umbrella package (Purview.Containers): Core + both backends
     PostgreSql/   Redis/    MsSql/    MySql/
-    RabbitMq/     Azurite/  Nats/     AzureKeyVaultEmulator/   service modules
+    RabbitMq/     Azurite/  Nats/     AzureKeyVaultEmulator/
+    AzureServiceBusEmulator/                                  service modules
   tests/          TUnit unit + integration projects (WSLC and Docker suites)
 samples/
   getting-started/    runnable samples (WslSample, DockerSample, AutoSample)
@@ -177,7 +205,7 @@ The project documentation lives in [`docs/wiki`](docs/wiki/Home.md) and is publi
 Every package also ships its own `README.md` (from `src/src/<Project>/Sdk/README.md`), so
 `dotnet add package Purview.Containers.<Module>` brings documentation specific to that package.
 
-All eight service modules work today:
+All nine service modules work today:
 
 ```csharp
 await using var postgres = new PostgreSqlBuilder()
@@ -230,7 +258,7 @@ await using var azurite = new AzuriteBuilder().Build();
 
 await azurite.StartAsync();    // waits for the blob/queue/table listeners
 
-// Supply the Azurite devstoreaccount1 key in AzuriteAccount.Key for authenticated operations.
+// Carries the well-known devstoreaccount1 key, so the Azure Storage clients authenticate as-is.
 string connectionString = azurite.GetConnectionString();
 Uri blob = azurite.GetBlobEndpoint();
 ```
@@ -243,6 +271,17 @@ await keyVault.StartAsync();   // waits for the HTTPS listener
 // Clients are already wired for the emulator (pinned certificate, emulated credential).
 var secrets = keyVault.GetSecretClient();
 await secrets.SetSecretAsync("mySecret", "myValue");
+```
+
+```csharp
+await using var serviceBus = new AzureServiceBusEmulatorBuilder()
+    .AcceptLicense()           // explicit: the emulator and SQL Server EULAs
+    .Build();
+
+await serviceBus.StartAsync(); // starts its SQL Server sidecar, then waits for GET /health
+
+await using var client = new ServiceBusClient(serviceBus.GetConnectionString());
+await client.CreateSender("queue.1").SendMessageAsync(new ServiceBusMessage("hello"));
 ```
 
 ## Running the tests
@@ -289,7 +328,7 @@ just sample-docker            # needs a Docker daemon
 ### Verifying the consumer contract
 
 ```powershell
-just verify-consumers          # pack, then build 21 throwaway consumer projects against ./artifacts
+just verify-consumers          # pack, then build 23 throwaway consumer projects against ./artifacts
 just verify-consumers -Keep    # same, keeping the generated projects for inspection
 ```
 

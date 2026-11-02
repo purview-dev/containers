@@ -54,6 +54,10 @@
 	<ItemGroup Condition="'$(TargetFramework)' != 'net10.0-windows10.0.19041.0'">
 		<Compile Remove="WslContainer.cs" />
 		<Compile Remove="WslContainerSession.cs" />
+		<Compile Remove="WslCommand.cs" />
+		<Compile Remove="WslCreateArguments.cs" />
+		<Compile Remove="WslResource.cs" />
+		<Compile Remove="WslFileCopy.cs" />
 		<Compile Remove="WslContainerBackend.cs" />
 		<Compile Remove="WslContainerRuntime.cs" />
 		<Compile Remove="WslInspectParser.cs" />

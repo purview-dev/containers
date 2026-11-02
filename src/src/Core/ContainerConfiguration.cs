@@ -65,6 +65,40 @@ public record ContainerConfiguration : IContainerConfiguration
 	/// <inheritdoc />
 	public RegistryCredentials? RegistryCredentials { get; init; }
 
+	/// <inheritdoc />
+	public IReadOnlyList<string> Entrypoint { get; init; } = Array.Empty<string>();
+
+	/// <inheritdoc />
+	public string? User { get; init; }
+
+	/// <inheritdoc />
+	public IReadOnlyDictionary<string, string> Labels { get; init; } = new Dictionary<string, string>();
+
+	/// <inheritdoc />
+	public string? Network { get; init; }
+
+	/// <inheritdoc />
+	public IReadOnlyList<string> NetworkAliases { get; init; } = Array.Empty<string>();
+
+	/// <inheritdoc />
+	public bool Reuse { get; init; }
+
+	/// <inheritdoc />
+	public IReadOnlyList<ContainerResourceMapping> ResourceMappings { get; init; } =
+		Array.Empty<ContainerResourceMapping>();
+
+	/// <inheritdoc />
+	public TimeSpan ExecTimeout { get; init; } = TimeSpan.FromMinutes(1);
+
+	/// <inheritdoc />
+	public TimeSpan StopTimeout { get; init; } = TimeSpan.FromSeconds(15);
+
+	/// <inheritdoc />
+	public TimeSpan CleanupTimeout { get; init; } = TimeSpan.FromSeconds(30);
+
+	/// <inheritdoc />
+	public TimeSpan OperationTimeout { get; init; } = TimeSpan.FromMinutes(1);
+
 	/// <summary>
 	/// Renders the configuration, redacting environment variables whose keys look sensitive
 	/// (PASSWORD, TOKEN, SECRET, KEY, ...). Secrets wrapped in <see cref="Secret" /> always render as redacted.

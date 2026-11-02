@@ -6,6 +6,42 @@ namespace Purview.Containers.Wsl;
 public class WaitStrategyRunnerTests
 {
 	[Test]
+	public async Task RunAsync_PredicateIgnoresCancellation_StillHonoursDeadline(CancellationToken cancellationToken)
+	{
+		// Arrange
+		await using FakeContainer container = new() { Name = "uncooperative" };
+		WaitContext context = new(container, container.PortMappings, networkIp: null);
+		TaskCompletionSource<bool> never = new(TaskCreationOptions.RunContinuationsAsynchronously);
+		var strategy = Wait.ForCustom((_, _) => never.Task).WithTimeout(TimeSpan.FromMilliseconds(100));
+
+		// Act / Assert
+		await Assert
+			.That(() =>
+				WaitStrategyRunner
+					.RunAsync(context, [strategy], TimeSpan.FromSeconds(1), cancellationToken)
+					.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken)
+			)
+			.Throws<ContainerTimeoutException>();
+	}
+
+	[Test]
+	public async Task RunAsync_CallerCancels_PropagatesCancellation(CancellationToken cancellationToken)
+	{
+		// Arrange
+		await using FakeContainer container = new();
+		WaitContext context = new(container, container.PortMappings, networkIp: null);
+		TaskCompletionSource<bool> never = new(TaskCreationOptions.RunContinuationsAsynchronously);
+		var strategy = Wait.ForCustom((_, _) => never.Task);
+		using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		cancelled.CancelAfter(TimeSpan.FromMilliseconds(100));
+
+		// Act / Assert
+		await Assert
+			.That(() => WaitStrategyRunner.RunAsync(context, [strategy], TimeSpan.FromMinutes(1), cancelled.Token))
+			.Throws<OperationCanceledException>();
+	}
+
+	[Test]
 	public async Task RunAsync_SucceedsWhenConditionEventuallyTrue(CancellationToken cancellationToken)
 	{
 		await using FakeContainer container = new() { Name = "runner-test" };

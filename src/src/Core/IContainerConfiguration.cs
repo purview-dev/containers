@@ -61,4 +61,37 @@ public interface IContainerConfiguration
 
 	/// <summary>Optional private-registry credentials used when pulling the image.</summary>
 	RegistryCredentials? RegistryCredentials { get; }
+
+	/// <summary>Override the image entrypoint; an empty list retains the image default.</summary>
+	IReadOnlyList<string> Entrypoint => Array.Empty<string>();
+
+	/// <summary>Linux user or uid[:gid]. Null retains the image default.</summary>
+	string? User => null;
+
+	/// <summary>Container metadata. Never put secrets in labels.</summary>
+	IReadOnlyDictionary<string, string> Labels => new Dictionary<string, string>();
+
+	/// <summary>Name of a previously created network, or null for the default bridge.</summary>
+	string? Network => null;
+
+	/// <summary>DNS aliases on the explicitly selected network.</summary>
+	IReadOnlyList<string> NetworkAliases => Array.Empty<string>();
+
+	/// <summary>Keep the container on dispose for reuse. WSLC reuse ends with the owning session.</summary>
+	bool Reuse => false;
+
+	/// <summary>Files/directories copied before the init process starts.</summary>
+	IReadOnlyList<ContainerResourceMapping> ResourceMappings => Array.Empty<ContainerResourceMapping>();
+
+	/// <summary>Default exec and init-exit wait deadline.</summary>
+	TimeSpan ExecTimeout => TimeSpan.FromMinutes(1);
+
+	/// <summary>Total stop budget, including force-kill escalation.</summary>
+	TimeSpan StopTimeout => TimeSpan.FromSeconds(15);
+
+	/// <summary>Total managed disposal budget.</summary>
+	TimeSpan CleanupTimeout => TimeSpan.FromSeconds(30);
+
+	/// <summary>Deadline for file operations and log snapshots (not live log tails).</summary>
+	TimeSpan OperationTimeout => TimeSpan.FromMinutes(1);
 }

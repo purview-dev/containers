@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Purview.Containers.Waiting;
 
 namespace Purview.Containers.Wsl;
@@ -5,6 +6,31 @@ namespace Purview.Containers.Wsl;
 [Explicit]
 public class AlpineLifecycleTests
 {
+	static Container CreateSignalIgnoringContainer() =>
+		new ContainerBuilder()
+			.WithImage("alpine:latest")
+			.WithCommand("/bin/sh", "-c", "trap '' TERM; echo ready; while :; do sleep 1; done")
+			.WithWaitStrategy(Wait.ForLogMessage("ready"))
+			.Build();
+
+	[Test]
+	public async Task StopAsync_InitIgnoresSigterm_KillsWithinTheGracePeriod(CancellationToken cancellationToken)
+	{
+		// Arrange
+		await WslcTest.SkipIfUnavailableAsync();
+		await using var container = CreateSignalIgnoringContainer();
+		await container.StartAsync(cancellationToken);
+
+		// Act
+		var stopwatch = Stopwatch.StartNew();
+		await container.StopAsync(cancellationToken);
+		stopwatch.Stop();
+
+		// Assert
+		await Assert.That(container.State).IsEqualTo(ContainerState.Exited);
+		await Assert.That(stopwatch.Elapsed).IsLessThan(TimeSpan.FromSeconds(20));
+	}
+
 	[Test]
 	public async Task EchoContainer_ProducesOutputAndCleansUp()
 	{

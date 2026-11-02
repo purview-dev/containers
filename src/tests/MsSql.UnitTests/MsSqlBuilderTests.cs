@@ -25,7 +25,7 @@ public class MsSqlBuilderTests
 	{
 		var configuration = new MsSqlBuilder().BuildConfigurationForTesting();
 
-		await Assert.That(configuration.Image).IsEqualTo("mcr.microsoft.com/mssql/server:2022-latest");
+		await Assert.That(configuration.Image).IsEqualTo("mcr.microsoft.com/mssql/server:2025-latest");
 		await Assert.That(configuration.Password.Value).IsEqualTo("YourStrong!Passw0rd");
 		await Assert.That(configuration.Database).IsEqualTo("master");
 		await Assert.That(configuration.AcceptLicense).IsFalse();

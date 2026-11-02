@@ -1,8 +1,32 @@
+using Azure.Storage.Blobs;
+
 namespace Purview.Containers.Azurite;
 
 [NotInParallel]
 public class AzuriteIntegrationTests
 {
+	[Test]
+	public async Task ConnectionString_AuthenticatesWithTheWellKnownAccountKey()
+	{
+		await WslcTest.SkipIfUnavailableAsync();
+
+		await using var azurite = new AzuriteBuilder().Build();
+
+		await azurite.StartAsync();
+
+		// Creating a container is a shared-key-signed request: Azurite rejects it unless the key is right.
+		// The service version is pinned because the SDK can be ahead of what the Azurite image supports.
+		BlobServiceClient client = new(
+			azurite.GetConnectionString(),
+			new BlobClientOptions(BlobClientOptions.ServiceVersion.V2024_11_04)
+		);
+		var container = await client.CreateBlobContainerAsync("authenticated");
+
+		var exists = await container.Value.ExistsAsync();
+
+		await Assert.That(exists.Value).IsTrue();
+	}
+
 	[Test]
 	public async Task Azurite_StartsAndExposesEndpoints()
 	{

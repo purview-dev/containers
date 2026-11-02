@@ -5,7 +5,8 @@
 This repository contains `Purview.Containers`, a Testcontainers-style library for .NET that runs throwaway
 Linux containers for integration testing on **Microsoft WSL Containers (WSLC)** — the Windows runtime with
 no Docker installation — or on **Docker** through Testcontainers, plus the service modules (`PostgreSql`,
-`Redis`, `MsSql`, `RabbitMq`, `Azurite`, `Nats`, `MySql`, `AzureKeyVaultEmulator`).
+`Redis`, `MsSql`, `RabbitMq`, `Azurite`, `Nats`, `MySql`, `AzureKeyVaultEmulator`,
+`AzureServiceBusEmulator`).
 `docs/wiki/Backends.md` is the consumer guide to choosing and configuring a backend; keep it up to date
 whenever a target framework, a backend package or the `buildTransitive` assets change.
 
@@ -27,6 +28,8 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 | `src/src/Core` | Backend-neutral abstractions (`Purview.Containers.Core`, `net10.0`, namespace `Purview.Containers`): `IContainer`/`ContainerConfiguration`, `ContainerBuilder`, `ContainerBase`, `IContainerBackend`/`ContainerBackends`, wait strategies, images, networking, mounts, diagnostics |
 | `src/src/Wsl` | WSL Containers backend (`Purview.Containers.Wsl`, multi-target `net10.0` facade + `net10.0-windows10.0.19041.0` implementation): `WslContainerBackend`, the shared session runtime, `WslContainer`, `WslContainerSession`, and the portable facade (`WslPayload`, `*.Facade.cs`) that loads the implementation at run time |
 | `src/src/Docker` | Docker backend (`Purview.Containers.Docker`, `net10.0`): `DockerContainerBackend` + `DockerContainer` over Testcontainers |
+| `src/src/Environment` | Standalone CLI bind-sharing resolver (`Purview.Containers.Environment`, `net10.0`); BCL-only, no backend or Aspire dependency |
+| `src/src/Aspire` | Optional `Purview.Containers.Aspire` adapter; translates bind sources at `BeforeResourceStartedEvent` without changing endpoints or named volumes |
 | `src/src/<Module>` | Service modules (`Purview.Containers.<Module>`, `net10.0`); each is a thin layer over the abstractions and carries a bespoke `Sdk/README.md` |
 | `src/src/<Project>/Sdk` | Package-only assets. `Sdk/README.md` is packed as the package README (suppressing the repo-root README); `Sdk/buildTransitive/**` ships MSBuild assets to consumers (the abstractions' backend registration, each backend package's own registration entry, and the WSL backend's consumer defaults and guards) |
 | `src/tests` | TUnit unit (`*.UnitTests`) and container integration (`*.IntegrationTests`) projects: the WSLC suites need a WSLC host, `Docker.IntegrationTests` and `Modules.DockerIntegrationTests` need a Docker daemon |
@@ -51,6 +54,21 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 
 ## Runtime invariants
 
+- Shared extended APIs cover entrypoint/user/labels, exec overrides, resource copy, one-shot exit waits,
+  managed bridge networks/aliases, builds and reuse. WSLC must target the SDK-owned session with a
+  bounded `wslc` subprocess for SDK-missing capabilities; ordinary SDK-only consumers need no CLI.
+- Never swallow caller cancellation as a successful exec/stop. Startup is a total five-minute managed
+  budget; exec defaults to one minute, stop to 15 seconds and cleanup to 30 seconds. Synchronous WSLC
+  native calls cannot be safely interrupted; never advertise hard zero-hang guarantees.
+- Reuse is explicit, named and incompatible with auto-remove. Docker follows Testcontainers;
+  WSLC reuse is session-scoped. Explicit deletion bypasses reuse retention. Dispose containers before
+  managed networks or built images. CLI diagnostics must not echo environment/build output.
+- Restart an exited WSLC reusable container through the CLI **before** reopening its SDK event handle.
+  Calling native `Start()` after attaching that handle fails with "Process handle has already been attached".
+- Docker pre-start resource archives run inside Testcontainers' synchronous `Created` event, before init
+  startup, with the startup cancellation token. Do not use its directory mapping overload: it drops empty
+  directories. Both backends share the archive builder and preserve exact file targets.
+
 - **One shared, process-wide session** (`WslContainerRuntime.Instance`), lazily started, named
   `wslc-{pid}-{random8}`. Container isolation comes from unique names and unique host ports, not from extra
   sessions.
@@ -73,6 +91,14 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 - **`DisposeAsync` is idempotent** and never terminates the shared session; a process-exit hook disposes the
   session so its name is released.
 - **Secrets use `Secret`** and must never reach logs, names, `ToString()` or diagnostics (they are redacted).
+- **Docker bind sources on Windows** are translated only for a verified local WSL2 engine: match the
+  connected loopback TCP daemon's ID against running distributions before invoking that distribution's
+  `wslpath`. Never assume the default distribution or `/mnt`, rewrite remote/Desktop paths, or change
+  named volumes and mount access modes.
+- The standalone `Environment` package is a separate, opt-in CLI path: it verifies native, running-WSL
+  and explicit shared-remote candidates with two-way file markers. It does not replace the Docker
+  backend's daemon-identity detection or the Microsoft WSL Containers backend. Keep the resolver
+  BCL-only and the Aspire dependency in the adapter; neither is included in the umbrella package.
 
 ## Consumer requirements and compatibility
 
@@ -188,8 +214,13 @@ Commit messages follow Conventional Commits enforced by the `commit-msg` lefthoo
 - `package.json` is the authoritative release and package version. Do not diverge project versions by hand.
 - `.github/workflows/pr.yml` builds and tests pull requests through the shared
   `purview-dev/build/.github/workflows/purview-build.yml`, with pack and validation enabled.
-- `.github/workflows/release.yml` runs the shared release pipeline with `release-mode: NuGet` on a push to
-  `main`.
+- `.github/workflows/release.yml` runs the shared release pipeline with `release-mode: NuGet` on a push to a
+  `release/**` branch (or a manual dispatch), **not** on a push to `main`. Cut a release by merging the
+  version bump into `main`, then pushing a `release/v…` branch named after the version from it (for
+  example `release/v1.0.9` for `1.0.0-prerelease.9`). `.config/purview-build.json`
+  sets the `TrunkReservesMinor` eligibility policy; a version whose `v<version>` tag already exists is
+  skipped (`REL002`), so every release needs a new `package.json` version. See
+  [Release Flow](docs/wiki/Release-Flow.md).
 - `.github/workflows/integration-wsl.yml` runs the WSLC integration suites. The fast contract suite runs on
   a hosted `windows-2025` runner on every pull request from `pr.yml`; the full service-module matrix runs
   nightly on `windows-2025` and can be dispatched manually against either the hosted runner or a
@@ -237,6 +268,7 @@ npx skills add purview-dev/containers
 | `skills/purview-containers-lifecycle/` | start/stop/dispose semantics, cleanup guarantees, wait strategies, WSLC networking |
 | `skills/purview-containers-testing/` | the test tiers, why modules run serially, pinning a backend, the CI shape |
 | `skills/purview-containers-consumer-requirements/` | the target-framework contract, `PCC0001`/`PCC0002` and the other consumer build errors |
+| `skills/purview-containers-capabilities/` | parity APIs, networks/aliases, copy, builds, reuse, cancellation and SDK/CLI boundaries |
 
 Every skill carries the `purview-containers` prefix. Skills install into one flat directory per
 agent, shared with every skill a developer has installed from anywhere, so an unprefixed name

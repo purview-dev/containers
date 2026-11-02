@@ -108,4 +108,51 @@ public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPr
 			info.MissingComponents
 		);
 	}
+
+	/// <inheritdoc />
+	public async Task<IContainerResource> CreateNetworkAsync(
+		NetworkConfiguration? configuration = null,
+		CancellationToken cancellationToken = default
+	)
+	{
+		configuration ??= new();
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(configuration.Timeout);
+		var session = (WslContainerSession)await Runtime.GetSessionAsync(deadline.Token).ConfigureAwait(false);
+		var name = configuration.Name ?? $"purview-{Guid.NewGuid():N}";
+		await session
+			.RunCommandAsync(["network", "create", name], configuration.Timeout, deadline.Token)
+			.ConfigureAwait(false);
+		return new WslResource(session, name, network: true, configuration.Timeout);
+	}
+
+	/// <inheritdoc />
+	public async Task<IContainerResource> BuildImageAsync(
+		ImageBuildConfiguration configuration,
+		CancellationToken cancellationToken = default
+	)
+	{
+		ArgumentNullException.ThrowIfNull(configuration);
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(configuration.Timeout);
+		var session = (WslContainerSession)await Runtime.GetSessionAsync(deadline.Token).ConfigureAwait(false);
+		List<string> args =
+		[
+			"build",
+			"--progress",
+			"plain",
+			"--tag",
+			configuration.Name,
+			"--file",
+			Path.Combine(configuration.ContextDirectory, configuration.Dockerfile),
+		];
+		if (configuration.Target is not null)
+		{
+			args.Add("--target");
+			args.Add(configuration.Target);
+		}
+		args.Add(configuration.ContextDirectory);
+		await session.RunCommandAsync([.. args], configuration.Timeout, deadline.Token).ConfigureAwait(false);
+		return new WslResource(session, configuration.Name, network: false, TimeSpan.FromSeconds(30));
+	}
 }

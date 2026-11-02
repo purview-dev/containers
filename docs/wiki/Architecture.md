@@ -26,12 +26,19 @@ Purview.Containers.Wsl                   (net10.0 facade + net10.0-windows10.0.1
  │   ├─ PortAllocator   -> native random host ports (windowsPort=0)
  │   └─ SessionHandle   -> Microsoft.WSL.Containers.Session (internal)
  ├─ WslContainer        : IContainer         WSLC-backed container
- └─ WslContainerSession : IContainerSession  image pull + container create/start/stop/delete/exec
+ ├─ WslContainerSession : IContainerSession  image pull + container create/start/stop/delete/exec
+ └─ WslCommand / WslResource / WslFileCopy   bounded CLI fallback in that same session
 
 IContainer : IConnectionStringProvider, IAsyncDisposable
   StartAsync / StopAsync / DisposeAsync / ExecAsync / GetMappedPublicPort /
   GetConnectionString / GetLogsAsync / tailing IAsyncEnumerable
+  CopyAsync / ReadFileAsync / WaitForExitAsync / DeleteAsync
 ```
+
+`IContainerBackend.CreateNetworkAsync` and `BuildImageAsync` return owned `IContainerResource`
+instances on either backend. Docker delegates to Testcontainers. WSLC CLI-backed resources target
+the SDK-owned session/store, while ordinary lifecycle operations remain SDK-backed. Dispose containers
+before networks/images. See [Capabilities and Cancellation](Backend-Capabilities.md).
 
 A module (`Purview.Containers.PostgreSql`, `Purview.Containers.Redis`, …) derives its container from
 `ContainerBase` and references `Purview.Containers.Core` only. The backend is resolved at run time through
@@ -141,7 +148,9 @@ Isolated stores are transient and are removed when their session terminates.
 ## Observability
 
 - `System.Diagnostics.ActivitySource("Purview.Containers")` emits `wslcontainer.session.start`, `wslcontainer.image.pull`, `wslcontainer.container.create/start/stop/delete`, `wslcontainer.exec.create`, and `wslcontainer.wait`. Tags carry container name/id/image and strategy — never credentials.
-- Tailing `GetLogsAsync(CancellationToken)` ends when the container's init process exits: the log buffer is flushed and its channel completed on process exit (and on container disposal), so an `await foreach` over the stream terminates instead of waiting forever. The string overload (`GetLogsAsync(stream, ct)`) reads the accumulated buffer only.
+- Tailing `GetLogsAsync(CancellationToken)` polls output until live container state reports exit; it does
+  not depend solely on native exit events. The snapshot overload uses the SDK buffer or CLI logs for
+  CLI-created containers. Always supply an enumeration token.
 - `Microsoft.Extensions.Logging` integration is optional/future; the core works without a host or DI.
 
 ## Extensibility

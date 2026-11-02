@@ -23,6 +23,10 @@ metadata:
 
 A consumer of any backend other than WSL needs only a portable `net10.0` project.
 
+WSLC features missing from the managed SDK (entrypoint/user/labels, managed networks, reuse, copy
+and Dockerfile builds) additionally require `wslc` on PATH. The ordinary SDK-only path is unchanged.
+Use `purview-containers-capabilities` for the feature/cancellation boundary.
+
 ## Most projects need nothing
 
 ```xml
@@ -55,7 +59,7 @@ value you have not chosen.
 | 2 | **A Windows target framework that names the OS version** — *only* if you want the implementation bound directly | the `Microsoft.WSL.Containers` projection ships Windows assets only |
 | 3 | **64-bit** — `PlatformTarget` `x64`/`arm64`, or a matching `RuntimeIdentifier` | the native `wslcsdk.dll` ships for `win-x64` and `win-arm64` only |
 | 4 | **`WindowsSdkPackageVersion` ≥ `10.0.26100.80`** | the projection is compiled against `Microsoft.Windows.SDK.NET` `10.0.26100.79`, and the pack the SDK resolves for a `10.0.19041.0` target framework is older |
-| 5 | **A Windows 10/11 host with WSL Containers**, to actually run anything | the library drives WSLC; it never installs or updates it for you |
+| 5 | **Windows 11 or Windows Server 2025 with WSL Containers**, to actually run anything | the library drives WSLC; it never installs or updates it for you; a Windows target framework does not imply Windows 10 runtime support |
 
 ### Always spell out the Windows version
 

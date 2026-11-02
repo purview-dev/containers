@@ -45,15 +45,15 @@ just test '/*/*/*/*[Category=Integration]' --max-parallel-test-modules 1
 Integration suites target whichever backend is selected. Automatic detection prefers WSLC and falls back
 to Docker, so a WSLC host runs the WSLC suites and a Docker-only host runs the Docker ones; pin one with
 `PURVIEW_CONTAINERS_BACKEND=wsl|docker` to fail loudly instead of falling back. The Docker suites
-(`Docker.IntegrationTests` for the container contract, `Modules.Docker.IntegrationTests` for the eight
+(`Docker.IntegrationTests` for the container contract, `Modules.Docker.IntegrationTests` for the nine
 service modules) skip themselves when no daemon is reachable, and the WSLC suites skip themselves when the
 host lacks the WSL Containers components. Set `PURVIEW_CONTAINERS_REQUIRE_BACKEND=wsl|docker` to turn that
 skip into a failure — the CI integration jobs do. See [Backends: WSLC or Docker](Backends.md) for
 consumer-facing setup and CI examples.
 
 ```powershell
-just test src/tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj                            # Docker contract
-just test src/tests/Modules.Docker.IntegrationTests/Modules.Docker.IntegrationTests.csproj             # the eight modules on Docker
+dotnet test --project src/tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj --treenode-filter '/*/*/*/*'
+dotnet test --project src/tests/Modules.Docker.IntegrationTests/Modules.Docker.IntegrationTests.csproj --treenode-filter '/*/*/*/*'
 ```
 
 ## Why test modules run serially
@@ -89,7 +89,7 @@ the workflow adds `C:\Program Files\WSL` and calls it by absolute path.
 Coverage is split for cost:
 
 - **Every pull request**: `pr.yml` runs `Wsl.IntegrationTests` on `windows-2025` (the contract suite).
-- **Nightly**: `.github/workflows/integration-wsl.yml` runs the contract suite and the eight service-module
+- **Nightly**: `.github/workflows/integration-wsl.yml` runs the contract suite and the nine service-module
   suites on `windows-2025`, one project at a time.
 - **On demand**: the same workflow accepts `runner: self-hosted` to use a warm self-hosted Windows runner
   with the custom `wslc` label, and `scope: contract` to run only the contract suite.
@@ -125,6 +125,12 @@ immediately instead of surfacing as container timeouts. `actionlint` is told abo
 `.github/actionlint.yaml`.
 
 ## Expectations
+
+`src/tests/BackendContractTests.cs` is compiled into both backend integration projects. It checks
+exec settings, exact file/directory mappings, delayed and failed one-shot exits, streamed stdout/stderr,
+network aliases, builds, reuse, cancellation and bounded readiness cleanup. Run both complete projects
+for shared capability changes. The unit tier also covers uncooperative readiness and disposal during
+startup; it cannot substitute for real runtime validation.
 
 - The `Wsl.IntegrationTests` module runs many real containers in one session and can take several
   minutes, because WSLC serialises container operations. Slow-test warnings while it runs are expected.
