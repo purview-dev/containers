@@ -33,6 +33,19 @@ public sealed record WslContainerRuntimeOptions
 	/// <summary>Session idle timeout.</summary>
 	public TimeSpan? SessionTimeout { get; init; }
 
+	/// <summary>
+	/// Overrides <see cref="ContainerCleanup.CleanUpVolumesOnExit" /> for this runtime. <c>true</c> deletes the
+	/// named session volumes at termination, <c>false</c> retains them, and <c>null</c> uses the shared
+	/// setting. Defaults to <c>null</c>.
+	/// </summary>
+	/// <remarks>
+	/// Enable this - or set <c>PURVIEW_CONTAINERS_CLEAN_VOLUMES=true</c> before the first container is
+	/// created - for test runs that must leave no volume state behind. Only volumes recorded for this
+	/// session are deleted; the shared image store is never touched. Session termination already removes
+	/// the session's containers, so this option adds the volume deletion that Testcontainers does not do.
+	/// </remarks>
+	public bool? CleanUpVolumesOnTerminate { get; init; }
+
 	/// <summary>Disables the process-exit cleanup hook (mainly for testing).</summary>
 	public bool DisableProcessExitCleanup { get; init; }
 

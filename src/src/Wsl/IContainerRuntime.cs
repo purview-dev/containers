@@ -8,4 +8,10 @@ public interface IContainerRuntime : IAsyncDisposable
 
 	/// <summary>Returns the (shared, lazily started) session, creating it on first use.</summary>
 	Task<IContainerSession> GetSessionAsync(CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Best-effort cleanup of the resources the current session owns, such as named volumes. Does nothing
+	/// when no session has been created. The default does nothing.
+	/// </summary>
+	Task CleanUpAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }

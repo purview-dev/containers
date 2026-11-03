@@ -21,8 +21,12 @@ sealed class WslContainerSession : IContainerSession
 	readonly Session _session;
 	readonly SemaphoreSlim _lifecycleGate = new(1, 1);
 	readonly ConcurrentDictionary<string, Lazy<Task>> _activePulls = new(StringComparer.Ordinal);
+	readonly ConcurrentDictionary<string, byte> _containerNames = new(StringComparer.Ordinal);
+	readonly ConcurrentDictionary<string, byte> _namedVolumes = new(StringComparer.Ordinal);
+	readonly Lock _cleanupSync = new();
 	readonly string _storagePath;
 	readonly bool _deleteStorageOnTerminate;
+	readonly bool _cleanUpVolumesOnTerminate;
 	int _started;
 	int _terminated;
 
@@ -36,6 +40,7 @@ sealed class WslContainerSession : IContainerSession
 		Name = name;
 		_storagePath = storagePath;
 		_deleteStorageOnTerminate = deleteStorageOnTerminate;
+		_cleanUpVolumesOnTerminate = options.CleanUpVolumesOnTerminate ?? ContainerCleanup.CleanUpVolumesOnExit;
 		SessionSettings settings = new(name, storagePath)
 		{
 			CpuCount = options.CPUCount,
@@ -146,6 +151,7 @@ sealed class WslContainerSession : IContainerSession
 			return;
 		}
 
+		CleanUpRetainedResources(force: false);
 		try
 		{
 			_session.Terminate();
@@ -171,6 +177,7 @@ sealed class WslContainerSession : IContainerSession
 			return;
 		}
 
+		CleanUpRetainedResources(force: false);
 		try
 		{
 			_session.Terminate();
@@ -216,6 +223,14 @@ sealed class WslContainerSession : IContainerSession
 		try
 		{
 			ThrowIfTerminated();
+			if (!string.IsNullOrWhiteSpace(settings.Name))
+				_containerNames[settings.Name] = 0;
+			if (settings.NamedVolumes is { } volumes)
+			{
+				foreach (var volume in volumes)
+					_namedVolumes[volume.Name] = 0;
+			}
+
 			return _session.CreateContainer(settings);
 		}
 		finally
@@ -237,6 +252,10 @@ sealed class WslContainerSession : IContainerSession
 		try
 		{
 			ThrowIfTerminated();
+			_containerNames[name] = 0;
+			foreach (var volume in configuration.NamedVolumes)
+				_namedVolumes[volume.Name] = 0;
+
 			var hash = WslCreateArguments.ReuseHash(configuration);
 			if (configuration.Reuse)
 			{
@@ -595,6 +614,73 @@ sealed class WslContainerSession : IContainerSession
 		finally
 		{
 			_activePulls.TryRemove(reference.FullReference, out _);
+		}
+	}
+
+	/// <summary>
+	/// Best-effort removal of the containers and named volumes this session created. Containers are deleted
+	/// first because a volume still attached to a container cannot be removed.
+	/// </summary>
+	/// <param name="force">
+	/// When <c>true</c>, cleanup runs even if automatic volume cleanup is disabled. Used by the explicit
+	/// <see cref="IContainerRuntime.CleanUpAsync" /> path.
+	/// </param>
+	internal void CleanUpRetainedResources(bool force)
+	{
+		if (!force && !_cleanUpVolumesOnTerminate)
+		{
+			return;
+		}
+
+		if (Volatile.Read(ref _started) == 0)
+		{
+			return;
+		}
+
+		lock (_cleanupSync)
+		{
+			foreach (var containerName in _containerNames.Keys)
+			{
+				try
+				{
+					var container = _session.OpenContainer(containerName, ProcessOutputMode.Event);
+					try
+					{
+						container.Delete(DeleteContainerOption.Force);
+					}
+					finally
+					{
+						container.Dispose();
+					}
+				}
+				catch { }
+			}
+
+			foreach (var volumeName in _namedVolumes.Keys)
+			{
+				DeleteVolumeBestEffort(volumeName);
+			}
+
+			_containerNames.Clear();
+			_namedVolumes.Clear();
+		}
+	}
+
+	void DeleteVolumeBestEffort(string name)
+	{
+		for (var attempt = 0; attempt < 3; attempt++)
+		{
+			try
+			{
+				_session.DeleteVhdVolume(name);
+				return;
+			}
+			catch
+			{
+				// The container handle can still be detaching the volume; retry briefly.
+				if (attempt < 2)
+					Thread.Sleep(50);
+			}
 		}
 	}
 

@@ -80,7 +80,7 @@ invalid images, ports and mounts fail during configuration rather than at pull t
 | `WithPortBinding(ushort, bool assignRandomHostPort)`, `WithPortBinding(ushort, ushort hostPort, ...)`, `WithPortBinding(PortBinding)` | Host port mappings; random host ports use native `windowsPort=0` allocation. |
 | `WithBindMount(string hostPath, string containerPath, bool readOnly = false)` | Bind-mount a Windows directory. |
 | `WithVolumeMount(string name, string containerPath, bool readOnly = false)` | Named volume on the session VHD. |
-| `WithNetworkMode`, `WithPrivileged`, `WithGPU`, `WithAutoRemove`, `WithPullPolicy`, `WithStartupTimeout`, `WithWaitStrategy`, `WithRegistryCredentials`, `WithRuntime` | Runtime behaviour and readiness. |
+| `WithNetworkMode`, `WithPrivileged`, `WithGPU`, `WithAutoRemove`, `WithCleanUp`, `WithPullPolicy`, `WithStartupTimeout`, `WithWaitStrategy`, `WithRegistryCredentials`, `WithRuntime` | Runtime behaviour and readiness. |
 
 ## Container API
 
@@ -99,7 +99,8 @@ mode combined with CLI-only features and multi-line environment values. See
 `IContainer` (and `WslContainer`) exposes `StartAsync`, `StopAsync`, `ExecAsync`, `GetMappedPublicPort`,
 `GetMappedPublicPorts`, `GetLogsAsync(LogOutput?)` and a tailing `IAsyncEnumerable<ContainerLogEntry>`
 `GetLogsAsync(CancellationToken)`. `Id`, `Name`, `State` and `Image` describe the running container.
-`DisposeAsync` normally stops and deletes the container; reusable containers are retained. It is
+`DisposeAsync` normally stops and deletes the container; reusable containers and containers built with
+`WithCleanUp(false)` are stopped and retained. It is
 idempotent and never terminates the shared session.
 Stopping signals the init process with SIGTERM, waits up to 10 seconds, then escalates to SIGKILL
 with a further 5-second exit wait. The grace period uses managed polling rather than the native
@@ -148,8 +149,18 @@ ContainerBackends.Use(new WslContainerBackend(WslContainerRuntimeOptions.Default
 ```
 
 The full `WslContainerRuntimeOptions` set (CPU, memory, GPU, session name, `StoragePath`, `StorageMode`,
-timeout) is honoured on both a platform-neutral (`net10.0`) consumer — where the facade forwards it to the
-Windows build at run time — and a Windows target framework, where the Windows build applies it directly.
+timeout, `CleanUpVolumesOnTerminate`) is honoured on both a platform-neutral (`net10.0`) consumer — where the
+facade forwards it to the Windows build at run time — and a Windows target framework, where the Windows build
+applies it directly.
+
+Named volumes live on the session and are **retained by default**, matching Docker/Testcontainers. Set
+`ContainerCleanup.CleanUpVolumesOnExit = true`, or set `PURVIEW_CONTAINERS_CLEAN_VOLUMES=true` before the
+first container is created, to delete every volume the session recorded when it terminates. The
+WSLC-specific `WslContainerRuntimeOptions.CleanUpVolumesOnTerminate` overrides that shared switch with
+`true`/`false`; leave it `null` to use the shared value. `IContainerBackend.CleanUpAsync()` (and
+`ContainerBackends.CleanUpAsync()`) performs the same cleanup explicitly. That makes a test run leave no
+session volume state behind; the shared image store and host bind mounts are never touched. Containers are
+deleted first, then the volumes.
 
 The Microsoft types (`Session`, `Container`, `Process`, …) stay behind the public interfaces; the only escape
 hatch is the opt-in accessor for `Inspect()` and raw handles.

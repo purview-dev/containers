@@ -79,6 +79,27 @@ reaper and the 4 GB WSLC session VM from being stampeded on a cold run.
 In Visual Studio, untick **Run Tests in Parallel** (or set *Maximum Parallel Test Projects* to 1) before
 running the WSLC integration suites.
 
+## Cleaning up named volumes
+
+Named volumes are retained by default on both backends, matching Docker/Testcontainers. A suite that must
+leave no volume state behind can turn on the shared switch before the first container is created:
+
+```bash
+PURVIEW_CONTAINERS_CLEAN_VOLUMES=true dotnet test ...
+```
+
+```powershell
+$env:PURVIEW_CONTAINERS_CLEAN_VOLUMES = "true"
+dotnet test ...
+```
+
+The active backend then deletes the containers it recorded and the named volumes it created when the
+process exits or its session terminates (including from the process-exit hook). Volumes that already
+existed are never deleted, and the shared image store and host bind mounts are untouched. Set
+`ContainerCleanup.CleanUpVolumesOnExit` in code instead if you prefer, or call
+`ContainerBackends.CleanUpAsync()` / `IContainerBackend.CleanUpAsync()` for an explicit cleanup. On WSLC,
+`WslContainerRuntimeOptions.CleanUpVolumesOnTerminate` can override the shared switch for one runtime.
+
 ## Running the WSLC suites in CI
 
 The WSLC half used to be manual-only because no hosted runner was assumed to have WSL Containers. That is

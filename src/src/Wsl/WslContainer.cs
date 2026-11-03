@@ -439,14 +439,20 @@ public class WslContainer : IContainer
 				}
 				catch { }
 
-				try
+				_state =
+					Configuration.EnableAutoRemove && !Configuration.EnableCleanUp
+						? ContainerState.Deleted
+						: MapState(_handle.State);
+				if (Configuration.EnableCleanUp)
 				{
-					_state = MapState(_handle.State);
-					await _session
-						.DeleteContainerAsync(_handle, DeleteContainerOption.Force, cleanup.Token)
-						.ConfigureAwait(false);
+					try
+					{
+						await _session
+							.DeleteContainerAsync(_handle, DeleteContainerOption.Force, cleanup.Token)
+							.ConfigureAwait(false);
+					}
+					catch { }
 				}
-				catch { }
 
 				try
 				{

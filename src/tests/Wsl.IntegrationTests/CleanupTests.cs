@@ -61,4 +61,25 @@ public class CleanupTests
 		await container.StartAsync();
 		await container.DisposeAsync();
 	}
+
+	[Test]
+	public async Task Dispose_WithCleanUpDisabled_RetainsTheStoppedContainer()
+	{
+		await WslcTest.SkipIfUnavailableAsync();
+
+		var name = "cleanup-" + Guid.NewGuid().ToString("N")[..8];
+		var container = new ContainerBuilder()
+			.WithImage("alpine:latest")
+			.WithName(name)
+			.WithCommand("/bin/sleep", "300")
+			.WithCleanUp(false)
+			.Build();
+
+		await container.StartAsync();
+		await container.DisposeAsync();
+
+		// The wrapper is disposed, but the container is retained until the shared session is terminated
+		// when the test process exits.
+		await Assert.That(container.State).IsEqualTo(ContainerState.Exited);
+	}
 }

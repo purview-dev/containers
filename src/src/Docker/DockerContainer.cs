@@ -17,20 +17,24 @@ public sealed class DockerContainer : IContainer
 {
 	readonly IContainerConfiguration _configuration;
 	readonly Func<CancellationToken, Task<TcContainer>> _create;
+	readonly DockerVolumeCleanup _cleanup;
 	TcContainer? _handle;
 	int _disposed;
 	bool _deleted;
+	ContainerState? _retainedState;
 	readonly CancellationTokenSource _lifetime = new();
 	Task<long>? _exitTask;
 
 	internal DockerContainer(
 		IContainerConfiguration configuration,
 		Func<CancellationToken, Task<TcContainer>> create,
-		string name
+		string name,
+		DockerVolumeCleanup cleanup
 	)
 	{
 		_configuration = configuration;
 		_create = create;
+		_cleanup = cleanup;
 		Name = name;
 	}
 
@@ -45,10 +49,14 @@ public sealed class DockerContainer : IContainer
 
 	/// <inheritdoc />
 	public ContainerState State =>
-		_deleted ? ContainerState.Deleted
-		: _handle is null ? ContainerState.Created
-		: _exitTask?.IsCompletedSuccessfully == true ? ContainerState.Exited
-		: ToState(Handle.State);
+		_deleted
+			? ContainerState.Deleted
+			: _retainedState
+				?? (
+					_handle is null ? ContainerState.Created
+					: _exitTask?.IsCompletedSuccessfully == true ? ContainerState.Exited
+					: ToState(Handle.State)
+				);
 
 	/// <inheritdoc />
 	public string Image => _configuration.Image;
@@ -72,6 +80,11 @@ public sealed class DockerContainer : IContainer
 		{
 			_handle ??= await _create(deadline.Token).ConfigureAwait(false);
 			await Handle.StartAsync(deadline.Token).ConfigureAwait(false);
+			if (!_configuration.Reuse)
+			{
+				_cleanup.RegisterContainer(Handle.Id);
+			}
+
 			_exitTask = ObserveExitAsync();
 			_ = _exitTask.ContinueWith(
 				static task => _ = task.Exception,
@@ -292,9 +305,28 @@ public sealed class DockerContainer : IContainer
 		{
 			await _lifetime.CancelAsync().ConfigureAwait(false);
 			if (_handle is not null)
+			{
+				var stateBeforeDispose = State;
 				await Handle.DisposeAsync().AsTask().WaitAsync(_configuration.CleanupTimeout).ConfigureAwait(false);
-			if (!_configuration.Reuse)
-				_deleted = true;
+				if (_configuration.Reuse || !_configuration.EnableCleanUp)
+				{
+					if (!_configuration.Reuse && _configuration.EnableAutoRemove)
+					{
+						// Docker's --rm removes the container as it stops, so nothing is retained.
+						_deleted = true;
+					}
+					else
+					{
+						// Testcontainers stops a retained container; it is not removed, so state stays observable.
+						_retainedState =
+							stateBeforeDispose == ContainerState.Running ? ContainerState.Exited : stateBeforeDispose;
+					}
+				}
+				else
+				{
+					_deleted = true;
+				}
+			}
 		}
 		finally
 		{

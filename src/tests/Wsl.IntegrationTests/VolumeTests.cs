@@ -74,4 +74,155 @@ public class VolumeTests
 
 		await Assert.That(logs.Any(text => text.Contains("shared-data", StringComparison.Ordinal))).IsTrue();
 	}
+
+	[Test]
+	[Arguments(false)]
+	[Arguments(true)]
+	public async Task SessionCleanup_DeletesNamedVolumesOnTerminate(bool useCli, CancellationToken cancellationToken)
+	{
+		await WslcTest.SkipIfUnavailableAsync();
+
+		var storagePath = Path.Combine(Path.GetTempPath(), "wslc-session-cleanup-" + Guid.NewGuid().ToString("N")[..8]);
+		var volume = "wslc-clean-" + Guid.NewGuid().ToString("N")[..6];
+		try
+		{
+			// The writer is deliberately not disposed: session cleanup owns the container and its volume.
+			await using (var runtime = CreateRuntime(storagePath, cleanUpVolumes: true))
+			{
+				var writerBuilder = new ContainerBuilder(new WslContainerBackend(runtime))
+					.WithImage("alpine:latest")
+					.WithVolumeMount(volume, "/data")
+					.WithCommand("/bin/sh", "-c", "echo cleanup-data > /data/file.txt; sleep 300")
+					.WithWaitStrategy(Wait.ForCommand("/bin/sh", "-c", "test -f /data/file.txt"));
+				if (useCli)
+				{
+					// A label forces the CLI creation path, which records volumes separately.
+					writerBuilder = writerBuilder.WithLabel("purview.test", "session-cleanup");
+				}
+
+				var writer = writerBuilder.Build();
+				await writer.StartAsync(cancellationToken);
+			}
+
+			await using (var runtime = CreateRuntime(storagePath, cleanUpVolumes: true))
+			{
+				await using var reader = new ContainerBuilder(new WslContainerBackend(runtime))
+					.WithImage("alpine:latest")
+					.WithVolumeMount(volume, "/data")
+					.WithCommand("/bin/sh", "-c", "test ! -f /data/file.txt; sleep 300")
+					.WithWaitStrategy(Wait.ForCommand("/bin/sh", "-c", "test ! -f /data/file.txt"))
+					.Build();
+				await reader.StartAsync(cancellationToken);
+			}
+		}
+		finally
+		{
+			DeleteStorageBestEffort(storagePath);
+		}
+	}
+
+	[Test]
+	public async Task SessionCleanup_Disabled_RetainsNamedVolumesAcrossRuntimes(CancellationToken cancellationToken)
+	{
+		await WslcTest.SkipIfUnavailableAsync();
+
+		var storagePath = Path.Combine(Path.GetTempPath(), "wslc-session-retain-" + Guid.NewGuid().ToString("N")[..8]);
+		var volume = "wslc-retain-" + Guid.NewGuid().ToString("N")[..6];
+		try
+		{
+			await using (var runtime = CreateRuntime(storagePath, cleanUpVolumes: false))
+			{
+				var writer = new ContainerBuilder(new WslContainerBackend(runtime))
+					.WithImage("alpine:latest")
+					.WithVolumeMount(volume, "/data")
+					.WithCommand("/bin/sh", "-c", "echo retained-data > /data/file.txt; sleep 300")
+					.WithWaitStrategy(Wait.ForCommand("/bin/sh", "-c", "test -f /data/file.txt"))
+					.Build();
+				await writer.StartAsync(cancellationToken);
+			}
+
+			await using (var runtime = CreateRuntime(storagePath, cleanUpVolumes: false))
+			{
+				await using var reader = new ContainerBuilder(new WslContainerBackend(runtime))
+					.WithImage("alpine:latest")
+					.WithVolumeMount(volume, "/data")
+					.WithCommand("/bin/sh", "-c", "test -f /data/file.txt; sleep 300")
+					.WithWaitStrategy(Wait.ForCommand("/bin/sh", "-c", "test -f /data/file.txt"))
+					.Build();
+				await reader.StartAsync(cancellationToken);
+			}
+		}
+		finally
+		{
+			DeleteStorageBestEffort(storagePath);
+		}
+	}
+
+	[Test]
+	public async Task ExplicitBackendCleanup_DeletesVolumesEvenWhenAutomaticCleanupIsOff(
+		CancellationToken cancellationToken
+	)
+	{
+		await WslcTest.SkipIfUnavailableAsync();
+
+		var storagePath = Path.Combine(
+			Path.GetTempPath(),
+			"wslc-explicit-cleanup-" + Guid.NewGuid().ToString("N")[..8]
+		);
+		var volume = "wslc-explicit-" + Guid.NewGuid().ToString("N")[..6];
+		try
+		{
+			await using var runtime = CreateRuntime(storagePath, cleanUpVolumes: false);
+			WslContainerBackend backend = new(runtime);
+			var writer = new ContainerBuilder(backend)
+				.WithImage("alpine:latest")
+				.WithVolumeMount(volume, "/data")
+				.WithCommand("/bin/sh", "-c", "echo explicit-data > /data/file.txt; sleep 300")
+				.WithWaitStrategy(Wait.ForCommand("/bin/sh", "-c", "test -f /data/file.txt"))
+				.Build();
+			await writer.StartAsync(cancellationToken);
+
+			// The generic explicit cleanup does not depend on the automatic session switch.
+			await backend.CleanUpAsync(cancellationToken);
+			await writer.DisposeAsync();
+
+			await using var reader = new ContainerBuilder(backend)
+				.WithImage("alpine:latest")
+				.WithVolumeMount(volume, "/data")
+				.WithCommand("/bin/sh", "-c", "test ! -f /data/file.txt; sleep 300")
+				.WithWaitStrategy(Wait.ForCommand("/bin/sh", "-c", "test ! -f /data/file.txt"))
+				.Build();
+			await reader.StartAsync(cancellationToken);
+		}
+		finally
+		{
+			DeleteStorageBestEffort(storagePath);
+		}
+	}
+
+	static WslContainerRuntime CreateRuntime(string storagePath, bool? cleanUpVolumes) =>
+		new(
+			new WslContainerRuntimeOptions
+			{
+				StoragePath = storagePath,
+				CleanUpVolumesOnTerminate = cleanUpVolumes,
+				DisableProcessExitCleanup = true,
+			}
+		);
+
+	static void DeleteStorageBestEffort(string path)
+	{
+		try
+		{
+			Directory.Delete(path, recursive: true);
+		}
+		catch (IOException)
+		{
+			// The session manager may still hold the store VHD briefly.
+		}
+		catch (UnauthorizedAccessException)
+		{
+			// Same.
+		}
+	}
 }

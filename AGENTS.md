@@ -60,9 +60,21 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 - Never swallow caller cancellation as a successful exec/stop. Startup is a total five-minute managed
   budget; exec defaults to one minute, stop to 15 seconds and cleanup to 30 seconds. Synchronous WSLC
   native calls cannot be safely interrupted; never advertise hard zero-hang guarantees.
-- Reuse is explicit, named and incompatible with auto-remove. Docker follows Testcontainers;
-  WSLC reuse is session-scoped. Explicit deletion bypasses reuse retention. Dispose containers before
-  managed networks or built images. CLI diagnostics must not echo environment/build output.
+- Disposal cleanup mirrors Testcontainers (`WithCleanUp`, default `true`): disposing removes the
+  container, and Docker also removes anonymous volumes; named `WithVolumeMount` volumes are retained.
+  `WithCleanUp(false)` stops and retains the container. Auto-remove is off by default, is independent
+  of cleanup, and wins once the init process exits.
+- WSLC named volumes are session-scoped but persist in the session's storage VHD. Named volumes on both
+  backends are retained by default; `ContainerCleanup.CleanUpVolumesOnExit` (or
+  `PURVIEW_CONTAINERS_CLEAN_VOLUMES=true`) deletes the volumes the backend created at process/session
+  termination, after removing the containers that used them.
+  `WslContainerRuntimeOptions.CleanUpVolumesOnTerminate` overrides the shared switch;
+  `IContainerBackend.CleanUpAsync` is the explicit path. Never delete the shared image store or host
+  bind mounts.
+- Reuse is explicit, named, incompatible with auto-remove, and implies cleanup off. Docker follows
+  Testcontainers; WSLC reuse is session-scoped. Explicit deletion bypasses reuse retention. Dispose
+  containers before managed networks or built images. CLI diagnostics must not echo environment/build
+  output.
 - Restart an exited WSLC reusable container through the CLI **before** reopening its SDK event handle.
   Calling native `Start()` after attaching that handle fails with "Process handle has already been attached".
 - Docker pre-start resource archives run inside Testcontainers' synchronous `Created` event, before init

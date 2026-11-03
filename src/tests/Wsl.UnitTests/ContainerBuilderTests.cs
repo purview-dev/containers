@@ -79,6 +79,63 @@ public class ContainerBuilderTests
 	}
 
 	[Test]
+	public async Task BuildConfiguration_CleanUpEnabledByDefault()
+	{
+		// Arrange / Act
+		var configuration = new TestBuilder().WithImage("alpine").BuildConfig();
+
+		// Assert
+		await Assert.That(configuration.EnableCleanUp).IsTrue();
+	}
+
+	[Test]
+	public async Task WithCleanUp_DisablesContainerRemovalOnDispose()
+	{
+		// Arrange / Act
+		var configuration = new TestBuilder().WithImage("alpine").WithCleanUp(false).BuildConfig();
+
+		// Assert
+		await Assert.That(configuration.EnableCleanUp).IsFalse();
+	}
+
+	[Test]
+	public async Task WithReuse_DisablesCleanUp()
+	{
+		// Arrange / Act
+		var configuration = new TestBuilder().WithImage("alpine").WithName("retained").WithReuse().BuildConfig();
+
+		// Assert
+		await Assert.That(configuration.Reuse).IsTrue();
+		await Assert.That(configuration.EnableCleanUp).IsFalse();
+	}
+
+	[Test]
+	public async Task Build_ReuseWithCleanUp_Throws()
+	{
+		// Arrange
+		var builder = new TestBuilder().WithImage("alpine").WithName("retained").WithReuse().WithCleanUp();
+
+		// Act / Assert
+		await Assert.That(() => builder.Build()).Throws<ContainerConfigurationException>();
+	}
+
+	[Test]
+	public async Task Build_ReuseWithExplicitCleanUpDisabled_IsAllowed()
+	{
+		// Arrange / Act
+		var configuration = new TestBuilder()
+			.WithImage("alpine")
+			.WithName("retained")
+			.WithReuse()
+			.WithCleanUp(false)
+			.BuildConfig();
+
+		// Assert
+		await Assert.That(configuration.Reuse).IsTrue();
+		await Assert.That(configuration.EnableCleanUp).IsFalse();
+	}
+
+	[Test]
 	public async Task BuildConfiguration_PopulatesAllCommonFields()
 	{
 		var configuration = new TestBuilder()
