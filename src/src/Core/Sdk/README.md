@@ -20,7 +20,7 @@ separate package.
 | --- | --- |
 | Container contract | `IContainer`, `IContainerConfiguration`, `ContainerConfiguration`, `ContainerBuilder<TBuilder, TContainer, TConfiguration>`, `ContainerBase` |
 | Connection strings | `IConnectionStringProvider`, `IConnectionStringProvider<TContainer, TConfiguration>`, `ContainerConnectionStringProvider<TContainer, TConfiguration>`, `ConnectionMode` |
-| Backends | `IContainerBackend`, `ContainerBackendInfo`, `ContainerBackends`, `ContainerBackendUnavailableException` |
+| Backends | `IContainerBackend`, `ContainerBackendInfo`, `ContainerBackends`, `ContainerBackendUnavailableException`, `ContainerCleanup` |
 | Readiness | `Purview.Containers.Waiting`: `Wait`, `IWaitStrategy`, TCP/HTTP/command/log strategies |
 | Configuration model | `PortBinding`, `BindMount`, `NamedVolume`, `RegistryCredentials`, `Image`, `PullPolicy` |
 | Diagnostics | `Secret`, `SecretRedactor`, `ContainerState`, `ExecResult`, `ContainerLogEntry` |
@@ -30,9 +30,14 @@ separate package.
 
 The shared contract includes entrypoint/user/labels, exec environment overrides, pre-start
 `WithResourceMapping`, runtime `CopyAsync`/`ReadFileAsync`, `Wait.ForExitCode`/`WaitForExitAsync`,
-`IContainerBackend.CreateNetworkAsync`/`BuildImageAsync`, and explicit `DeleteAsync`.
+`IContainerBackend.CreateNetworkAsync`/`BuildImageAsync`/`CleanUpAsync`, and explicit `DeleteAsync`.
 Networks/images return an `IContainerResource`; dispose attached containers first.
-Reuse requires `WithName(...).WithReuse()` and changes disposal ownership.
+Disposal cleanup follows Testcontainers: `WithCleanUp(true)` (the default) removes the container,
+`WithCleanUp(false)` stops and retains it, and the Docker backend also removes anonymous volumes.
+Named volumes are owned per backend: set `ContainerCleanup.CleanUpVolumesOnExit` (or
+`PURVIEW_CONTAINERS_CLEAN_VOLUMES=true`) before creating containers to delete the volumes the library
+created, or call `ContainerBackends.CleanUpAsync()` explicitly. Pre-existing volumes are never deleted.
+Reuse requires `WithName(...).WithReuse()`, implies cleanup off, and changes disposal ownership.
 
 Defaults: total startup 5 minutes; exec/exit wait 1 minute; stop 15 seconds; cleanup 30 seconds;
 copy/read/log snapshots 1 minute. Fluent timeout overrides and cancellation tokens are supported.

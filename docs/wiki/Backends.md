@@ -38,6 +38,8 @@ Service modules (`Purview.Containers.PostgreSql`, `Redis`, …) are backend-neut
 | **How containers run** | the managed SDK, with `wslc` CLI fallback for SDK-missing features | the Docker Engine API via Testcontainers |
 | **Images** | a shared store (`%LOCALAPPDATA%\Purview\WslContainers\images`) reused across runs; the location is configurable | the daemon's own image store |
 | **Leak protection** | session disposal plus a process-exit hook | the Testcontainers resource reaper (Ryuk) |
+| **Disposal cleanup** | `WithCleanUp` (default `true`) stops and deletes the container | `WithCleanUp` (default `true`) delegates to Testcontainers, which also removes anonymous volumes |
+| **Volume cleanup** | opt-in via `ContainerCleanup.CleanUpVolumesOnExit` / `PURVIEW_CONTAINERS_CLEAN_VOLUMES`; `CleanUpVolumesOnTerminate` overrides per runtime | opt-in via the same shared switch; removes volumes the backend created |
 | **Check the host** | `wsl --version`, `wslc version` | `docker info` |
 | **Typical fit** | local Windows development without Docker Desktop, fastest cold start | CI runners, non-Windows hosts, teams already running Docker |
 
@@ -104,9 +106,16 @@ ContainerBackends.Use(new WslContainerBackend(WslContainerRuntimeOptions.Default
 `StorageMode.Shared` (the default) keeps a stable, warm image store at `StoragePath` (or the default above
 when it is unset); `StorageMode.PerSession` gives each session a throwaway store under
 `%LOCALAPPDATA%\Purview\WslContainers\sessions\{name}`. The full `WslContainerRuntimeOptions` set (CPU,
-memory, GPU, session name, `StoragePath`, `StorageMode`, timeout) is honoured on both a platform-neutral
-`net10.0` consumer — where the facade forwards it to the Windows build at run time — and a Windows target
-framework. The pre-rename `WSL_CONTAINERS_STORAGE_PATH` is still honoured as a fallback.
+memory, GPU, session name, `StoragePath`, `StorageMode`, timeout, `CleanUpVolumesOnTerminate`) is honoured
+on both a platform-neutral `net10.0` consumer — where the facade forwards it to the Windows build at run
+time — and a Windows target framework. The pre-rename `WSL_CONTAINERS_STORAGE_PATH` is still honoured as a
+fallback.
+
+WSLC named volumes are retained by default, matching Docker. Set `ContainerCleanup.CleanUpVolumesOnExit = true`
+(or `PURVIEW_CONTAINERS_CLEAN_VOLUMES=true`) to delete the volumes the library created when the process
+exits or the session terminates; `WslContainerRuntimeOptions.CleanUpVolumesOnTerminate` overrides the shared
+switch for one runtime, and `CleanUpAsync` performs the cleanup explicitly. Containers are deleted first;
+the shared image store and host bind mounts are untouched.
 
 ## Switch between them without touching test code:
 
@@ -461,6 +470,8 @@ release its image-store VHD.
 | Reuse | session-scoped, explicit name | Testcontainers reuse |
 | Log tailing | polled until the container stops | polled until the container stops |
 | Leak protection | session disposal + process-exit hook | Testcontainers resource reaper (Ryuk) |
+| Disposal cleanup | `WithCleanUp`, default `true` | `WithCleanUp`, default `true`, anonymous volumes removed |
+| Volume cleanup | opt-in via `ContainerCleanup.CleanUpVolumesOnExit` (session override available) | opt-in via the same shared switch |
 | Image store | shared WSLC store, warm across runs | the daemon's store |
 | Lifetime cost | one process-wide session, cheap start | first pull per image, per daemon |
 

@@ -25,6 +25,12 @@ public sealed class WslContainerRuntime : IContainerRuntime
 	/// <summary>The pre-rename storage path variable, still honoured as a fallback.</summary>
 	public const string LegacyStoragePathEnvironmentVariable = "WSL_CONTAINERS_STORAGE_PATH";
 
+	/// <summary>
+	/// Environment variable that turns on <see cref="ContainerCleanup.CleanUpVolumesOnExit" /> for every
+	/// backend. Kept here for discoverability; it is the same shared setting.
+	/// </summary>
+	public const string CleanUpVolumesEnvironmentVariable = ContainerCleanup.CleanUpVolumesEnvironmentVariable;
+
 	static readonly Lazy<WslContainerRuntime> InstanceHolder = new(() => new WslContainerRuntime());
 
 	/// <summary>The default process-wide runtime.</summary>
@@ -68,6 +74,13 @@ public sealed class WslContainerRuntime : IContainerRuntime
 			"Direct WSLC session access is only available from a Windows target framework "
 				+ "(net10.0-windows10.0.19041.0 or later). Use the backend-neutral container API instead."
 		);
+
+	/// <inheritdoc />
+	public Task CleanUpAsync(CancellationToken cancellationToken = default)
+	{
+		var backend = WslPayload.TryCreateBackend();
+		return backend is null ? Task.CompletedTask : backend.CleanUpAsync(cancellationToken);
+	}
 
 	/// <inheritdoc />
 	public ValueTask DisposeAsync() => ValueTask.CompletedTask;

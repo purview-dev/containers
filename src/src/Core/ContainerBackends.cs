@@ -188,6 +188,22 @@ public static class ContainerBackends
 		}
 	}
 
+	/// <summary>
+	/// Best-effort cleanup of resources owned by every registered backend, such as the named volumes they
+	/// created. Each backend's <see cref="IContainerBackend.CleanUpAsync" /> is called in registration order.
+	/// Disposing the containers that use those resources first is the caller's responsibility; a backend may
+	/// force-remove its own retained containers when <see cref="ContainerCleanup.CleanUpVolumesOnExit" /> is
+	/// enabled.
+	/// </summary>
+	public static async Task CleanUpAsync(CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		foreach (var backend in All)
+		{
+			await backend.CleanUpAsync(cancellationToken).ConfigureAwait(false);
+		}
+	}
+
 	static async Task<IContainerBackend> ResolveCoreAsync(
 		IContainerBackend? pinned,
 		ContainerBackendSelection selection,

@@ -44,6 +44,7 @@ static class WslPayload
 		typeof(int),
 		typeof(long?),
 		typeof(bool),
+		typeof(bool?),
 	];
 	static bool DefaultAttempted;
 	static IContainerBackend? DefaultBackend;
@@ -139,6 +140,7 @@ static class WslPayload
 						(int)options.StorageMode,
 						options.SessionTimeout?.Ticks,
 						options.DisableProcessExitCleanup,
+						options.CleanUpVolumesOnTerminate,
 					];
 
 				if (factory?.Invoke(null, arguments) is IContainerBackend backend)

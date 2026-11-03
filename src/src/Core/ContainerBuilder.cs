@@ -32,6 +32,7 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 	bool _privileged;
 	bool _enableGPU;
 	bool _enableAutoRemove;
+	bool _enableCleanUp = true;
 	PullPolicy _pullPolicy = PullPolicy.Missing;
 	TimeSpan _startupTimeout = TimeSpan.FromMinutes(5);
 	readonly List<IWaitStrategy> _waitStrategies = [];
@@ -208,6 +209,8 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 	public TBuilder WithReuse(bool reuse = true)
 	{
 		_reuse = reuse;
+		// Mirrors Testcontainers: reuse owns the lifecycle, so it switches cleanup off.
+		_enableCleanUp = !reuse;
 		return (TBuilder)this;
 	}
 
@@ -340,6 +343,18 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 		return (TBuilder)this;
 	}
 
+	/// <summary>
+	/// Controls whether disposal removes the container, mirroring Testcontainers' <c>WithCleanUp</c>. Defaults
+	/// to <c>true</c>. Set <c>false</c> to stop and retain the container (and its volumes) for inspection;
+	/// remove it with <see cref="IContainer.DeleteAsync" /> before disposal, or with the backend's own tooling
+	/// afterwards. Independent of <see cref="WithAutoRemove" />.
+	/// </summary>
+	public TBuilder WithCleanUp(bool cleanUp = true)
+	{
+		_enableCleanUp = cleanUp;
+		return (TBuilder)this;
+	}
+
 	/// <summary>Sets the image pull policy. Defaults to <see cref="PullPolicy.Missing" />.</summary>
 	public TBuilder WithPullPolicy(PullPolicy pullPolicy)
 	{
@@ -422,6 +437,7 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 			Privileged = _privileged,
 			EnableGPU = _enableGPU,
 			EnableAutoRemove = _enableAutoRemove,
+			EnableCleanUp = _enableCleanUp,
 			PullPolicy = _pullPolicy,
 			StartupTimeout = _startupTimeout,
 			WaitStrategies = _waitStrategies.ToArray(),
@@ -481,6 +497,11 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 			throw new ContainerConfigurationException(
 				"Reuse requires an explicit name and cannot be combined with auto-remove."
 			);
+		}
+
+		if (configuration.Reuse && configuration.EnableCleanUp)
+		{
+			throw new ContainerConfigurationException("Reuse cannot be used in conjunction with WithCleanUp(true).");
 		}
 
 		if (configuration.NetworkAliases.Count > 0 && string.IsNullOrWhiteSpace(configuration.Network))

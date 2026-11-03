@@ -54,6 +54,9 @@ public record ContainerConfiguration : IContainerConfiguration
 	public bool EnableAutoRemove { get; init; }
 
 	/// <inheritdoc />
+	public bool EnableCleanUp { get; init; } = true;
+
+	/// <inheritdoc />
 	public PullPolicy PullPolicy { get; init; } = PullPolicy.Missing;
 
 	/// <inheritdoc />
@@ -125,6 +128,7 @@ public record ContainerConfiguration : IContainerConfiguration
 		builder.Append(", ").Append(nameof(Privileged)).Append(" = ").Append(Privileged);
 		builder.Append(", ").Append(nameof(EnableGPU)).Append(" = ").Append(EnableGPU);
 		builder.Append(", ").Append(nameof(EnableAutoRemove)).Append(" = ").Append(EnableAutoRemove);
+		builder.Append(", ").Append(nameof(EnableCleanUp)).Append(" = ").Append(EnableCleanUp);
 		builder.Append(", ").Append(nameof(PullPolicy)).Append(" = ").Append(PullPolicy);
 		builder.Append(", ").Append(nameof(StartupTimeout)).Append(" = ").Append(StartupTimeout);
 		builder.Append(", ").Append(nameof(WaitStrategies)).Append(" = ").Append(WaitStrategies);

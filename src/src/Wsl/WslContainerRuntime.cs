@@ -27,6 +27,12 @@ public sealed class WslContainerRuntime : IContainerRuntime
 	/// <summary>The pre-rename storage path variable, still honoured as a fallback.</summary>
 	public const string LegacyStoragePathEnvironmentVariable = "WSL_CONTAINERS_STORAGE_PATH";
 
+	/// <summary>
+	/// Environment variable that turns on <see cref="ContainerCleanup.CleanUpVolumesOnExit" /> for every
+	/// backend. Kept here for discoverability; it is the same shared setting.
+	/// </summary>
+	public const string CleanUpVolumesEnvironmentVariable = ContainerCleanup.CleanUpVolumesEnvironmentVariable;
+
 	static readonly Lazy<WslContainerRuntime> InstanceHolder = new(() => new WslContainerRuntime());
 
 	readonly WslContainerRuntimeOptions _options;
@@ -142,6 +148,14 @@ public sealed class WslContainerRuntime : IContainerRuntime
 			await isolated.ListImagesAsync(cancellationToken).ConfigureAwait(false);
 			return isolated;
 		}
+	}
+
+	/// <inheritdoc />
+	public Task CleanUpAsync(CancellationToken cancellationToken = default)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+		_session?.CleanUpRetainedResources(force: true);
+		return Task.CompletedTask;
 	}
 
 	/// <inheritdoc />

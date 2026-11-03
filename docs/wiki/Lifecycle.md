@@ -25,12 +25,25 @@ WSLC `ContainerState`: `Invalid → Created → Running → Exited → Deleted`.
 | `StartAsync` | Creates the session if needed, ensures image (per pull policy), `CreateContainer`, then `Container.Start()`. A missing init binary throws `ArgumentException 0x80070057` with the OCI message → surfaced as `WslContainerStartupException`. |
 | `StopAsync` | Signal the init process with SIGTERM, allow 10 seconds to exit, then send SIGKILL and wait up to 5 seconds. Managed polling avoids the native blocking `Container.Stop` call and does not hold the session gate during the grace period. **Idempotent.** |
 | `DeleteAsync` | `Container.Delete(Force)`. Double-delete throws `0x80010108` (`RPC_E_DISCONNECTED`) → swallowed. |
-| `DisposeAsync` | Normally stop (if running), delete and release handles. Reusable containers are retained. **Idempotent.** |
+| `DisposeAsync` | Normally stop (if running), delete and release handles. Reusable containers and `WithCleanUp(false)` containers are stopped and retained. **Idempotent.** |
 
 ## Cleanup guarantees
 
 - Use `await using` so caller failures always reach `DisposeAsync`. The runtime process-exit hook
   owns session cleanup; it is not a substitute for disposing each container.
+- `EnableCleanUp` defaults to `true`, mirroring Testcontainers' `WithCleanUp`: `DisposeAsync` stops and
+  removes the container. Docker also removes the container's anonymous volumes; named
+  `WithVolumeMount` volumes are shared data and are retained (WSLC volumes belong to the session).
+  Set `.WithCleanUp(false)` to stop and retain the container (and its volumes) for inspection, then
+  remove it deliberately with `DeleteAsync` before disposal (or with the backend's own tooling).
+  `WithReuse()` implies cleanup off; `WithReuse().WithCleanUp(true)` is rejected at build time.
+- WSLC named volumes live on the session and are retained by default, matching Docker. Set
+  `ContainerCleanup.CleanUpVolumesOnExit = true`, or `PURVIEW_CONTAINERS_CLEAN_VOLUMES=true` before the
+  first container is created, to delete every volume the session recorded when it terminates. That is the
+  session-wide, test-run switch: it removes the session's containers first and then those volumes, while
+  leaving the shared image store intact. `WslContainerRuntimeOptions.CleanUpVolumesOnTerminate` overrides
+  the shared switch (`null` inherits it), and `IContainerBackend.CleanUpAsync()` performs the cleanup
+  explicitly.
 - `EnableAutoRemove` defaults to `false`: the library owns deletion via `DisposeAsync`. WSLC auto-removal would delete one-shot containers before their state/output could be inspected. Opt in with `.WithAutoRemove()` when desired.
 - Partial startup failure (image pull / create / start / wait): the container is torn down via the same `DisposeAsync` path.
 - Cancellation: a cancelled `StartAsync`/wait triggers the same teardown.

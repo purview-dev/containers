@@ -13,6 +13,7 @@ namespace Purview.Containers.Docker;
 public sealed class DockerContainerBackend : IContainerBackend, IContainerBackendPreference
 {
 	readonly Lazy<WslDockerHost?> _wslDockerHost = new(WslDockerHost.Detect);
+	readonly DockerVolumeCleanup _cleanup = new();
 
 	/// <summary>Stable backend identifier.</summary>
 	public string Name => "docker";
@@ -31,8 +32,16 @@ public sealed class DockerContainerBackend : IContainerBackend, IContainerBacken
 	{
 		ArgumentNullException.ThrowIfNull(configuration);
 		var name = ContainerName.Generate(configuration);
-		return new DockerContainer(configuration, token => CreateHandleAsync(configuration, name, token), name);
+		return new DockerContainer(
+			configuration,
+			token => CreateHandleAsync(configuration, name, token),
+			name,
+			_cleanup
+		);
 	}
+
+	/// <inheritdoc />
+	public Task CleanUpAsync(CancellationToken cancellationToken = default) => _cleanup.CleanUpAsync(cancellationToken);
 
 	/// <inheritdoc />
 	public async Task<ContainerBackendInfo> GetInfoAsync(CancellationToken cancellationToken = default)
@@ -169,6 +178,7 @@ public sealed class DockerContainerBackend : IContainerBackend, IContainerBacken
 			}
 		}
 		cancellationToken.ThrowIfCancellationRequested();
+		await _cleanup.EnsureOwnedAsync(configuration.NamedVolumes, cancellationToken).ConfigureAwait(false);
 		var container = CreateBuilder(configuration, name).Build();
 		if (configuration.ResourceMappings.Count > 0)
 		{
@@ -192,6 +202,7 @@ public sealed class DockerContainerBackend : IContainerBackend, IContainerBacken
 			.WithName(name)
 			.WithAutoRemove(configuration.EnableAutoRemove)
 			.WithReuse(configuration.Reuse)
+			.WithCleanUp(configuration.EnableCleanUp)
 			.WithImagePullPolicy(
 				(configuration.RegistryCredentials is null ? configuration.PullPolicy : Images.PullPolicy.Never) switch
 				{

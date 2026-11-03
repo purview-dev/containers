@@ -27,4 +27,10 @@ public interface IContainerBackend
 		ImageBuildConfiguration configuration,
 		CancellationToken cancellationToken = default
 	) => throw new Runtime.ContainerNotSupportedException("This backend does not support image builds.");
+
+	/// <summary>
+	/// Best-effort removal of resources this backend owns that outlive individual containers, such as the
+	/// named volumes it created. The default does nothing. Dispose containers before calling it.
+	/// </summary>
+	Task CleanUpAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }

@@ -27,7 +27,9 @@ It requires no Docker installation. The Docker backend is built on
 Both backends expose file copy/read, one-shot exit waits, managed bridge networks/aliases and
 Dockerfile builds through the same contract. Startup has a five-minute total budget; exec defaults
 to one minute, stop to 15 seconds and cleanup to 30 seconds, all configurable. Cancellation is
-propagated; synchronous native WSLC calls cannot be forcibly interrupted. See
+propagated; synchronous native WSLC calls cannot be forcibly interrupted. Disposal follows
+Testcontainers' `WithCleanUp`: containers are removed by default, `.WithCleanUp(false)` retains them
+for inspection, and `.WithAutoRemove()` is opted into separately. See
 [Capabilities and Cancellation](docs/wiki/Backend-Capabilities.md) for APIs, ownership and limits.
 
 > **Experimental.** This project is an experiment in running throwaway containers through Microsoft
@@ -41,7 +43,10 @@ propagated; synchronous native WSLC calls cannot be forcibly interrupted. See
 > by default** (`StorageMode.Shared`): sessions reuse a stable image store
 > (`%LOCALAPPDATA%\Purview\WslContainers\images`) so images are pulled once, not per session;
 > `StorageMode.PerSession` provides isolation. Move the store with `PURVIEW_CONTAINERS_STORAGE_PATH` or
-> `WslContainerRuntimeOptions.StoragePath`. Runnable samples live in `samples/getting-started`.
+> `WslContainerRuntimeOptions.StoragePath`. Named volumes are retained by default; set
+> `PURVIEW_CONTAINERS_CLEAN_VOLUMES=true` (or `ContainerCleanup.CleanUpVolumesOnExit`) to delete the
+> volumes the library created when the process or session ends. Runnable samples live in
+> `samples/getting-started`.
 
 ## Prerequisites
 

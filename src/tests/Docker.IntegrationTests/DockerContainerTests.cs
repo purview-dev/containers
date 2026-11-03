@@ -1,4 +1,6 @@
+using Docker.DotNet.Models;
 using Purview.Containers.Waiting;
+using TcSettings = DotNet.Testcontainers.Configurations.TestcontainersSettings;
 
 namespace Purview.Containers.Docker;
 
@@ -181,6 +183,148 @@ public class DockerContainerTests
 		await container.DisposeAsync();
 		await container.DisposeAsync();
 
-		await Assert.That(container.State).IsNotEqualTo(ContainerState.Running);
+		await Assert.That(container.State).IsEqualTo(ContainerState.Deleted);
+	}
+
+	[Test]
+	public async Task DisposeAsync_WithCleanUpDisabled_RetainsTheStoppedContainer(CancellationToken cancellationToken)
+	{
+		// Arrange
+		await SkipIfUnavailableAsync();
+		var container = new ContainerBuilder()
+			.WithBackend(DockerContainerBackend.Create())
+			.WithImage(Image)
+			.WithCommand("/bin/sh", "-c", "echo ready && sleep 60")
+			.WithCleanUp(false)
+			.Build();
+		await container.StartAsync(cancellationToken);
+		var id = container.Id;
+
+		try
+		{
+			// Act
+			await container.DisposeAsync();
+
+			// Assert: Testcontainers stops the container but leaves it on the daemon.
+			await Assert.That(container.State).IsEqualTo(ContainerState.Exited);
+			using var client = TcSettings.OS.DockerEndpointAuthConfig.GetDockerClientBuilder(Guid.NewGuid()).Build();
+			var inspect = await client.Containers.InspectContainerAsync(id, cancellationToken);
+			await Assert.That(inspect.State?.Status).IsEqualTo("exited");
+		}
+		finally
+		{
+			// Remove the retained container explicitly so the daemon is left clean.
+			using var client = TcSettings.OS.DockerEndpointAuthConfig.GetDockerClientBuilder(Guid.NewGuid()).Build();
+			try
+			{
+				await client.Containers.RemoveContainerAsync(
+					id,
+					new ContainerRemoveParameters { Force = true, RemoveVolumes = true },
+					cancellationToken
+				);
+			}
+			catch (global::Docker.DotNet.DockerApiException exception)
+				when (exception.StatusCode == System.Net.HttpStatusCode.NotFound) { }
+		}
+	}
+
+	[Test]
+	[NotInParallel]
+	public async Task CleanUpAsync_RemovesNamedVolumesTheBackendCreated(CancellationToken cancellationToken)
+	{
+		// Arrange
+		await SkipIfUnavailableAsync();
+		var previous = ContainerCleanup.CleanUpVolumesOnExit;
+		var volumeName = "purview-cleanup-" + Guid.NewGuid().ToString("N")[..8];
+		var backend = DockerContainerBackend.Create();
+		ContainerCleanup.CleanUpVolumesOnExit = true;
+		string? containerId = null;
+		try
+		{
+			var container = new ContainerBuilder(backend)
+				.WithImage(Image)
+				.WithVolumeMount(volumeName, "/data")
+				.WithCommand("/bin/sh", "-c", "echo data > /data/file.txt; sleep 60")
+				.WithWaitStrategy(Wait.ForCommand("/bin/sh", "-c", "test -f /data/file.txt"))
+				.Build();
+			await container.StartAsync(cancellationToken);
+			containerId = container.Id;
+
+			using (var client = CreateClient())
+			{
+				var volume = await client.Volumes.InspectAsync(volumeName, cancellationToken);
+				await Assert.That(volume.Labels.ContainsKey("purview.containers.owner")).IsTrue();
+			}
+
+			// Act
+			await backend.CleanUpAsync(cancellationToken);
+
+			// Assert
+			using var verify = CreateClient();
+			await Assert.That(await VolumeExistsAsync(verify, volumeName, cancellationToken)).IsFalse();
+			await Assert.That(await ContainerExistsAsync(verify, containerId, cancellationToken)).IsFalse();
+		}
+		finally
+		{
+			ContainerCleanup.CleanUpVolumesOnExit = previous;
+			using var client = CreateClient();
+			if (containerId is not null)
+			{
+				try
+				{
+					await client.Containers.RemoveContainerAsync(
+						containerId,
+						new ContainerRemoveParameters { Force = true, RemoveVolumes = false },
+						CancellationToken.None
+					);
+				}
+				catch (global::Docker.DotNet.DockerApiException) { }
+			}
+
+			try
+			{
+				await client.Volumes.RemoveAsync(volumeName, force: true, CancellationToken.None);
+			}
+			catch (global::Docker.DotNet.DockerApiException) { }
+		}
+	}
+
+	static global::Docker.DotNet.DockerClient CreateClient() =>
+		TcSettings.OS.DockerEndpointAuthConfig.GetDockerClientBuilder(Guid.NewGuid()).Build();
+
+	static async Task<bool> VolumeExistsAsync(
+		global::Docker.DotNet.DockerClient client,
+		string name,
+		CancellationToken cancellationToken
+	)
+	{
+		try
+		{
+			await client.Volumes.InspectAsync(name, cancellationToken);
+			return true;
+		}
+		catch (global::Docker.DotNet.DockerApiException exception)
+			when (exception.StatusCode == System.Net.HttpStatusCode.NotFound)
+		{
+			return false;
+		}
+	}
+
+	static async Task<bool> ContainerExistsAsync(
+		global::Docker.DotNet.DockerClient client,
+		string id,
+		CancellationToken cancellationToken
+	)
+	{
+		try
+		{
+			await client.Containers.InspectContainerAsync(id, cancellationToken);
+			return true;
+		}
+		catch (global::Docker.DotNet.DockerApiException exception)
+			when (exception.StatusCode == System.Net.HttpStatusCode.NotFound)
+		{
+			return false;
+		}
 	}
 }

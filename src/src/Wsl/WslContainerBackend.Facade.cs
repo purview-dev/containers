@@ -50,6 +50,13 @@ public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPr
 	}
 
 	/// <inheritdoc />
+	public Task CleanUpAsync(CancellationToken cancellationToken = default)
+	{
+		var backend = WslPayload.TryCreateBackend();
+		return backend is null ? Task.CompletedTask : backend.CleanUpAsync(cancellationToken);
+	}
+
+	/// <inheritdoc />
 	public async Task<ContainerBackendInfo> GetInfoAsync(CancellationToken cancellationToken = default)
 	{
 		var backend = WslPayload.TryCreateBackend();

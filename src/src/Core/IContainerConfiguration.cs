@@ -50,6 +50,14 @@ public interface IContainerConfiguration
 	/// <summary>Automatically remove the container when it stops.</summary>
 	bool EnableAutoRemove { get; }
 
+	/// <summary>
+	/// Remove the container when it is disposed, mirroring Testcontainers' <c>WithCleanUp</c>. Defaults to
+	/// <c>true</c>. When <c>false</c>, disposal stops and retains the container (and its volumes) so its
+	/// state and output can be inspected. Remove a retained container with <c>DeleteAsync</c> before disposal,
+	/// or with the backend's own tooling. Independent of <see cref="EnableAutoRemove" />.
+	/// </summary>
+	bool EnableCleanUp => true;
+
 	/// <summary>Image pull policy. Defaults to <see cref="PullPolicy.Missing" />.</summary>
 	PullPolicy PullPolicy { get; }
 

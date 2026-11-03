@@ -20,6 +20,7 @@ do not preserve an image's default command.
 | Managed bridge networks and aliases | `CreateNetworkAsync`, `WithNetwork`, `WithNetworkAliases` | CLI network and container creation; alias DNS |
 | Dockerfile builds | `BuildImageAsync` | CLI build in the owning SDK session/store |
 | Reuse | `WithName(...).WithReuse()` | Same configuration/name within the owning session |
+| Disposal cleanup | `WithCleanUp(bool)` (default `true`) | Stop then force-delete; `false` stops and retains the container |
 | Explicit deletion | `DeleteAsync(ct)` | Force-delete, including reusable containers |
 
 Use absolute Linux destinations for copy/mapping operations. A file source names the destination
@@ -111,11 +112,27 @@ Use unique names for independently owned resources.
 
 ## Reuse and platform limits
 
-Reuse is opt-in, requires a stable explicit name, and cannot be combined with auto-remove.
-`DisposeAsync` no longer promises deletion for a reusable container. Call `DeleteAsync(ct)` to
-remove it deliberately.
+Reuse is opt-in, requires a stable explicit name, cannot be combined with auto-remove, and implies
+cleanup off (mirroring Testcontainers). `WithReuse().WithCleanUp(true)` is rejected at build time.
+`DisposeAsync` no longer promises deletion for a reusable container; it stops and retains it. Call
+`DeleteAsync(ct)` to remove it deliberately.
 Delete before disposing the wrapper; to remove a retained container later, reopen it with matching
 reuse settings and delete through that wrapper.
+
+Disposal cleanup is on by default (`WithCleanUp(true)`). It removes the container, and the Docker
+backend also removes the container's anonymous volumes (`RemoveVolumes = true`, as Testcontainers
+does). Named `WithVolumeMount` volumes are shared data and are retained on both backends; WSLC
+named volumes are recorded in the session's storage VHD and do not disappear automatically when the
+session ends. `WithCleanUp(false)` stops the container and keeps it (and its volumes) for inspection,
+exactly like Testcontainers' `WithCleanUp(false)`; remove it with `DeleteAsync` before disposal or
+with the backend's tooling.
+
+WSLC named volumes are retained across sessions by default, matching Docker. A test run that must
+leave no volume state behind can set `ContainerCleanup.CleanUpVolumesOnExit = true`
+(or `PURVIEW_CONTAINERS_CLEAN_VOLUMES=true`). Session termination then deletes the containers it
+recorded and their named volumes; the shared image store and host bind mounts are never deleted.
+`WslContainerRuntimeOptions.CleanUpVolumesOnTerminate` overrides the shared switch for one runtime, and
+`IContainerBackend.CleanUpAsync()` performs the same cleanup explicitly.
 
 Docker delegates reuse to Testcontainers: it survives wrapper/process lifetimes and opts out of
 normal resource-reaper cleanup. WSLC reuse lasts only as long as its owning session, checks the

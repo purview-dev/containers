@@ -44,9 +44,22 @@ These are the ones that matter when a test throws:
 
 - Use `await using` so failures run `DisposeAsync`. The process-exit hook owns session cleanup,
   not a per-container disposal registry.
+- `EnableCleanUp` defaults to **`true`** (Testcontainers' `WithCleanUp`): `DisposeAsync` stops and
+  deletes the container; Docker also removes its anonymous volumes. Named `WithVolumeMount` volumes
+  are shared data and survive (WSLC volumes live on the session). `.WithCleanUp(false)` stops the
+  container and keeps it — and its volumes — for inspection; remove it with `DeleteAsync` before
+  disposal, or with the backend's own tooling.
 - `EnableAutoRemove` defaults to **`false`**: the library owns deletion. WSLC auto-removal would
   delete a one-shot container before its state or output could be inspected — precisely when you need
-  them. Opt in with `.WithAutoRemove()`.
+  them. Opt in with `.WithAutoRemove()`. It is independent of cleanup and wins when the init process
+  exits.
+- `WithReuse()` implies cleanup off, and `WithReuse().WithCleanUp(true)` is rejected at build time.
+- Named volumes are **retained by default**, matching Docker. Set
+  `ContainerCleanup.CleanUpVolumesOnExit = true`, or `PURVIEW_CONTAINERS_CLEAN_VOLUMES=true` before the
+  first container is created, to delete the volumes the active backend created when the process exits or
+  its session terminates. `ContainerBackends.CleanUpAsync()` / `IContainerBackend.CleanUpAsync()` does it
+  explicitly; pre-existing volumes, the shared image store and host bind mounts are never touched. On WSLC,
+  `WslContainerRuntimeOptions.CleanUpVolumesOnTerminate` overrides the shared switch.
 - A **partial startup failure** — image pull, create, start or wait — tears down through the same
   `DisposeAsync` path. So does a **cancelled** `StartAsync` or wait.
 - Builder-produced containers serialize lifecycle operations; disposal cancels an in-flight startup
@@ -155,7 +168,7 @@ Readiness exhaustion throws `ContainerTimeoutException`. Live log tails need a c
 Native synchronous WSLC calls cannot be interrupted safely. Managed waits and CLI processes are
 bounded, but do not claim hard zero-hang guarantees for a blocked native runtime.
 `Wait.ForExitCode(expected)` handles one-shot jobs; `WaitForExitAsync(ct)` returns the actual code.
-`WithName(...).WithReuse()` retains a named container on disposal; `DeleteAsync(ct)` explicitly removes
+`WithName(...).WithReuse()` retains a named container on disposal, with cleanup implied off; `DeleteAsync(ct)` explicitly removes
 it. WSLC reuse ends with the owning session; Docker follows Testcontainers reuse semantics.
 
 ## Related skills

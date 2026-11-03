@@ -52,7 +52,8 @@ public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPr
 		string? storagePath,
 		int storageMode,
 		long? sessionTimeoutTicks,
-		bool disableProcessExitCleanup
+		bool disableProcessExitCleanup,
+		bool? cleanUpVolumesOnTerminate
 	)
 	{
 		WslContainerRuntimeOptions options = new()
@@ -65,6 +66,7 @@ public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPr
 			StorageMode = (StorageMode)storageMode,
 			SessionTimeout = sessionTimeoutTicks is { } ticks ? TimeSpan.FromTicks(ticks) : null,
 			DisableProcessExitCleanup = disableProcessExitCleanup,
+			CleanUpVolumesOnTerminate = cleanUpVolumesOnTerminate,
 		};
 		return new WslContainerBackend(options);
 	}
@@ -108,6 +110,9 @@ public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPr
 			info.MissingComponents
 		);
 	}
+
+	/// <inheritdoc />
+	public Task CleanUpAsync(CancellationToken cancellationToken = default) => Runtime.CleanUpAsync(cancellationToken);
 
 	/// <inheritdoc />
 	public async Task<IContainerResource> CreateNetworkAsync(
