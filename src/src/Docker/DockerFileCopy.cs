@@ -4,10 +4,16 @@ namespace Purview.Containers.Docker;
 
 static class DockerFileCopy
 {
-	internal static async Task CopyAsync(string id, string source, string target, CancellationToken cancellationToken)
+	internal static async Task CopyAsync(
+		string id,
+		string source,
+		string target,
+		UnixFileMode? mode,
+		CancellationToken cancellationToken
+	)
 	{
 		using var archive = await ContainerResourceArchive
-			.CreateAsync(source, target, cancellationToken)
+			.CreateAsync(source, target, mode, cancellationToken)
 			.ConfigureAwait(false);
 		using var client = TestcontainersSettings
 			.OS.DockerEndpointAuthConfig.GetDockerClientBuilder(Guid.NewGuid())

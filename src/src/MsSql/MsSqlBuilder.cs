@@ -27,6 +27,12 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 	{
 		WithImage(image)
 			.WithPortBinding(MsSqlPort, assignRandomHostPort: true)
+			// SQL Server 2025 (and CU11+ 2022) images run as the non-root 'mssql' user. WSLC does
+			// not give that user a writable home directory or the capabilities needed to create
+			// '/.system', so the image exits with 0xC0000022 unless the container is privileged.
+			// This is the managed-SDK equivalent of '--user root' without requiring the wslc CLI;
+			// Docker accepts it unchanged. A caller can opt out with WithPrivileged(false).
+			.WithPrivileged()
 			.WithConnectionStringProvider(new MsSqlConnectionStringProvider());
 	}
 
@@ -36,6 +42,7 @@ public class MsSqlBuilder : ContainerBuilder<MsSqlBuilder, MsSqlContainer, MsSql
 	{
 		WithImage(MsSqlImage)
 			.WithPortBinding(MsSqlPort, assignRandomHostPort: true)
+			.WithPrivileged()
 			.WithConnectionStringProvider(new MsSqlConnectionStringProvider());
 	}
 

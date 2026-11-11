@@ -23,10 +23,10 @@ a Mac) — nothing changes between them.
 
 Three things make this work, and nothing else is required:
 
-- **A platform-neutral target framework** (`net10.0`). `Purview.Containers.Wsl` is multi-target; a
-  `net10.0` project binds its portable facade, which runs the WSLC implementation on Windows and reports
-  `wsl` unavailable everywhere else. (A Windows target framework still works — it binds the
-  implementation directly — but it cannot run on a Linux CI runner.)
+- **A platform-neutral target framework** (`net10.0` or `net11.0`). `Purview.Containers.Wsl` is
+  multi-target; a platform-neutral project binds its portable facade, which runs the WSLC implementation on
+  Windows and reports `wsl` unavailable everywhere else. (A Windows target framework still works — it binds
+  the implementation directly — but it cannot run on a Linux CI runner.)
 - **The umbrella package** (`Purview.Containers`), which brings `Purview.Containers.Core` (the
   abstractions) and both backends. WSLC is preferred where it is usable and Docker is the fallback, so the
   one project runs everywhere. Prefer to be explicit? Reference `Purview.Containers.Core` plus
@@ -109,7 +109,7 @@ diagnostics.
 
 ## Requirements
 
-- The abstractions and every service module are portable `net10.0`; see
+- The abstractions and every service module are portable `net10.0`/`net11.0`; see
   [Consumer Requirements](Consumer-Requirements.md) for the exact target-framework contract, the
   `PCC0001`/`PCC0002` guards and the `EnableWindowsTargeting` workaround for non-Windows build agents.
 - The per-module connection-string shapes (Redis, PostgreSQL, SQL Server, MySQL, RabbitMQ, Azurite, NATS,

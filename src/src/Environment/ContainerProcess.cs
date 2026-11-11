@@ -29,8 +29,7 @@ static class ContainerProcess
 		foreach (var argument in arguments)
 			startInfo.ArgumentList.Add(argument);
 
-		using var process =
-			Process.Start(startInfo)
+		using var process = Process.Start(startInfo)
 			?? throw new InvalidOperationException($"Could not start container environment command '{command}'.");
 
 		try

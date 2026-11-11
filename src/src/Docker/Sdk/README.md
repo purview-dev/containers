@@ -35,7 +35,7 @@ PURVIEW_CONTAINERS_BACKEND=docker     # or "auto" (the default) to probe WSLC fi
 
 ## Requirements
 
-- **.NET 10 or later**, any platform (this package is portable).
+- **.NET 10 or .NET 11**, any platform (this package is portable; both framework builds ship).
 - A reachable Docker daemon. `DockerContainerBackend.GetInfoAsync()` pings it and reports the server
   version, or the reason it could not be reached, so a missing daemon is a clear message and not a
   timeout deep inside a test.
@@ -56,7 +56,8 @@ PURVIEW_CONTAINERS_BACKEND=docker     # or "auto" (the default) to probe WSLC fi
 - `ExecAsync` supports environment, working-directory and timeout overrides. Capture-based exec
   rejects interactive stdin. Cancellation/deadlines propagate as `OperationCanceledException`.
 - Entrypoint, user, labels, pre-start/runtime file copy, one-shot exit waits, managed networks/aliases,
-  Dockerfile builds and opt-in reuse are available. Defaults are five minutes for total startup,
+  Linux capabilities (`WithCapabilityAdd`/`WithCapabilityDrop`), Dockerfile builds and opt-in reuse are
+  available. Defaults are five minutes for total startup,
   one minute for exec/copy/read/log snapshots, 15 seconds for stop and 30 seconds for cleanup.
   Reuse follows Testcontainers semantics and disables normal reaper cleanup; `DeleteAsync` removes
   retained containers explicitly. See

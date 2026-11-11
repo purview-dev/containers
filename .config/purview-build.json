@@ -63,15 +63,21 @@
 				"purview-logo-light.png",
 				"buildTransitive/Purview.Containers.Docker.props"
 			],
-			// Purview.Containers.Wsl is multi-target: lib/net10.0 is the portable facade, and
-			// lib/net10.0-windows10.0.19041 is the WSLC implementation. The portable consumer loads
-			// that implementation (plus the WSLC projection, its Windows SDK dependencies and the
-			// native SDK) from payload/<rid>/ via the buildTransitive targets.
+			// Purview.Containers.Wsl is multi-target: lib/net10.0 and lib/net11.0 are the portable facades
+			// (net11.0 is compiled with runtime-async), and the *-windows10.0.19041 builds are the WSLC
+			// implementations. A portable consumer loads the Windows implementation (plus the WSLC
+			// projection, its Windows SDK dependencies and the native SDK) from payload/<rid>/ via the
+			// buildTransitive targets; one payload serves both portable targets because a .NET 11 process
+			// loads a .NET 10 assembly.
 			"purview.containers.wsl": [
 				"lib/net10.0/Purview.Containers.Wsl.dll",
 				"lib/net10.0/Purview.Containers.Wsl.xml",
 				"lib/net10.0-windows10.0.19041/Purview.Containers.Wsl.dll",
 				"lib/net10.0-windows10.0.19041/Purview.Containers.Wsl.xml",
+				"lib/net11.0/Purview.Containers.Wsl.dll",
+				"lib/net11.0/Purview.Containers.Wsl.xml",
+				"lib/net11.0-windows10.0.19041/Purview.Containers.Wsl.dll",
+				"lib/net11.0-windows10.0.19041/Purview.Containers.Wsl.xml",
 				"README.md",
 				"purview-logo-light.png",
 				"buildTransitive/Purview.Containers.Wsl.props",

@@ -86,7 +86,8 @@ public class MyServiceBuilder : ContainerBuilder<MyServiceBuilder, MyServiceCont
 - Package ID `Purview.Containers.MyService` (namespace prefix `Purview`).
 - Module is thin: no session management, no port allocation logic, no output buffering.
 - Default networking is `Bridged` (from the core defaults); ports use native random allocation unless a fixed host port is explicitly requested.
-- The module is **backend-neutral** (`net10.0`, references `Purview.Containers.Core` only) and therefore does **not** bring a backend or inherit its consumer requirements. A consumer references the module *and* a backend package (`Purview.Containers.Wsl` for WSLC, `Purview.Containers.Docker` for Docker). See [Consumer Requirements](Consumer-Requirements.md).
+- The module is **backend-neutral** (`net10.0` and `net11.0`, references `Purview.Containers.Core` only) and therefore does **not** bring a backend or inherit its consumer requirements. A consumer references the module *and* a backend package (`Purview.Containers.Wsl` for WSLC, `Purview.Containers.Docker` for Docker). See [Consumer Requirements](Consumer-Requirements.md).
 - If a capability has no implemented WSLC equivalent (e.g. UDP or interactive capture stdin), throw
-  `ContainerNotSupportedException` rather than silently ignoring it. User overrides and managed
-  networks are implemented through the session-scoped CLI fallback.
+  `ContainerNotSupportedException` rather than silently ignoring it. User overrides, managed networks and
+  Linux capabilities use the managed WSLC SDK; only entrypoint/user/labels, copy, builds and reuse use the
+  session-scoped CLI fallback.

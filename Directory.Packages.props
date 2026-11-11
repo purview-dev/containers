@@ -27,19 +27,29 @@
 	  nothing left to drift.
 	-->
 	<PropertyGroup>
-		<MicrosoftWSLContainersVersion>3.0.3</MicrosoftWSLContainersVersion>
+		<MicrosoftWSLContainersVersion>3.0.5</MicrosoftWSLContainersVersion>
 		<WindowsSdkRefPackageVersion>10.0.26100.80</WindowsSdkRefPackageVersion>
 		<TUnitVersion>1.76.0</TUnitVersion>
 	</PropertyGroup>
 
 	<ItemGroup Label="Transitive Pinning">
-		<PackageVersion Include="System.Security.Cryptography.Pkcs" Version="9.0.21" />
+		<!--
+		  Transitive pin for a package the Azure SDK pulls in below its patched version. It is on the
+		  .NET 10 servicing line on purpose: the .NET 8/.NET 9 lines are no longer supported, and a
+		  component declares the lowest band a consumer on the oldest supported framework can take.
+		-->
+		<PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageVersion Include="Aspire.Hosting" Version="13.6.4" />
+		<PackageVersion Include="Aspire.Hosting" Version="13.6.5" />
 		<PackageVersion Include="Microsoft.WSL.Containers" Version="$(MicrosoftWSLContainersVersion)" />
 		<PackageVersion Include="Testcontainers" Version="4.16.0" />
-		<PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.11.0" />
+		<!--
+		  Shipped by every package (not PrivateAssets), so its version is the floor every consumer
+		  inherits. 10.0.0 is the .NET 10 GA release of the extension - the lowest that ships for the
+		  oldest framework these packages target - rather than the newest 10.x release.
+		-->
+		<PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.0.0" />
 		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.402" />
 		<PackageVersion Include="Purview.Telemetry.SourceGenerator" Version="5.0.5" />
 		<PackageVersion Include="TUnit" Version="$(TUnitVersion)" />

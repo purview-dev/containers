@@ -24,13 +24,13 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 | Path | Purpose |
 | --- | --- |
 | `src/Containers.slnx` | Canonical solution for restore, build, test and pack |
-| `src/src/Containers` | Umbrella package (`Purview.Containers`, `net10.0`): references `Core` and both backends; no code of its own |
-| `src/src/Core` | Backend-neutral abstractions (`Purview.Containers.Core`, `net10.0`, namespace `Purview.Containers`): `IContainer`/`ContainerConfiguration`, `ContainerBuilder`, `ContainerBase`, `IContainerBackend`/`ContainerBackends`, wait strategies, images, networking, mounts, diagnostics |
-| `src/src/Wsl` | WSL Containers backend (`Purview.Containers.Wsl`, multi-target `net10.0` facade + `net10.0-windows10.0.19041.0` implementation): `WslContainerBackend`, the shared session runtime, `WslContainer`, `WslContainerSession`, and the portable facade (`WslPayload`, `*.Facade.cs`) that loads the implementation at run time |
-| `src/src/Docker` | Docker backend (`Purview.Containers.Docker`, `net10.0`): `DockerContainerBackend` + `DockerContainer` over Testcontainers |
-| `src/src/Environment` | Standalone CLI bind-sharing resolver (`Purview.Containers.Environment`, `net10.0`); BCL-only, no backend or Aspire dependency |
+| `src/src/Containers` | Umbrella package (`Purview.Containers`, `net10.0` and `net11.0`): references `Core` and both backends; no code of its own |
+| `src/src/Core` | Backend-neutral abstractions (`Purview.Containers.Core`, `net10.0` and `net11.0`, namespace `Purview.Containers`): `IContainer`/`ContainerConfiguration`, `ContainerBuilder`, `ContainerBase`, `IContainerBackend`/`ContainerBackends`, wait strategies, images, networking, mounts, diagnostics |
+| `src/src/Wsl` | WSL Containers backend (`Purview.Containers.Wsl`, multi-target `net10.0`/`net11.0` facades + `net10.0`/`net11.0` `-windows10.0.19041.0` implementations): `WslContainerBackend`, the shared session runtime, `WslContainer`, `WslContainerSession`, and the portable facade (`WslPayload`, `*.Facade.cs`) that loads the implementation at run time |
+| `src/src/Docker` | Docker backend (`Purview.Containers.Docker`, `net10.0` and `net11.0`): `DockerContainerBackend` + `DockerContainer` over Testcontainers |
+| `src/src/Environment` | Standalone CLI bind-sharing resolver (`Purview.Containers.Environment`, `net10.0` and `net11.0`); BCL-only, no backend or Aspire dependency |
 | `src/src/Aspire` | Optional `Purview.Containers.Aspire` adapter; translates bind sources at `BeforeResourceStartedEvent` without changing endpoints or named volumes |
-| `src/src/<Module>` | Service modules (`Purview.Containers.<Module>`, `net10.0`); each is a thin layer over the abstractions and carries a bespoke `Sdk/README.md` |
+| `src/src/<Module>` | Service modules (`Purview.Containers.<Module>`, `net10.0` and `net11.0`); each is a thin layer over the abstractions and carries a bespoke `Sdk/README.md` |
 | `src/src/<Project>/Sdk` | Package-only assets. `Sdk/README.md` is packed as the package README (suppressing the repo-root README); `Sdk/buildTransitive/**` ships MSBuild assets to consumers (the abstractions' backend registration, each backend package's own registration entry, and the WSL backend's consumer defaults and guards) |
 | `src/tests` | TUnit unit (`*.UnitTests`) and container integration (`*.IntegrationTests`) projects: the WSLC suites need a WSLC host, `Docker.IntegrationTests` and `Modules.DockerIntegrationTests` need a Docker daemon |
 | `docs/wiki` | User-facing documentation wiki, aggregated by the purview-dev website. `Backends.md` is the consumer guide to choosing and configuring WSLC or Docker |
@@ -38,6 +38,7 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 | `mkdocs.yml` | Wiki site configuration (`docs_dir: docs/wiki`) |
 | `src/Directory.Build.props` / `src/Directory.Build.targets` | Solution-wide SDK import, package metadata and the shared package icon |
 | `.config/purview-build.json` | Shared `Purview.Build` pipeline configuration: solution, test discovery/filter and the **exhaustive** pack-validation manifest |
+| `Directory.Build.rsp` | Purview.BuildSdk-managed MSBuild response file: enables the .NET 11 multithreaded build (`-mt`) and disables node reuse (`-nr:false`). Delete its marker line to take ownership |
 | `Justfile` | Supported local workflow commands |
 | `skills` | The agent skills this repository authors and publishes |
 | `.agents/skills` | Skills installed from other repositories by the skills CLI (gitignored; `skills-lock.json` is the tracked record) |
@@ -55,8 +56,10 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 ## Runtime invariants
 
 - Shared extended APIs cover entrypoint/user/labels, exec overrides, resource copy, one-shot exit waits,
-  managed bridge networks/aliases, builds and reuse. WSLC must target the SDK-owned session with a
-  bounded `wslc` subprocess for SDK-missing capabilities; ordinary SDK-only consumers need no CLI.
+  managed bridge networks/aliases, Linux capabilities, session host loopback, builds and reuse. WSLC uses
+  the managed `Microsoft.WSL.Containers` 3.0.5 SDK for lifecycle, images, networks, capabilities and host
+  loopback, and the SDK-owned session with a bounded `wslc` subprocess only for SDK-missing capabilities
+  (entrypoint/user/labels, copy, builds, reuse); ordinary SDK-only consumers need no CLI.
 - Never swallow caller cancellation as a successful exec/stop. Startup is a total five-minute managed
   budget; exec defaults to one minute, stop to 15 seconds and cleanup to 30 seconds. Synchronous WSLC
   native calls cannot be safely interrupted; never advertise hard zero-hang guarantees.
@@ -82,8 +85,18 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   directories. Both backends share the archive builder and preserve exact file targets.
 
 - **One shared, process-wide session** (`WslContainerRuntime.Instance`), lazily started, named
-  `wslc-{pid}-{random8}`. Container isolation comes from unique names and unique host ports, not from extra
+  `purview-{pid}-{random8}`. Container isolation comes from unique names and unique host ports, not from extra
   sessions.
+- **Crash residue is swept before the first session starts.** A process killed by a timeout or CI
+  cancellation cannot run its exit hook, so its session and per-session storage directory survive.
+  `WslSessionSweeper` terminates `purview-*` and legacy `wslc-*` sessions whose name-embedded creator PID
+  is no longer alive, then deletes their `%LOCALAPPDATA%\Purview\WslContainers\sessions` directories.
+  After the session opens the shared store it also removes stale containers whose generated
+  `{image}-{pid}-{6 hex}` name embeds a dead PID, and prunes unused anonymous volumes. Live PIDs, the
+  `wslc-cli-*` session and other tools' sessions are never touched. The sweep is best-effort and
+  bounded; `WslContainerRuntime.SweepOrphanedSessionsAsync()` exposes the session sweep explicitly and
+  `CleanUpAsync()` also removes container residue. Do not widen the name match or drop the PID liveness
+  check.
 - **Images are shared by default** (`StorageMode.Shared` → `%LOCALAPPDATA%\Purview\WslContainers\images`). A
   session exclusively locks its `storage.vhdx`; the runtime verifies the store once and falls back to an
   isolated per-process store on a sharing violation (`0x80070020`). Do not remove that fallback.
@@ -114,19 +127,31 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 
 ## Consumer requirements and compatibility
 
-- The packages split by framework: `Purview.Containers.Core` (abstractions) and the service modules target
-  **`net10.0`** on any platform. `Purview.Containers.Wsl` is **multi-target**: `net10.0` (a portable
-  facade) and `net10.0-windows10.0.19041.0` (the WSLC implementation). `src/src/Directory.Build.props`
-  sets the `net10.0` subtree default and `Wsl.csproj` adds the Windows build; the WSLC tests keep the
-  Windows target because they drive WSLC and therefore bind the implementation, while the Docker
-  integration projects override to `net10.0` so they run on Linux. The contract, the
-  failures that enforce it and the CI workarounds are documented in
+- The packages split by framework and support **.NET 10 and .NET 11 only** (`.NET 8` and `.NET 9` are
+  dropped): `Purview.Containers.Core` (abstractions) and the service modules target **`net10.0` and
+  `net11.0`** on any platform. `Purview.Containers.Wsl` is **multi-target**: `net10.0`/`net11.0` (portable
+  facades) and `net10.0-windows10.0.19041.0`/`net11.0-windows10.0.19041.0` (the WSLC implementations).
+  Purview.BuildSdk's `Current` target-framework set supplies the `net10.0;net11.0` list to the library
+  subtree, while `src/Directory.Build.props` pins that set to `net11.0-windows10.0.19041.0` for
+  `src/tests` so the WSLC tests bind the implementation; `Wsl.csproj` adds the Windows
+  builds with a platform-identifier condition (never a literal TFM). The Docker integration projects
+  declare `net10.0` directly so they run on Linux **and** keep the lowest supported framework under test.
+  The contract, the failures that enforce it and the CI workarounds are documented in
   [Consumer Requirements](docs/wiki/Consumer-Requirements.md); update that page whenever a target
   framework, the `buildTransitive` defaults, the payload layout or the `PCC0001`/`PCC0002` guards change.
+- The `net11.0` library builds are compiled with `runtime-async=on` (`PurviewRuntimeAsync=false` opts out):
+  Purview.BuildSdk applies it to every `net11.0`+ target together with the C# 15
+  `updated-memory-safety-rules` tier (`MemorySafetyRules=2`), so the repository does not repeat either
+  switch. The runtime manages suspension instead of compiler-generated state machines, which lowers async
+  overhead and makes live stack traces name the real methods. `Wsl.UnitTests/BuildFeatureTests.cs` guards
+  it. The `net10.0` builds keep the classic state machines. Because `closed` hierarchies require
+  `System.Runtime.CompilerServices.IsClosedTypeAttribute` and C# unions require `UnionAttribute` (both
+  .NET 11 runtime types), neither is used: no public hierarchy here is closed anyway — `WaitStrategy`,
+  `ContainerException` and the backend interfaces are documented extension points.
 - `Purview.Containers.Wsl` ships `Sdk/buildTransitive/Purview.Containers.Wsl.{props,targets}` so consumers
   inherit `WindowsSdkPackageVersion`/`PlatformTarget` defaults, a clear error for an unsupported target
   framework (`PCC0001`) or a 32-bit Windows consumer (`PCC0002`), and — for a platform-neutral consumer
-  on a Windows build host — a copy of the WSLC implementation payload (`wslc/`) that the `net10.0` facade
+  on a Windows build host — a copy of the WSLC implementation payload (`wslc/`) that the portable facade
   loads at run time. Those assets are framework-agnostic, so NuGet never raises `NU1202` at restore time;
   the guards are the fail-fast path. Keep them, and keep the `RequiredContent` entries (including
   `payload/**`) that declare them. They belong to the WSL backend package only.
@@ -154,6 +179,9 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 - Prefer verifying the service for readiness (exec a readiness command or open a host client connection) over
   a bare TCP check. Where an image reports readiness too early (MySQL), a log match is wrong.
 - SQL Server requires an explicit `AcceptLicense()` call; never accept licensing terms on the caller's behalf.
+  `MsSqlBuilder` also enables `WithPrivileged()` by default: the non-root `mssql` user in the 2025 image
+  cannot create `/.system` on WSLC, and the managed SDK has no per-container user override. Callers can
+  opt out with `WithPrivileged(false)`.
 
 ## Packaging and validation
 
@@ -200,8 +228,10 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   skip/availability checks; the Docker suites use their own `DockerTest` helper. Unit tests may use the
   modules' `BuildConfigurationForTesting()` internal hook.
 - `Wsl.UnitTests/ConsumerRequirementsTests.cs` guards the published target framework of the Windows
-  build (`.NETCoreApp,Version=v10.0` plus `Windows10.0.19041.0`), which the test project binds; keep it
-  in step with [Consumer Requirements](docs/wiki/Consumer-Requirements.md).
+  build this project binds (`.NETCoreApp,Version=v11.0` plus `Windows10.0.19041.0`), and
+  `Wsl.UnitTests/BuildFeatureTests.cs` guards that the net11.0 build has no compiler-generated async
+  state machines; keep both in step with
+  [Consumer Requirements](docs/wiki/Consumer-Requirements.md).
 - `just verify-consumers` packs and then builds throwaway consumer projects to assert the documented
   guard errors and workarounds. It restores from nuget.org, so it stays out of the `[Category=Unit]`
   filter and is a local/explicit step.

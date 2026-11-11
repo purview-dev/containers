@@ -8,13 +8,14 @@ static class ContainerResourceArchive
 	internal static async Task<MemoryStream> CreateAsync(
 		string source,
 		string target,
+		UnixFileMode? mode,
 		CancellationToken cancellationToken
 	)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(source);
 		ArgumentException.ThrowIfNullOrWhiteSpace(target);
 		cancellationToken.ThrowIfCancellationRequested();
-		if (!target.StartsWith('/') || target.Split('/').Contains("..", StringComparer.Ordinal))
+		if (!target.AsSpan().StartsWith("/") || target.Split('/').Contains("..", StringComparer.Ordinal))
 			throw new ContainerConfigurationException("Copy targets must be absolute container paths without '..'.");
 
 		MemoryStream archive = new();
@@ -53,7 +54,26 @@ static class ContainerResourceArchive
 					}
 				}
 				else
-					await writer.WriteEntryAsync(source, target.Trim('/'), cancellationToken).ConfigureAwait(false);
+				{
+					if (mode is { } fileMode)
+					{
+						await using var stream = File.OpenRead(source);
+						await writer
+							.WriteEntryAsync(
+								new PaxTarEntry(TarEntryType.RegularFile, target.Trim('/'))
+								{
+									Mode = fileMode,
+									DataStream = stream,
+								},
+								cancellationToken
+							)
+							.ConfigureAwait(false);
+					}
+					else
+					{
+						await writer.WriteEntryAsync(source, target.Trim('/'), cancellationToken).ConfigureAwait(false);
+					}
+				}
 			}
 			archive.Position = 0;
 			return archive;

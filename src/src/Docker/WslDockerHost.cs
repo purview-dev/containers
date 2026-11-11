@@ -29,7 +29,7 @@ sealed class WslDockerHost(string distribution, Func<string[], string?> run)
 		]);
 		if (
 			string.IsNullOrWhiteSpace(translated)
-			|| !translated.StartsWith('/')
+			|| !translated.AsSpan().StartsWith("/")
 			|| translated.Contains('\n', StringComparison.Ordinal)
 		)
 		{

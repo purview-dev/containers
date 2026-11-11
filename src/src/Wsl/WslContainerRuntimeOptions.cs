@@ -13,7 +13,7 @@ public sealed record WslContainerRuntimeOptions
 	public bool EnableGPU { get; init; }
 
 	/// <summary>
-	/// Session name. Defaults to <c>wslc-{processId}-{random}</c>. Session names are machine-unique.
+	/// Session name. Defaults to <c>purview-{processId}-{random}</c>. Session names are machine-unique.
 	/// </summary>
 	public string? SessionName { get; init; }
 
@@ -48,6 +48,16 @@ public sealed record WslContainerRuntimeOptions
 
 	/// <summary>Disables the process-exit cleanup hook (mainly for testing).</summary>
 	public bool DisableProcessExitCleanup { get; init; }
+
+	/// <summary>
+	/// Hostname that containers can use to reach services listening on the Windows host loopback
+	/// interface. <c>null</c> (the default) disables host loopback. Requires WSL 3.0.5 or later.
+	/// </summary>
+	/// <remarks>
+	/// The setting is session-wide. Use it when a container must call a service that runs directly on
+	/// the Windows host; ordinary host-to-container traffic uses published ports instead.
+	/// </remarks>
+	public string? HostLoopback { get; init; }
 
 	/// <summary>
 	/// Default options. The session VM is capped at 4096 MB so memory-hungry services such as SQL Server

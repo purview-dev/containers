@@ -9,14 +9,15 @@ Everything runs on one of two backends; pick the one that matches your machine â
 [Backends: WSLC or Docker](Backends.md) for the full comparison.
 
 - **WSL Containers backend:** Windows 11 (22H2 or later) or Windows Server 2025 with **WSL Containers** (`wsl --install --no-distribution`),
-  verified against WSL **3.0.1.0**. A consuming project must be **.NET 10 or later**: a platform-neutral
-  `net10.0` project binds the portable facade and gets automatic WSLC-or-Docker selection, while a Windows
-  target framework (`net10.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. The
-  `Purview.Containers.Wsl` package ships MSBuild defaults for `WindowsSdkPackageVersion` and
+  verified against WSL **3.0.5.0**. A consuming project must be **.NET 10 or .NET 11** (**.NET 8 and
+  .NET 9 are not supported**): a platform-neutral `net10.0` or `net11.0` project binds the portable facade
+  and gets automatic WSLC-or-Docker selection, while a Windows target framework
+  (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`, x64 or arm64) binds the implementation
+  directly. The `Purview.Containers.Wsl` package ships MSBuild defaults for `WindowsSdkPackageVersion` and
   `PlatformTarget`; an unsupported target framework fails the build with `PCC0001` and a 32-bit Windows
   consumer with `PCC0002`.
-- **Docker backend:** any reachable Docker daemon, on any platform, with a `net10.0` or later project. No
-  Windows target framework and no `PCC` guards apply.
+- **Docker backend:** any reachable Docker daemon, on any platform, with a `net10.0` or `net11.0` project.
+  No Windows target framework and no `PCC` guards apply.
 - Verify the host with `wsl --version` and `wslc version`, or with `docker info`. The library never
   installs a runtime for you â€” `WslContainerRuntime.GetInfoAsync()` and
   `DockerContainerBackend.GetInfoAsync()` report what is missing.

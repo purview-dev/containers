@@ -44,6 +44,15 @@ public interface IContainerConfiguration
 	/// <summary>Run the container in privileged mode.</summary>
 	bool Privileged { get; }
 
+	/// <summary>
+	/// Linux capabilities added to the container beyond the runtime defaults (for example
+	/// <c>NET_ADMIN</c>). Empty by default.
+	/// </summary>
+	IReadOnlyList<string> CapabilityAdditions => Array.Empty<string>();
+
+	/// <summary>Linux capabilities dropped from the container, for example <c>NET_RAW</c>. Empty by default.</summary>
+	IReadOnlyList<string> CapabilityDrops => Array.Empty<string>();
+
 	/// <summary>Expose GPU devices to the container.</summary>
 	bool EnableGPU { get; }
 

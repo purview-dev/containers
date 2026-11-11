@@ -16,11 +16,11 @@ jobs:
     name: Build and test
     uses: purview-dev/build/.github/workflows/purview-build.yml@main
     with:
-      # The shared workflow defaults to the 10.0.x SDK, but this repository targets net11.0 and pins
-      # the .NET 11 SDK in global.json. Without the matching SDK the runner cannot resolve global.json
+      # The shared workflow defaults to the 10.0.x SDK, but this repository is built with the .NET 11
+      # SDK and pins it in global.json. Without the matching SDK the runner cannot resolve global.json
       # ("A compatible .NET SDK was not found") and every step fails.
       # Keep in sync with `sdk.version` in global.json.
-      dotnet-version: "11.0.100-rc.2.26504.105"
+      dotnet-version: "11.0.100"
       # The repository default filter is /*/*/*/*, but test discovery stays unit-only and the shared
       # pipeline runs on ubuntu-latest, so it has no WSLC host. This job narrows the filter to Unit
       # anyway. The Docker suites run in the explicit job below; the WSLC contract runs on
@@ -47,11 +47,13 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           # Keep in sync with `sdk.version` in global.json.
-          dotnet-version: "11.0.100-rc.2.26504.105"
+          dotnet-version: "11.0.100"
       - name: Docker backend
-        run: dotnet test src/tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*' --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
+        # --timeout is a .NET 11 run-level policy: a hung container can otherwise hold the job until
+        # GitHub's timeout kills it, losing the whole run's diagnostics.
+        run: dotnet test src/tests/Docker.IntegrationTests/Docker.IntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*' --timeout 15m --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
       - name: Service modules on Docker
-        run: dotnet test src/tests/Modules.Docker.IntegrationTests/Modules.Docker.IntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*' --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
+        run: dotnet test src/tests/Modules.Docker.IntegrationTests/Modules.Docker.IntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*' --timeout 15m --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
 
   # WSLC needs a Windows host with nested virtualisation. windows-2025 provides it (Windows Server
   # 2025); wslc ships in the pre-release WSL channel and its directory is not on PATH. This is the
@@ -70,7 +72,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           # Keep in sync with `sdk.version` in global.json.
-          dotnet-version: "11.0.100-rc.2.26504.105"
+          dotnet-version: "11.0.100"
       - name: Install WSL Containers
         shell: pwsh
         run: |
@@ -92,4 +94,4 @@ jobs:
         run: dotnet build src/Containers.slnx --configuration Release --no-restore
       - name: WSLC backend contract
         # Real containers on the shared WSLC session; the suite caps its own parallelism.
-        run: dotnet test src/tests/Wsl.IntegrationTests/Wsl.IntegrationTests.csproj --configuration Release --no-build --treenode-filter '/*/*/*/*' --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
+        run: dotnet test src/tests/Wsl.IntegrationTests/Wsl.IntegrationTests.csproj --configuration Release --no-build --treenode-filter '/*/*/*/*' --timeout 15m --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50

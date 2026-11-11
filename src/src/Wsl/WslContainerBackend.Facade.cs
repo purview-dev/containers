@@ -1,7 +1,7 @@
 namespace Purview.Containers.Wsl;
 
 /// <summary>
-/// The WSL Containers (WSLC) backend as seen from a platform-neutral (<c>net10.0</c>) consumer.
+/// The WSL Containers (WSLC) backend as seen from a platform-neutral (<c>net10.0</c>/<c>net11.0</c>) consumer.
 /// </summary>
 /// <remarks>
 /// <para>

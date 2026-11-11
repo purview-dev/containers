@@ -6,14 +6,17 @@ request.
 ## Prerequisites
 
 - Windows with **WSL Containers** for integration tests; see [Getting Started](Getting-Started.md).
-- .NET SDK 11 (pinned in `global.json` as `11.0.100-rc.1.26425.128`).
-- The library projects split by framework: `src/src/Directory.Build.props` sets `net10.0` for the
-  backend-neutral abstractions and the service modules. `src/src/Wsl/Wsl.csproj` is multi-target
-  (`net10.0` facade + `net10.0-windows10.0.19041.0` implementation) because the WSL Containers projection
-  is Windows-only. `src/tests` keeps
-  the Windows target (`src/Directory.Build.props`), which also sets `EnableWindowsTargeting=true` so the
-  solution builds on the Linux CI agent. Do not remove that property: without it the shared pipeline
-  fails with `NETSDK1100`. See [Consumer Requirements](Consumer-Requirements.md).
+- .NET SDK 11 (pinned in `global.json` as `11.0.100`).
+- The library projects split by framework: Purview.BuildSdk's `Current` target-framework set gives the
+  backend-neutral abstractions and the service modules `net10.0;net11.0` (the `net11.0` build adds
+  `runtime-async=on` and the C# 15 updated memory-safety rules).
+  `src/src/Wsl/Wsl.csproj` is multi-target (`net10.0`/`net11.0` facades plus
+  `net10.0-windows10.0.19041.0`/`net11.0-windows10.0.19041.0` implementations) because the WSL Containers
+  projection is Windows-only. `src/tests` pins the same set to
+  `net11.0-windows10.0.19041.0` (`src/Directory.Build.props`), which also sets
+  `EnableWindowsTargeting=true` so the solution builds on the Linux CI agent. Do not remove that property:
+  without it the shared pipeline fails with `NETSDK1100`. See
+  [Consumer Requirements](Consumer-Requirements.md).
 - [just](https://github.com/casey/just) for the repository recipes, and `dotnet tool restore` for the pinned
   local tools (CSharpier, dotnet-inspect).
 - [Bun](https://bun.sh) only for `just version` and the commit hook tooling; the commit hook runs

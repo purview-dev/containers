@@ -2,10 +2,13 @@
 	<!--
 	  Subtree defaults for the library projects under src/src.
 
-	  The backend-neutral abstractions and the service modules are cross-platform and target net10.0,
-	  the floor that Testcontainers-for-.NET supports. Only the WSL Containers backend is Windows-only
-	  (Microsoft.WSL.Containers ships a .NET 11 WinRT projection), so it overrides TargetFramework in
-	  its own project file.
+	  The backend-neutral abstractions and the service modules are cross-platform and multi-target
+	  net10.0 and net11.0: .NET 10 is the lowest consumer that is still supported (.NET 8 and .NET 9
+	  are deliberately dropped), and the net11.0 build lets a .NET 11 consumer bind the .NET 11
+	  assembly instead (runtime-async compilation, .NET 11 library APIs and C# 15 features). That list
+	  is Purview.BuildSdk's `Current` target-framework set - the default when a project declares no
+	  target of its own - so this file must not restate it. Only the WSL Containers backend is
+	  Windows-only, so it adds its own Windows target frameworks in its project file.
 
 	  The parent Directory.Build.props still owns the repo-wide identity (NamespacePrefix), the SDK
 	  import and the shared package metadata, so import it explicitly: MSBuild stops at the nearest
@@ -14,7 +17,6 @@
 	<Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
 		<!-- Cross-platform libraries stay AnyCPU and must not pin a Windows SDK pack version; the WSL
 		     backend re-applies both (x64 + 10.0.26100.80) in its own project file. -->
 		<PlatformTarget></PlatformTarget>

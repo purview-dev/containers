@@ -22,10 +22,30 @@ Attach another container using the same backend and `WithNetwork(network.Name)` 
 `cache:6379`. Dispose containers before disposing the network. Names/aliases must not contain secrets.
 Network aliases require an explicit network; a named network cannot be combined with `None`.
 
-Docker uses Testcontainers networks. WSLC uses the `wslc` CLI in the SDK-owned session because the
-managed SDK exposes only bridge/none settings, not network creation. This path requires `wslc` on
-PATH; the ordinary default-bridge path remains SDK-only. See
-[Capabilities and Cancellation](Backend-Capabilities.md) for timeouts and platform limits.
+Docker uses Testcontainers networks. WSLC uses the managed `Microsoft.WSL.Containers` 3.0.5 network API
+(`Session.CreateNetwork`/`DeleteNetwork` and `ContainerSettings.Networks`), so creating a managed network
+and attaching containers with aliases no longer needs the `wslc` CLI. The ordinary default-bridge path
+remains SDK-only as well. See [Capabilities and Cancellation](Backend-Capabilities.md) for timeouts and
+platform limits.
+
+The WSLC default bridge has no container-name DNS; alias resolution is a property of the managed network,
+so `WithNetwork(...).WithNetworkAliases(...)` is the supported shape for container-to-container names.
+
+## Host loopback (WSLC)
+
+`Microsoft.WSL.Containers` 3.0.5 can expose the Windows host loopback interface to the session under a
+hostname you choose. It is session-wide and off by default:
+
+```csharp
+ContainerBackends.Use(new WslContainerBackend(WslContainerRuntimeOptions.Default with
+{
+    HostLoopback = "host.internal",
+}));
+```
+
+A container can then reach a service listening on the Windows host by that name. Use it only when a
+container must call a host process; the alternative — and the normal shape for a test host calling into
+a container — is a published port on `127.0.0.1`.
 
 ## Host connections and IPs
 
@@ -42,4 +62,5 @@ PATH; the ordinary default-bridge path remains SDK-only. See
   and service ports to construct such connection strings.
 
 UDP mapping remains unsupported by the WSLC public contract. Dynamic network attachment and arbitrary
-network drivers are not exposed by the shared API.
+network drivers are not exposed by the shared API; a managed network's subnet/gateway options available on
+`Microsoft.WSL.Containers` are not surfaced yet.

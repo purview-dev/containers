@@ -51,12 +51,12 @@ WSLC `ContainerState`: `Invalid → Created → Running → Exited → Deleted`.
   before waiting for cleanup, instead of waiting for the full startup budget.
 - Container crash: live state/exit-code reads observe completion even when a native exit event is missed.
 - Session termination (crash): the session `Terminated` event marks the runtime session as dead; subsequent container operations throw a clear `WslContainerSessionTerminatedException`.
-- Test-process termination: a process-exit hook disposes the shared session (frees the name). Crashed processes leave an orphaned session that only reserves its name; sweep with `wslc --session <name> system session terminate`.
+- Test-process termination: a process-exit hook disposes the shared session (frees the name). A crashed process leaves an orphaned session; the runtime sweeps sessions whose creator PID is gone (and their per-session storage directories) before the next session starts, then removes stale containers whose generated name embeds a dead PID and prunes unused anonymous volumes. `WslContainerRuntime.SweepOrphanedSessionsAsync()` runs the session sweep explicitly; `CleanUpAsync()` also removes container residue.
 
 ## Secrets & names
 
 - Container names are generated uniquely (`{service}-{processId}-{random8}`); never contain credentials.
-- Session names are `wslc-{pid}-{random8}`.
+- Session names are `purview-{pid}-{random8}`.
 - `Secret.ToString()` returns `<redacted>`; CLI errors omit raw output. Container logs can still contain
   application secrets, so do not print them indiscriminately.
 

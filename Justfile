@@ -94,10 +94,14 @@ restore *args:
 # Failures are retried at the test-project level by Microsoft.Testing.Platform's retry extension. It
 # restarts the test host for each attempt, which also gives WSLC a fresh session; the delay lets the
 # previous host release the session VHD.
+#
+# --results-directory-layout per-module is a .NET 11 run-level option: every test application gets its
+# own report folder, so a multi-module run cannot have one module's identically named report overwrite
+# another's.
 [group('Build and Test')]
 test filter="/*/*/*/*/" *args:
     echo "Running tests for {{ BLUE }}{{ test_solution }}{{ NORMAL }} with {{ YELLOW }}{{ build_configuration }}{{ NORMAL }}..."
-    dotnet test --solution "{{ test_solution }}" --configuration "{{ build_configuration }}" --max-parallel-test-modules 1 --treenode-filter={{ filter }} --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50 {{ args }}
+    dotnet test --solution "{{ test_solution }}" --configuration "{{ build_configuration }}" --max-parallel-test-modules 1 --treenode-filter={{ filter }} --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50 --results-directory-layout per-module {{ args }}
 
 # Cleans the solution with the specified configuration (default: Debug)
 [group('Build and Test')]

@@ -86,11 +86,12 @@ public class WslContainer : IContainer
 				)
 				.ConfigureAwait(false);
 
+			// Microsoft.WSL.Containers 3.0.5 supplies named networks, aliases, capabilities and host
+			// loopback directly, so only entrypoint/user/labels/reuse still need the CLI.
 			_usesCLI =
 				Configuration.Entrypoint.Count > 0
 				|| Configuration.User is not null
 				|| Configuration.Labels.Count > 0
-				|| Configuration.Network is not null
 				|| Configuration.Reuse;
 			var container = _usesCLI
 				? await _session.CreateConfiguredContainerAsync(Configuration, Name, token).ConfigureAwait(false)
@@ -103,7 +104,7 @@ public class WslContainer : IContainer
 			{
 				foreach (var mapping in Configuration.ResourceMappings)
 					await WslFileCopy
-						.CopyAsync(_session, container.Id, mapping.Source, mapping.Target, token)
+						.CopyAsync(_session, container.Id, mapping.Source, mapping.Target, mapping.Mode, token)
 						.ConfigureAwait(false);
 				await _session.StartContainerAsync(container, token).ConfigureAwait(false);
 			}
@@ -360,7 +361,7 @@ public class WslContainer : IContainer
 		EnsureStarted();
 		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 		deadline.CancelAfter(Configuration.OperationTimeout);
-		await WslFileCopy.CopyAsync(_session!, Id, source, target, deadline.Token).ConfigureAwait(false);
+		await WslFileCopy.CopyAsync(_session!, Id, source, target, mode: null, deadline.Token).ConfigureAwait(false);
 	}
 
 	/// <inheritdoc />

@@ -13,6 +13,10 @@ runs on WSL Containers on Windows and Docker everywhere else. See
 | `DockerSample` | `Purview.Containers.Docker` | `net10.0` | a reachable Docker daemon (`docker info`) |
 | `AutoSample` | umbrella (auto) | `net10.0` | either — WSLC on Windows, Docker elsewhere |
 
+The split is deliberate: `DockerSample` and `AutoSample` stay on `net10.0` (the lowest supported
+framework) while `WslSample` targets `net11.0-windows`, so the samples keep both ends of the supported
+surface compiling and runnable.
+
 Run them from the repository root:
 
 ```powershell

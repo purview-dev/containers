@@ -29,7 +29,7 @@ public readonly record struct Image
 	public string FullReference => $"{Registry}/{Repository}:{Tag}";
 
 	/// <summary>Last repository segment, e.g. <c>alpine</c>.</summary>
-	public string ShortName => Repository[(Repository.LastIndexOf('/') + 1)..];
+	public string ShortName => Repository.AsSpan()[(Repository.AsSpan().LastIndexOf('/') + 1)..].ToString();
 
 	/// <summary>
 	/// Parses an image reference. Accepts <c>alpine</c>, <c>alpine:latest</c>, <c>docker.io/library/alpine:latest</c>,
@@ -45,8 +45,10 @@ public readonly record struct Image
 		}
 
 		var tag = DefaultTag;
-		var lastSlash = reference.LastIndexOf('/');
-		var lastColon = reference.LastIndexOf(':');
+		// Span comparisons are ordinal by definition and avoid the culture-sensitive string overloads
+		// that CA1307 flags (the char overloads it recommends only exist from .NET 11).
+		var lastSlash = reference.AsSpan().LastIndexOf('/');
+		var lastColon = reference.AsSpan().LastIndexOf(':');
 		if (lastColon > lastSlash)
 		{
 			tag = NormalizeTag(reference[(lastColon + 1)..]);

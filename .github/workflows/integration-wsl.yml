@@ -62,7 +62,7 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           # Keep in sync with `sdk.version` in global.json (and the other workflows).
-          dotnet-version: "11.0.100-rc.2.26504.105"
+          dotnet-version: "11.0.100"
 
       - name: Install WSL Containers
         shell: pwsh
@@ -88,7 +88,7 @@ jobs:
 
       - name: WSLC backend contract
         # Real containers on a shared WSLC session; the suite caps its own parallelism.
-        run: dotnet test src/tests/Wsl.IntegrationTests/Wsl.IntegrationTests.csproj --configuration Release --no-build --treenode-filter '${{ inputs.filter || '/*/*/*/*' }}' --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
+        run: dotnet test src/tests/Wsl.IntegrationTests/Wsl.IntegrationTests.csproj --configuration Release --no-build --treenode-filter '${{ inputs.filter || '/*/*/*/*' }}' --timeout 15m --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
 
       - name: Service modules on WSLC
         if: inputs.scope != 'contract'
@@ -113,7 +113,7 @@ jobs:
           $failed = @()
           foreach ($project in $projects) {
             Write-Host "::group::$project"
-            dotnet test $project --configuration Release --no-build --treenode-filter $filter --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
+            dotnet test $project --configuration Release --no-build --treenode-filter $filter --timeout 20m --maximum-failed-tests 10 --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
             if ($LASTEXITCODE -ne 0) {
               $failed += $project
             }
@@ -144,7 +144,7 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           # Keep in sync with `sdk.version` in global.json (and the other workflows).
-          dotnet-version: "11.0.100-rc.2.26504.105"
+          dotnet-version: "11.0.100"
 
       - name: Verify the WSL Containers host
         shell: pwsh
@@ -161,7 +161,7 @@ jobs:
 
       - name: WSLC backend contract
         # Real containers on a shared WSLC session; ~27 tests and ~4 minutes.
-        run: dotnet test src/tests/Wsl.IntegrationTests/Wsl.IntegrationTests.csproj --configuration Release --no-build --treenode-filter '${{ inputs.filter || '/*/*/*/*' }}' --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
+        run: dotnet test src/tests/Wsl.IntegrationTests/Wsl.IntegrationTests.csproj --configuration Release --no-build --treenode-filter '${{ inputs.filter || '/*/*/*/*' }}' --timeout 15m --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
 
       - name: Service modules on WSLC
         if: inputs.scope != 'contract'
@@ -186,7 +186,7 @@ jobs:
           $failed = @()
           foreach ($project in $projects) {
             Write-Host "::group::$project"
-            dotnet test $project --configuration Release --no-build --treenode-filter $filter --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
+            dotnet test $project --configuration Release --no-build --treenode-filter $filter --timeout 20m --maximum-failed-tests 10 --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
             if ($LASTEXITCODE -ne 0) {
               $failed += $project
             }

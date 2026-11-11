@@ -28,6 +28,8 @@ static class WslCreateArguments
 						configuration.NamedVolumes,
 						configuration.PortBindings,
 						configuration.Privileged,
+						configuration.CapabilityAdditions,
+						configuration.CapabilityDrops,
 						configuration.EnableGPU,
 						configuration.ResourceMappings,
 					}
@@ -90,6 +92,10 @@ static class WslCreateArguments
 			throw new ContainerNotSupportedException(
 				"The WSLC CLI does not expose privileged creation. Do not combine privileged mode with CLI-only features."
 			);
+		foreach (var capability in configuration.CapabilityAdditions)
+			Add("--cap-add", capability);
+		foreach (var capability in configuration.CapabilityDrops)
+			Add("--cap-drop", capability);
 		Add("--env-file", environmentFile);
 		foreach (var mount in configuration.BindMounts)
 			Add("--volume", $"{mount.HostPath}:{mount.ContainerPath}{(mount.ReadOnly ? ":ro" : string.Empty)}");

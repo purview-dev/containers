@@ -48,6 +48,12 @@ public record ContainerConfiguration : IContainerConfiguration
 	public bool Privileged { get; init; }
 
 	/// <inheritdoc />
+	public IReadOnlyList<string> CapabilityAdditions { get; init; } = Array.Empty<string>();
+
+	/// <inheritdoc />
+	public IReadOnlyList<string> CapabilityDrops { get; init; } = Array.Empty<string>();
+
+	/// <inheritdoc />
 	public bool EnableGPU { get; init; }
 
 	/// <inheritdoc />
@@ -126,6 +132,8 @@ public record ContainerConfiguration : IContainerConfiguration
 		builder.Append(", ").Append(nameof(NamedVolumes)).Append(" = ").Append(NamedVolumes);
 		builder.Append(", ").Append(nameof(NetworkingMode)).Append(" = ").Append(NetworkingMode);
 		builder.Append(", ").Append(nameof(Privileged)).Append(" = ").Append(Privileged);
+		builder.Append(", ").Append(nameof(CapabilityAdditions)).Append(" = ").Append(CapabilityAdditions);
+		builder.Append(", ").Append(nameof(CapabilityDrops)).Append(" = ").Append(CapabilityDrops);
 		builder.Append(", ").Append(nameof(EnableGPU)).Append(" = ").Append(EnableGPU);
 		builder.Append(", ").Append(nameof(EnableAutoRemove)).Append(" = ").Append(EnableAutoRemove);
 		builder.Append(", ").Append(nameof(EnableCleanUp)).Append(" = ").Append(EnableCleanUp);

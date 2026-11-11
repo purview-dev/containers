@@ -1,8 +1,9 @@
 # Backend capabilities and cancellation
 
 The Docker backend is implemented with Testcontainers for .NET. WSLC uses
-`Microsoft.WSL.Containers` for ordinary lifecycle operations and the `wslc` CLI for capabilities
-missing from the managed SDK. Neither backend silently switches runtimes to implement a feature.
+`Microsoft.WSL.Containers` 3.0.5 for lifecycle, images, named networks and aliases, Linux capabilities
+and session host-loopback support, with the `wslc` CLI only for capabilities missing from the managed
+SDK. Neither backend silently switches runtimes to implement a feature.
 This is a Testcontainers-style API, not a source-compatible replacement for every Testcontainers API.
 Supply the command explicitly when overriding an entrypoint; Docker-style entrypoint overrides
 do not preserve an image's default command.
@@ -17,7 +18,9 @@ do not preserve an image's default command.
 | Pre-start files/directories | `WithResourceMapping(source, target)` | CLI tar copy before init starts |
 | Runtime files/directories | `CopyAsync(source, target)`, `ReadFileAsync(path)` | CLI tar copy; reads return exact bytes |
 | One-shot containers | `Wait.ForExitCode(expected)`, `WaitForExitAsync(ct)` | Live init-process state/exit code |
-| Managed bridge networks and aliases | `CreateNetworkAsync`, `WithNetwork`, `WithNetworkAliases` | CLI network and container creation; alias DNS |
+| Managed bridge networks and aliases | `CreateNetworkAsync`, `WithNetwork`, `WithNetworkAliases` | Managed SDK: `Session.CreateNetwork`/`DeleteNetwork` and `ContainerSettings.Networks`; alias DNS |
+| Linux capabilities | `WithCapabilityAdd`, `WithCapabilityDrop` | Managed SDK (`ContainerSettings.CapabilityAdditions`/`CapabilityDrops`); the CLI also passes `--cap-add`/`--cap-drop` |
+| Host loopback | `WslContainerRuntimeOptions.HostLoopback` | Managed SDK: `SessionSettings.HostLoopback` (session-wide) |
 | Dockerfile builds | `BuildImageAsync` | CLI build in the owning SDK session/store |
 | Reuse | `WithName(...).WithReuse()` | Same configuration/name within the owning session |
 | Disposal cleanup | `WithCleanUp(bool)` (default `true`) | Stop then force-delete; `false` stops and retains the container |
@@ -142,12 +145,13 @@ Do not share a reusable container with tests that mutate it concurrently.
 The WSLC fingerprint checks configuration, not mapped-file contents or mutable image-tag contents.
 Delete and recreate the container when those inputs change.
 
-WSLC CLI-backed features require `wslc` on `PATH`. They fail with a prerequisite error if absent,
-rather than changing the default SDK-only path. CLI creation cannot currently combine privileged
+WSLC CLI-backed features require `wslc` on `PATH`: entrypoint/user/labels, resource copy, Dockerfile
+builds and reusable containers. They fail with a prerequisite error if absent, rather than changing the
+default SDK-only path. CLI creation cannot currently combine privileged
 mode with CLI-only creation options and requires single-line environment values. Environment values
 are passed through a temporary env file removed after creation, not rendered in command diagnostics.
 Labels and names must not contain secrets. CLI errors deliberately omit potentially sensitive output.
 
 UDP mapping and interactive stdin remain unsupported by the WSLC public contract; capture-based
 exec rejects interactive stdin on both backends. Managed networks do not imply support for arbitrary
-drivers, dynamic attachment APIs, or every Testcontainers network/build customization.
+drivers or dynamic attachment APIs, and the SDK's subnet/gateway options are not surfaced yet.

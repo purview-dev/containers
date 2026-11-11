@@ -8,24 +8,26 @@ A Testcontainers-style library for .NET that runs throwaway Linux containers for
 > **Two backends, one API — one reference.** Containers are created through the backend-neutral
 > `Purview.Containers.Core` abstractions, so the same test suite runs on **WSL Containers**
 > (`Purview.Containers.Wsl`) or **Docker** (`Purview.Containers.Docker`, driven by Testcontainers). Add the
-> umbrella package `Purview.Containers` to a plain `net10.0` project — no Windows target framework needed —
-> and it brings the abstractions plus both backends, gets WSLC on a Windows developer machine and Docker on
-> a Linux CI runner **without changing a line of test code or configuration**, and can be pinned with
-> `PURVIEW_CONTAINERS_BACKEND`. The `Purview.Containers.Wsl` package is multi-target: its `net10.0` facade
-> loads the WSLC implementation at run time on Windows and reports `wsl` as unavailable everywhere else.
+> umbrella package `Purview.Containers` to a plain `net10.0` or `net11.0` project — no Windows target
+> framework needed — and it brings the abstractions plus both backends, gets WSLC on a Windows developer
+> machine and Docker on a Linux CI runner **without changing a line of test code or configuration**, and can
+> be pinned with `PURVIEW_CONTAINERS_BACKEND`. The `Purview.Containers.Wsl` package is multi-target: its
+> `net10.0` and `net11.0` facades load the WSLC implementation at run time on Windows and report `wsl` as
+> unavailable everywhere else.
 >
 > **[Using it in your tests (auto)](docs/wiki/Using-in-Your-Tests.md)** — the copy-paste zero-config shape.
 >
 > **[Backends: WSLC or Docker](docs/wiki/Backends.md)** — comparison, side-by-side project setup, CI
 > example and troubleshooting.
 
-The WSLC backend uses `Microsoft.WSL.Containers` for ordinary lifecycle operations and a bounded
-`wslc` CLI fallback for entrypoint/user/labels, managed networks, reuse, resource copy and image builds.
-It requires no Docker installation. The Docker backend is built on
-[Testcontainers for .NET](https://dotnet.testcontainers.org/).
+The WSLC backend uses `Microsoft.WSL.Containers` 3.0.5 for lifecycle, images, named networks and aliases,
+Linux capabilities and session host-loopback support, with a bounded `wslc` CLI fallback only for
+entrypoint/user/labels, reuse, resource copy and image builds. It requires no Docker installation. The
+Docker backend is built on [Testcontainers for .NET](https://dotnet.testcontainers.org/).
 
-Both backends expose file copy/read, one-shot exit waits, managed bridge networks/aliases and
-Dockerfile builds through the same contract. Startup has a five-minute total budget; exec defaults
+Both backends expose file copy/read, one-shot exit waits, managed bridge networks/aliases, Linux
+capabilities (`WithCapabilityAdd`/`WithCapabilityDrop`) and Dockerfile builds through the same contract;
+WSLC additionally offers session host loopback. Startup has a five-minute total budget; exec defaults
 to one minute, stop to 15 seconds and cleanup to 30 seconds, all configurable. Cancellation is
 propagated; synchronous native WSLC calls cannot be forcibly interrupted. Disposal follows
 Testcontainers' `WithCleanUp`: containers are removed by default, `.WithCleanUp(false)` retains them
@@ -56,7 +58,7 @@ for inspection, and `.WithAutoRemove()` is opted into separately. See
 referencing the umbrella package, Testcontainers or WSLC. It verifies native paths, running WSL
 translations and explicit shared-remote mappings against the daemon using two-way file markers.
 `Purview.Containers.Aspire` adds opt-in `builder.AddContainerEnvironment()` integration for any
-Aspire AppHost. Both target `net10.0`; the adapter requires Aspire 13.6.4 or later.
+Aspire AppHost. Both target `net10.0` and `net11.0`; the adapter requires Aspire 13.6.5 or later.
 These are separate from the existing Docker backend's automatic WSL2 path handling.
 Docker Engine inside a WSL distribution is not Microsoft WSL Containers.
 See the [environment package guide](src/src/Environment/Sdk/README.md) and
@@ -73,26 +75,27 @@ want to fix the runtime.
 
 - Windows 11 (22H2 or later) or Windows Server 2025 with **WSL Containers**, installed via
   `wsl --install --no-distribution` (verified against
-  WSL 3.0.1.0).
-- A consuming project that is **.NET 10 or later**. A platform-neutral `net10.0` project binds the
-  portable facade and gets automatic WSLC-or-Docker selection; a Windows target framework
-  (`net10.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. The
+  WSL 3.0.5.0).
+- A consuming project that is **.NET 10 or .NET 11** (.NET 8 and .NET 9 are not supported). A
+  platform-neutral `net10.0` or `net11.0` project binds the portable facade and gets automatic
+  WSLC-or-Docker selection; a Windows target framework (`net10.0-windows10.0.19041.0` or
+  `net11.0-windows10.0.19041.0`, x64 or arm64) binds the matching implementation directly. The
   `Purview.Containers.Wsl` package ships MSBuild defaults for the supporting settings.
 
 **Docker backend**
 
-- Any reachable Docker daemon, and a `net10.0` (or later) project on any platform.
+- Any reachable Docker daemon, and a `net10.0` or `net11.0` project on any platform.
 - Windows bind mounts are translated automatically for a verified local Docker Engine inside WSL2;
   no consumer path setting is needed. See [WSL2 bind mounts](docs/wiki/Backends.md#windows-bind-mounts-with-docker-engine-in-wsl2).
 
-.NET SDK 11 is required to build this repository (it pins `11.0.100-rc.1`); SDK 10 is enough for a Docker
-consumer.
+.NET SDK 11 is required to build this repository (it pins `11.0.100`); the .NET 10 or .NET 11 SDK is
+enough for a consumer.
 
 Verify:
 
 ```powershell
-wsl --version     # WSL Containers installed (verified against 3.0.1.0)
-wslc version      # e.g. 3.0.1.0
+wsl --version     # WSL Containers installed (verified against 3.0.5.0)
+wslc version      # e.g. 3.0.5.0
 ```
 
 ```bash
@@ -158,12 +161,12 @@ string amqp = rabbitMq.GetConnectionString();
 | Decision | Evidence |
 | --- | --- |
 | One shared process-wide session, shared storage path | the image store is keyed by storage path; session start is ~20 ms; concurrent sessions cannot share the VHD, so the runtime falls back to an isolated store |
-| Unique session names `wslc-{pid}-{rand}` | session names are machine-reserved |
+| Unique session names `purview-{pid}-{rand}` | session names are machine-reserved |
 | Default `NetworkingMode = Bridged` | port mappings require Bridged; the default is `none` |
 | Random host ports via native `windowsPort=0` | race-free random assignment |
 | Serialize session/container lifecycle ops | a concurrent `Start` can race (`0x8000FFFF`) |
 | No Ryuk-style reaper needed | `Session.Dispose()` frees the session; orphans block only their own name |
-| No container-name DNS | containers reach each other by IP only |
+| No container-name DNS on the default bridge | managed networks provide alias DNS; the default bridge does not |
 | `Image`/`WithTag` fail fast | invalid images/tags rejected at configuration time, never at pull time |
 
 ## Repository layout
@@ -333,13 +336,13 @@ just sample-docker            # needs a Docker daemon
 ### Verifying the consumer contract
 
 ```powershell
-just verify-consumers          # pack, then build 23 throwaway consumer projects against ./artifacts
+just verify-consumers          # pack, then build 25 throwaway consumer projects against ./artifacts
 just verify-consumers -Keep    # same, keeping the generated projects for inspection
 ```
 
 `just verify-consumers` asserts every claim in [Consumer Requirements](docs/wiki/Consumer-Requirements.md):
-the happy path, the shipped `buildTransitive` defaults, the `PCC0001`/`PCC0002` guards, and the
-non-.NET-11 escape hatch that deliberately does not work. It needs network access and is therefore a
+the happy path on .NET 10 and .NET 11, the shipped `buildTransitive` defaults, the `PCC0001`/`PCC0002`
+guards, and the rejection of .NET 8 (the framework floor). It needs network access and is therefore a
 local step rather than part of the `[Category=Unit]` pipeline filter.
 
 ## License

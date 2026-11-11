@@ -5,7 +5,7 @@ namespace Purview.Containers.Wsl;
 
 /// <summary>
 /// Loads the Windows build of <c>Purview.Containers.Wsl</c> at runtime so a platform-neutral
-/// (<c>net10.0</c>) process on a Windows host can still run containers on WSL Containers.
+/// (<c>net10.0</c>/<c>net11.0</c>) process on a Windows host can still run containers on WSL Containers.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -45,6 +45,7 @@ static class WslPayload
 		typeof(long?),
 		typeof(bool),
 		typeof(bool?),
+		typeof(string),
 	];
 	static bool DefaultAttempted;
 	static IContainerBackend? DefaultBackend;
@@ -141,6 +142,7 @@ static class WslPayload
 						options.SessionTimeout?.Ticks,
 						options.DisableProcessExitCleanup,
 						options.CleanUpVolumesOnTerminate,
+						options.HostLoopback,
 					];
 
 				if (factory?.Invoke(null, arguments) is IContainerBackend backend)
