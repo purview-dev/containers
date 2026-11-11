@@ -9,11 +9,12 @@ static class WslFileCopy
 		string id,
 		string source,
 		string target,
+		UnixFileMode? mode,
 		CancellationToken cancellationToken
 	)
 	{
 		using var archive = await ContainerResourceArchive
-			.CreateAsync(source, target, cancellationToken)
+			.CreateAsync(source, target, mode, cancellationToken)
 			.ConfigureAwait(false);
 		await session.RunCopyCommandAsync(["cp", "-", $"{id}:/"], cancellationToken, archive).ConfigureAwait(false);
 	}

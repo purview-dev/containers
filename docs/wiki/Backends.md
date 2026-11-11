@@ -34,7 +34,7 @@ Service modules (`Purview.Containers.PostgreSql`, `Redis`, …) are backend-neut
 | **Package** | `Purview.Containers.Wsl` | `Purview.Containers.Docker` |
 | **Prerequisite** | Windows 11 (22H2 or later) or Windows Server 2025 with WSL Containers (`wsl --install --no-distribution`) | any reachable Docker daemon (Docker Desktop, Docker Engine in WSL2, a VM, or a CI runner) |
 | **Host OS** | Windows only | Windows, Linux, macOS |
-| **Project target framework** | `net10.0` or later, any platform (portable facade), or `net10.0-windows10.0.19041.0`, x64 or arm64 (implementation bound directly) | `net10.0` or later, any platform |
+| **Project target framework** | `net10.0` or `net11.0`, any platform (portable facade), or `net10.0-windows10.0.19041.0`/`net11.0-windows10.0.19041.0`, x64 or arm64 (implementation bound directly) | `net10.0` or `net11.0`, any platform |
 | **How containers run** | the managed SDK, with `wslc` CLI fallback for SDK-missing features | the Docker Engine API via Testcontainers |
 | **Images** | a shared store (`%LOCALAPPDATA%\Purview\WslContainers\images`) reused across runs; the location is configurable | the daemon's own image store |
 | **Leak protection** | session disposal plus a process-exit hook | the Testcontainers resource reaper (Ryuk) |
@@ -80,7 +80,7 @@ By default WSLC images are pulled once into a shared store under the local profi
 
 To put the image store somewhere else — a different drive, a project-local cache, or a per-run folder —
 set the process-wide environment variable (works for every consumer shape, including a platform-neutral
-`net10.0` facade):
+`net10.0` or `net11.0` facade):
 
 ```powershell
 $env:PURVIEW_CONTAINERS_STORAGE_PATH = 'D:\wslc-images'   # PowerShell
@@ -107,7 +107,7 @@ ContainerBackends.Use(new WslContainerBackend(WslContainerRuntimeOptions.Default
 when it is unset); `StorageMode.PerSession` gives each session a throwaway store under
 `%LOCALAPPDATA%\Purview\WslContainers\sessions\{name}`. The full `WslContainerRuntimeOptions` set (CPU,
 memory, GPU, session name, `StoragePath`, `StorageMode`, timeout, `CleanUpVolumesOnTerminate`) is honoured
-on both a platform-neutral `net10.0` consumer — where the facade forwards it to the Windows build at run
+on both a platform-neutral `net10.0` or `net11.0` consumer — where the facade forwards it to the Windows build at run
 time — and a Windows target framework. The pre-rename `WSL_CONTAINERS_STORAGE_PATH` is still honoured as a
 fallback.
 
@@ -229,11 +229,12 @@ dotnet add package Purview.Containers.Wsl
 </Project>
 ```
 
-This project runs WSLC on a Windows host. A platform-neutral `net10.0` project binds the portable
-facade; a Windows target framework (`net10.0-windows10.0.19041.0`, x64 or arm64) binds the
-implementation directly. `WindowsSdkPackageVersion` is supplied by the package. A project older than
-.NET 10 fails the build with `PCC0001`, and a 32-bit Windows consumer with `PCC0002`; see
-[Consumer Requirements](Consumer-Requirements.md).
+This project runs WSLC on a Windows host. A platform-neutral `net10.0` or `net11.0` project binds the
+portable facade; a Windows target framework (`net10.0-windows10.0.19041.0` or
+`net11.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly.
+`WindowsSdkPackageVersion` is supplied by the package. A project older than
+.NET 10 (including .NET 8 and .NET 9) fails the build with `PCC0001`, and a 32-bit Windows consumer with
+`PCC0002`; see [Consumer Requirements](Consumer-Requirements.md).
 
 > On a non-Windows host this project has **no usable backend** (the facade reports `wsl` unavailable).
 > To also run on Docker there, add `Purview.Containers.Docker` or use the umbrella — see Option 3.
@@ -399,8 +400,8 @@ jobs:
       - run: dotnet test --configuration Release --no-build
 ```
 
-- On a Linux job, target a platform-neutral framework (`net10.0` or later). The WSL Containers package is
-  portable — its `net10.0` facade loads the WSLC implementation on a Windows host and reports `wsl` as
+- On a Linux job, target a platform-neutral framework (`net10.0` or `net11.0`). The WSL Containers package is
+  portable — its `net10.0` and `net11.0` facades load the WSLC implementation on a Windows host and report `wsl` as
   unavailable elsewhere — so one test project can reference both backends and `auto` selects WSLC on a
   Windows developer machine and Docker on the Linux runner.
 - Keep your integration tests in their own project or category if you want the fast unit tests to stay
@@ -466,7 +467,8 @@ release its image-store VHD.
 | GPU exposure | ✅ (`EnableGPU` session setting) | depends on the daemon and host runtime |
 | `ExecOptions.WorkingDirectory` / `Timeout` | ✅ | ✅ |
 | `ExecOptions.Environment` | ✅ | ✅ |
-| Entrypoint/user/labels, copy, builds, networks/aliases | ✅ CLI fallback | ✅ Testcontainers |
+| Entrypoint/user/labels, copy, builds | ✅ CLI fallback | ✅ Testcontainers |
+| Networks/aliases, Linux capabilities, host loopback | ✅ managed SDK (3.0.5) | ✅ Testcontainers |
 | Reuse | session-scoped, explicit name | Testcontainers reuse |
 | Log tailing | polled until the container stops | polled until the container stops |
 | Leak protection | session disposal + process-exit hook | Testcontainers resource reaper (Ryuk) |
@@ -508,7 +510,7 @@ using the wrong runtime.
 backend whose package is not referenced by the project.
 
 **`PCC0001` / `PCC0002`** — a build-time guard from the WSL Containers backend package: the consuming project
-is neither .NET 10+ (Windows or platform-neutral), or is a 32-bit Windows consumer. See
+is neither .NET 10 nor .NET 11 (Windows or platform-neutral), or is a 32-bit Windows consumer. See
 [Consumer Requirements](Consumer-Requirements.md), or switch the project to the Docker backend.
 
 **The same image is pulled twice** — expected when both runtimes are used: WSLC and Docker keep separate

@@ -47,6 +47,7 @@ sealed class WslContainerSession : IContainerSession
 			MemorySizeInMB = options.MemorySizeInMB,
 			EnableGpu = options.EnableGPU,
 			Timeout = options.SessionTimeout,
+			HostLoopback = options.HostLoopback,
 		};
 		_session = new Session(settings);
 		_session.Terminated += reason => Terminated?.Invoke(reason);
@@ -210,6 +211,61 @@ sealed class WslContainerSession : IContainerSession
 
 		_lifecycleGate.Dispose();
 	}
+
+	internal async Task CreateNetworkAsync(string name, CancellationToken cancellationToken)
+	{
+		using var activity = WslContainerActivity.Source.StartActivity("wslcontainer.network.create");
+		activity?.SetTag("network.name", name);
+		await EnsureStartedAsync(cancellationToken).ConfigureAwait(false);
+		await _lifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+		try
+		{
+			ThrowIfTerminated();
+			_ = _session.CreateNetwork(new NetworkSettings(name));
+		}
+		finally
+		{
+			_lifecycleGate.Release();
+		}
+	}
+
+	internal async Task DeleteNetworkAsync(string name, TimeSpan timeout, CancellationToken cancellationToken)
+	{
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(timeout);
+		await _lifecycleGate.WaitAsync(deadline.Token).ConfigureAwait(false);
+		try
+		{
+			ThrowIfTerminated();
+			_session.DeleteNetwork(name);
+		}
+		finally
+		{
+			_lifecycleGate.Release();
+		}
+	}
+
+	internal async Task DeleteImageAsync(string name, TimeSpan timeout, CancellationToken cancellationToken)
+	{
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(timeout);
+		await _lifecycleGate.WaitAsync(deadline.Token).ConfigureAwait(false);
+		try
+		{
+			ThrowIfTerminated();
+			_session.DeleteImage(name);
+		}
+		finally
+		{
+			_lifecycleGate.Release();
+		}
+	}
+
+	/// <summary>
+	/// Removes containers left in the shared store by processes that exited without deleting them.
+	/// </summary>
+	internal Task<int> RemoveStaleContainersAsync(CancellationToken cancellationToken) =>
+		WslContainerResidue.RemoveAsync(Name, cancellationToken);
 
 	internal async Task<MsContainer> CreateContainerAsync(
 		ContainerSettings settings,
@@ -533,13 +589,10 @@ sealed class WslContainerSession : IContainerSession
 		// caller's cancellation token: a test timing out would otherwise cancel the pull for every
 		// other test waiting on it. Callers stop waiting on their own token; the pull itself runs to
 		// completion (or fails) once.
-		var lazy = _activePulls.GetOrAdd(
-			reference.FullReference,
-			_ => new Lazy<Task>(
-				() => PullWithDeadlineAsync(reference, progress, credentials),
-				LazyThreadSafetyMode.ExecutionAndPublication
-			)
-		);
+		var lazy = _activePulls.GetOrAdd(reference.FullReference, _ => new Lazy<Task>(
+			() => PullWithDeadlineAsync(reference, progress, credentials),
+			LazyThreadSafetyMode.ExecutionAndPublication
+		));
 		var pull = lazy.Value;
 
 		// Observe a fault even if every waiter cancelled, so it is not raised as an unobserved

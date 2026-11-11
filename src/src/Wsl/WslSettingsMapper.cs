@@ -27,11 +27,39 @@ static class WslSettingsMapper
 			HostName = configuration.Hostname,
 			DomainName = configuration.DomainName,
 			InitProcess = initProcess,
-			NetworkingMode = (Microsoft.WSL.Containers.ContainerNetworkingMode)configuration.NetworkingMode,
+			// The SDK rejects NetworkingMode combined with Networks, so a named network is expressed
+			// through ContainerNetwork (which also carries aliases) and the mode is left unset.
+			NetworkingMode = configuration.Network is null
+				? (Microsoft.WSL.Containers.ContainerNetworkingMode)configuration.NetworkingMode
+				: null,
 			Privileged = configuration.Privileged,
 			EnableGpu = configuration.EnableGPU,
 			EnableAutoRemove = configuration.EnableAutoRemove,
 		};
+
+		// Only assign these when the caller asked for a change. An empty list is not "no change": the
+		// SDK applies it as the container's capability set, which strips the runtime defaults and
+		// makes a non-root process (for example SQL Server creating /.system) fail.
+		if (configuration.CapabilityAdditions.Count > 0)
+		{
+			settings.CapabilityAdditions = [.. configuration.CapabilityAdditions];
+		}
+
+		if (configuration.CapabilityDrops.Count > 0)
+		{
+			settings.CapabilityDrops = [.. configuration.CapabilityDrops];
+		}
+
+		if (configuration.Network is { } networkName)
+		{
+			ContainerNetwork network = new(networkName);
+			if (configuration.NetworkAliases.Count > 0)
+			{
+				network.Aliases = [.. configuration.NetworkAliases];
+			}
+
+			settings.Networks = [network];
+		}
 
 		if (configuration.PortBindings.Count > 0)
 		{

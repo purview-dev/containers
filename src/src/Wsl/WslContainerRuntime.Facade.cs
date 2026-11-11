@@ -1,7 +1,7 @@
 namespace Purview.Containers.Wsl;
 
 /// <summary>
-/// The process-wide WSL Containers runtime as seen from a platform-neutral (<c>net10.0</c>) consumer.
+/// The process-wide WSL Containers runtime as seen from a platform-neutral (<c>net10.0</c>/<c>net11.0</c>) consumer.
 /// </summary>
 /// <remarks>
 /// <para>

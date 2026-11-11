@@ -49,10 +49,11 @@ dotnet add package Purview.Containers
 
 Three things make it work, and nothing else is required:
 
-- **A platform-neutral target framework** (`net10.0`). `Purview.Containers.Wsl` is multi-targeted; a
-  `net10.0` project binds its **portable facade**, which runs the WSLC implementation on Windows and
-  reports `wsl` unavailable everywhere else. A Windows target framework binds the implementation
-  directly — and then cannot run on a Linux CI runner.
+- **A platform-neutral target framework** (`net10.0` or `net11.0`; .NET 8 and .NET 9 are unsupported).
+  `Purview.Containers.Wsl` is multi-targeted; a platform-neutral project binds its **portable facade**,
+  which runs the WSLC implementation on Windows and reports `wsl` unavailable everywhere else. A Windows
+  target framework binds the implementation directly — and then cannot run on a Linux CI runner. The
+  `net11.0` assets are compiled with `runtime-async=on`.
 - **The umbrella package**, bringing `Core` and both backends.
 - **No registration line and no environment variable.** Each backend package ships `buildTransitive`
   assets that generate a module initializer in your assembly, so the process discovers the registered

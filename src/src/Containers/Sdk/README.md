@@ -40,8 +40,8 @@ await cache.GetDatabase().PingAsync();
 
 There is no registration line and no `PURVIEW_CONTAINERS_BACKEND`: each backend package ships
 `buildTransitive` assets that register themselves in your assembly, and automatic selection picks the
-first usable backend (WSLC is preferred where it works, Docker otherwise). Use a **`net10.0`** (or later)
-project — see [Using it in your tests](https://github.com/purview-dev/containers/blob/main/docs/wiki/Using-in-Your-Tests.md).
+first usable backend (WSLC is preferred where it works, Docker otherwise). Use a **`net10.0` or
+`net11.0`** project — see [Using it in your tests](https://github.com/purview-dev/containers/blob/main/docs/wiki/Using-in-Your-Tests.md).
 
 ## When to use this versus a single backend
 
@@ -56,8 +56,8 @@ not change.
 
 ## Requirements
 
-- **.NET 10 or later.** The abstractions and service modules are portable; the WSL Containers backend is
-  multi-target and stays dormant on non-Windows hosts. See the
+- **.NET 10 or .NET 11** (.NET 8 and .NET 9 are not supported). The abstractions and service modules are
+  portable; the WSL Containers backend is multi-target and stays dormant on non-Windows hosts. See the
   [consumer requirements](https://github.com/purview-dev/containers/blob/main/docs/wiki/Consumer-Requirements.md).
 - Either a Windows 10/11 host with **WSL Containers** (`wsl --install --no-distribution`) or a reachable
   **Docker** daemon.

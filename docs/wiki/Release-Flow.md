@@ -92,8 +92,9 @@ nothing and publishes nothing; it reports the verdict and the rule that decided 
 The workflow fails on a `Fail` verdict, logs a notice and publishes nothing on `Skip`, and publishes only
 on `Release`.
 
-The shared workflow runs on **`ubuntu-latest`**, so the Linux agent builds the portable `net10.0` projects
-and the `net11.0-windows10.0.19041.0` test projects. That only works because `src/Directory.Build.props`
+The shared workflow runs on **`ubuntu-latest`**, so the Linux agent builds the portable `net10.0` and
+`net11.0` projects and the `net11.0-windows10.0.19041.0` test projects. That only works because
+`src/Directory.Build.props`
 sets `EnableWindowsTargeting=true`; removing it fails the pipeline with `NETSDK1100`. The agent has no WSL
 Containers, which is why the pipeline is filtered to `[Category=Unit]` — see
 [Consumer Requirements](Consumer-Requirements.md) and [Testing](Testing.md).

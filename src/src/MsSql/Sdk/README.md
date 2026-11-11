@@ -12,14 +12,14 @@ connection-string generation and readiness probing.
 ## Requirements
 
 - **WSL Containers backend:** Windows 10/11 with WSL Containers (`wsl --install --no-distribution`), and a
-  `.NET 10` or later project. A platform-neutral `net10.0` project binds the portable facade and gets
+  `.NET 10` or `.NET 11` project. A platform-neutral `net10.0` or `net11.0` project binds the portable facade and gets
   automatic WSLC-or-Docker selection; a Windows target framework
-  (`net10.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. The
+  (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. The
   `Purview.Containers.Wsl` package supplies `buildTransitive` defaults for
   `WindowsSdkPackageVersion`/`PlatformTarget` and (for a platform-neutral consumer on a Windows build
   host) the implementation payload, rejecting an unsupported consumer with `PCC0001`/`PCC0002` — see the
   [consumer requirements](https://github.com/purview-dev/containers/blob/main/docs/wiki/Consumer-Requirements.md).
-- **Docker backend:** any reachable Docker daemon (`docker info`), with a `net10.0` or later project on any
+- **Docker backend:** any reachable Docker daemon (`docker info`), with a `net10.0` or `net11.0` project on any
   platform. No Windows target framework and no `PCC` guards apply.
 - **Experimental:** the API, defaults and packaging can change between prereleases; there is no
   production support guarantee.
@@ -54,6 +54,11 @@ await connection.OpenAsync();
 
 ## Behaviour and constraints
 
+- **Privileged container:** the `2025-latest` image (and CU11+ 2022 images) runs as the non-root
+  `mssql` user. WSLC does not give that user a writable home directory or the capabilities needed to
+  create `/.system`, so the image exits with `0xC0000022`. The builder therefore enables
+  `WithPrivileged()` by default; call `WithPrivileged(false)` for an image that does not need it. Docker
+  accepts the flag unchanged.
 - **Memory:** SQL Server refuses to start below 2000 MB. The default session VM is capped at 4096 MB
   (`WslContainerRuntimeOptions.Default`), so it works out of the box; override with
   `MemorySizeInMB` if you configure your own runtime.

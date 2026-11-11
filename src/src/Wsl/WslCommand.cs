@@ -15,7 +15,7 @@ static class WslCommand
 		Justification = "Cancellation kills and drains the owned process; bounded cleanup then closes its pipes if the runtime stalls."
 	)]
 	internal static async Task<Result> RunAsync(
-		string session,
+		string? session,
 		IReadOnlyList<string> arguments,
 		CancellationToken cancellationToken,
 		Stream? input = null,
@@ -32,15 +32,18 @@ static class WslCommand
 			RedirectStandardError = true,
 			RedirectStandardInput = input is not null,
 		};
-		info.ArgumentList.Add("--session");
-		info.ArgumentList.Add(session);
+		if (!string.IsNullOrEmpty(session))
+		{
+			info.ArgumentList.Add("--session");
+			info.ArgumentList.Add(session);
+		}
+
 		foreach (var argument in arguments)
 			info.ArgumentList.Add(argument);
 		System.Diagnostics.Process process;
 		try
 		{
-			process =
-				System.Diagnostics.Process.Start(info)
+			process = System.Diagnostics.Process.Start(info)
 				?? throw new ContainerPrerequisiteException("Could not start wslc.");
 		}
 		catch (Win32Exception)

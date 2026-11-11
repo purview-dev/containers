@@ -30,6 +30,8 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 	readonly List<NamedVolume> _namedVolumes = [];
 	ContainerNetworkingMode _networkingMode = ContainerNetworkingMode.Bridged;
 	bool _privileged;
+	string[] _capabilityAdditions = [];
+	string[] _capabilityDrops = [];
 	bool _enableGPU;
 	bool _enableAutoRemove;
 	bool _enableCleanUp = true;
@@ -325,6 +327,40 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 		return (TBuilder)this;
 	}
 
+	/// <summary>
+	/// Adds Linux capabilities beyond the runtime defaults (for example <c>NET_ADMIN</c>). The names are
+	/// passed to the backend unchanged; privileged mode already grants every capability.
+	/// </summary>
+	public TBuilder WithCapabilityAdd(params string[] capabilities)
+	{
+		ArgumentNullException.ThrowIfNull(capabilities);
+		_capabilityAdditions = ValidateCapabilities(capabilities);
+		return (TBuilder)this;
+	}
+
+	/// <summary>Drops Linux capabilities from the container (for example <c>NET_RAW</c>).</summary>
+	public TBuilder WithCapabilityDrop(params string[] capabilities)
+	{
+		ArgumentNullException.ThrowIfNull(capabilities);
+		_capabilityDrops = ValidateCapabilities(capabilities);
+		return (TBuilder)this;
+	}
+
+	static string[] ValidateCapabilities(string[] capabilities)
+	{
+		foreach (var capability in capabilities)
+		{
+			if (string.IsNullOrWhiteSpace(capability))
+				throw new ContainerConfigurationException("A Linux capability name cannot be empty.");
+			if (capability.Any(char.IsWhiteSpace))
+				throw new ContainerConfigurationException(
+					$"Linux capability '{capability}' cannot contain whitespace."
+				);
+		}
+
+		return [.. capabilities.Distinct(StringComparer.Ordinal)];
+	}
+
 	/// <summary>Exposes GPU devices to the container.</summary>
 	public TBuilder WithGPU(bool enable = true)
 	{
@@ -419,8 +455,7 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 	{
 		return new TConfiguration
 		{
-			Image =
-				_image
+			Image = _image
 				?? throw new ContainerConfigurationException(
 					"An image is required. Call WithImage(...) before Build()."
 				),
@@ -435,6 +470,8 @@ public abstract class ContainerBuilder<TBuilder, TContainer, TConfiguration>
 			NamedVolumes = _namedVolumes.ToArray(),
 			NetworkingMode = _networkingMode,
 			Privileged = _privileged,
+			CapabilityAdditions = [.. _capabilityAdditions],
+			CapabilityDrops = [.. _capabilityDrops],
 			EnableGPU = _enableGPU,
 			EnableAutoRemove = _enableAutoRemove,
 			EnableCleanUp = _enableCleanUp,

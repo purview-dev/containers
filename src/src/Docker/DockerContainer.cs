@@ -341,7 +341,7 @@ public sealed class DockerContainer : IContainer
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
 		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 		deadline.CancelAfter(_configuration.OperationTimeout);
-		await DockerFileCopy.CopyAsync(Handle.Id, source, target, deadline.Token).ConfigureAwait(false);
+		await DockerFileCopy.CopyAsync(Handle.Id, source, target, mode: null, deadline.Token).ConfigureAwait(false);
 	}
 
 	/// <inheritdoc />

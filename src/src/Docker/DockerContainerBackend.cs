@@ -188,7 +188,7 @@ public sealed class DockerContainerBackend : IContainerBackend, IContainerBacken
 			{
 				foreach (var mapping in configuration.ResourceMappings)
 					DockerFileCopy
-						.CopyAsync(container.Id, mapping.Source, mapping.Target, cancellationToken)
+						.CopyAsync(container.Id, mapping.Source, mapping.Target, mapping.Mode, cancellationToken)
 						.GetAwaiter()
 						.GetResult();
 			};
@@ -307,6 +307,10 @@ public sealed class DockerContainerBackend : IContainerBackend, IContainerBacken
 				[
 					new DeviceRequest { Count = -1, Capabilities = [new List<string> { "gpu" }] },
 				];
+			if (configuration.CapabilityAdditions.Count > 0)
+				parameters.HostConfig.CapAdd = [.. configuration.CapabilityAdditions];
+			if (configuration.CapabilityDrops.Count > 0)
+				parameters.HostConfig.CapDrop = [.. configuration.CapabilityDrops];
 			foreach (var binding in configuration.PortBindings)
 			{
 				var key =

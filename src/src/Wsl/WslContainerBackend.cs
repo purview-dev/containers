@@ -53,7 +53,8 @@ public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPr
 		int storageMode,
 		long? sessionTimeoutTicks,
 		bool disableProcessExitCleanup,
-		bool? cleanUpVolumesOnTerminate
+		bool? cleanUpVolumesOnTerminate,
+		string? hostLoopback
 	)
 	{
 		WslContainerRuntimeOptions options = new()
@@ -67,6 +68,7 @@ public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPr
 			SessionTimeout = sessionTimeoutTicks is { } ticks ? TimeSpan.FromTicks(ticks) : null,
 			DisableProcessExitCleanup = disableProcessExitCleanup,
 			CleanUpVolumesOnTerminate = cleanUpVolumesOnTerminate,
+			HostLoopback = hostLoopback,
 		};
 		return new WslContainerBackend(options);
 	}
@@ -125,9 +127,7 @@ public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPr
 		deadline.CancelAfter(configuration.Timeout);
 		var session = (WslContainerSession)await Runtime.GetSessionAsync(deadline.Token).ConfigureAwait(false);
 		var name = configuration.Name ?? $"purview-{Guid.NewGuid():N}";
-		await session
-			.RunCommandAsync(["network", "create", name], configuration.Timeout, deadline.Token)
-			.ConfigureAwait(false);
+		await session.CreateNetworkAsync(name, deadline.Token).ConfigureAwait(false);
 		return new WslResource(session, name, network: true, configuration.Timeout);
 	}
 

@@ -10,7 +10,7 @@ Test projects are discovered under `src/tests` and the SDK stamps every test ass
 | --- | --- | --- |
 | `*.UnitTests` | `Unit` | none — pure logic, parsing, configuration and wait-strategy units, some with in-process fakes. |
 | `Wsl.*` and module `*.IntegrationTests` | `Integration` | a **WSLC host** — real containers on a shared WSLC session. |
-| `Docker.IntegrationTests`, `Modules.Docker.IntegrationTests` | `Integration` | any **Docker daemon** — these target `net10.0`, so they also run on Linux. |
+| `Docker.IntegrationTests`, `Modules.Docker.IntegrationTests` | `Integration` | any **Docker daemon** — these target `net10.0`, so they also run on Linux and keep the lowest supported framework under test. |
 
 `.config/purview-build.json` keeps test discovery to unit projects (`TestPatterns` is
 `*UnitTests.csproj`), so the shared Ubuntu pipeline never launches a Windows-targeted WSLC test app. A
@@ -31,7 +31,7 @@ session VHD. Runner failures are still real failures: every integration job pins
 runtime fails the job instead of skipping every test.
 
 > The shared `purview-dev/build` workflow runs on **`ubuntu-latest`**, so the pipeline builds the portable
-> `net10.0` projects and the `net11.0-windows…` test projects on Linux. That works because
+> `net10.0`/`net11.0` projects and the `net11.0-windows…` test projects on Linux. That works because
 > `src/Directory.Build.props` sets `EnableWindowsTargeting=true`; without it the SDK reports `NETSDK1100`.
 > See [Consumer Requirements](Consumer-Requirements.md) for what that workaround does and does not
 > cover.
@@ -139,7 +139,7 @@ Register a **Windows x64** runner for this repository (or organisation) with the
 - Windows 11 (22H2 or later) or Windows Server 2025 with **WSL Containers**:
   `wsl --install --no-distribution`, verified with `wsl --version` and `wslc version`. Windows 10 and
   Windows Server 2022 do not support WSL Containers.
-- The **.NET 11 SDK** the repository pins in `global.json` (`11.0.100-rc.2.26504.105`).
+- The **.NET 11 SDK** the repository pins in `global.json` (`11.0.100`).
 
 The job's first step prints `wsl --version` and `wslc version`, so a mis-provisioned runner fails
 immediately instead of surfacing as container timeouts. `actionlint` is told about the custom label in

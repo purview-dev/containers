@@ -2,20 +2,22 @@
 
 The **WSL Containers (WSLC) backend** for [`Purview.Containers.Core`](https://www.nuget.org/packages/Purview.Containers.Core):
 throwaway Linux containers for .NET integration testing built directly on the `Microsoft.WSL.Containers`
-managed API, with **no Docker installation**, Docker.DotNet or Testcontainers dependency. Capabilities
-missing from the SDK use a bounded `wslc` CLI fallback in the same session: entrypoint/user/labels,
-managed networks/aliases, reuse, file copy and Dockerfile builds require `wslc` on PATH.
+3.0.5 managed API, with **no Docker installation**, Docker.DotNet or Testcontainers dependency.
+Lifecycle, images, named networks and aliases, Linux capabilities and session host-loopback support all
+use the managed SDK. Capabilities still missing from it use a bounded `wslc` CLI fallback in the same
+session: entrypoint/user/labels, reuse, file copy and Dockerfile builds require `wslc` on PATH.
 
 ```bash
 dotnet add package Purview.Containers.Wsl
 ```
 
 Reference this package (or a service module) and containers run on WSLC. The package is
-**multi-target**: a `net10.0` build (a portable facade) and a `net10.0-windows10.0.19041.0` build (the
-implementation). A Windows-targeting project binds the implementation; a `net10.0` project binds the
-facade, which loads the implementation at run time on a Windows host and reports `wsl` as unavailable
-elsewhere. It registers itself as the `wsl` backend in the consuming assembly. To also run the same test
-code on Docker in Linux CI, reference
+**multi-target**: `net10.0` and `net11.0` builds (portable facades) and
+`net10.0-windows10.0.19041.0` and `net11.0-windows10.0.19041.0` builds (the implementations). A
+Windows-targeting project binds the matching implementation; a platform-neutral project binds the facade,
+which loads the implementation at run time on a Windows host and reports `wsl` as unavailable elsewhere. The
+`net11.0` builds are compiled with `runtime-async=on`. It registers itself as the `wsl` backend in the
+consuming assembly. To also run the same test code on Docker in Linux CI, reference
 [`Purview.Containers.Docker`](https://www.nuget.org/packages/Purview.Containers.Docker) (or the umbrella
 [`Purview.Containers`](https://www.nuget.org/packages/Purview.Containers), which brings both backends).
 
@@ -28,12 +30,13 @@ code on Docker in Linux CI, reference
 ## Requirements
 
 - Windows 11 or Windows Server 2025 with **WSL Containers** (`wsl --install --no-distribution`).
-- **A .NET 10 project.** The recommended target framework is platform-neutral (`net10.0`): it binds the
-  facade and gives you automatic WSLC-or-Docker selection. A Windows target framework
-  (`net10.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. Anything older than
-  .NET 10, or a Windows TFM below Windows 10.0.19041.0, fails the build with `PCC0001`; a 32-bit
-  Windows consumer fails with `PCC0002`; and without the packages' MSBuild defaults a stale
-  `WindowsSdkPackageVersion` fails with `CS1705`.
+- **A .NET 10 or .NET 11 project** (.NET 8 and .NET 9 are not supported). The recommended target
+  framework is platform-neutral (`net10.0` or `net11.0`): it binds the facade and gives you automatic
+  WSLC-or-Docker selection. A Windows target framework
+  (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`, x64 or arm64) binds the implementation
+  directly. Anything older than .NET 10, or a Windows TFM below Windows 10.0.19041.0, fails the build with
+  `PCC0001`; a 32-bit Windows consumer fails with `PCC0002`; and without the packages' MSBuild defaults a
+  stale `WindowsSdkPackageVersion` fails with `CS1705`.
 - This package supplies the `buildTransitive` defaults for `WindowsSdkPackageVersion` and
   `PlatformTarget` that every module package inherits, and (for a platform-neutral consumer on a Windows
   build host) copies the Windows implementation payload next to the output. The full contract, the error
@@ -74,7 +77,8 @@ invalid images, ports and mounts fail during configuration rather than at pull t
 | `WithEnvironment(string, string)`, `WithEnvironment(IReadOnlyDictionary<string, string>)` | Init-process environment. |
 | `WithCommand(params string[])`, `WithWorkingDirectory` | Init-process argv (no shell) and working directory. |
 | `WithEntrypoint`, `WithUser`, `WithLabel` | Init-process overrides and non-secret metadata (CLI creation). |
-| `WithNetwork`, `WithNetworkAliases`, `WithReuse` | Managed network attachment/DNS aliases and explicit session-scoped reuse. |
+| `WithNetwork`, `WithNetworkAliases`, `WithReuse` | Managed network attachment/DNS aliases (managed SDK) and explicit session-scoped reuse. |
+| `WithCapabilityAdd`, `WithCapabilityDrop` | Linux capabilities added to or dropped from the container; passed unchanged to WSLC or Docker. |
 | `WithResourceMapping` | Pre-start file/directory copy, including empty directories. |
 | `WithExecTimeout`, `WithStopTimeout`, `WithCleanupTimeout`, `WithOperationTimeout` | Positive finite managed deadlines. |
 | `WithPortBinding(ushort, bool assignRandomHostPort)`, `WithPortBinding(ushort, ushort hostPort, ...)`, `WithPortBinding(PortBinding)` | Host port mappings; random host ports use native `windowsPort=0` allocation. |
@@ -149,9 +153,11 @@ ContainerBackends.Use(new WslContainerBackend(WslContainerRuntimeOptions.Default
 ```
 
 The full `WslContainerRuntimeOptions` set (CPU, memory, GPU, session name, `StoragePath`, `StorageMode`,
-timeout, `CleanUpVolumesOnTerminate`) is honoured on both a platform-neutral (`net10.0`) consumer — where the
-facade forwards it to the Windows build at run time — and a Windows target framework, where the Windows build
-applies it directly.
+timeout, `CleanUpVolumesOnTerminate`, `HostLoopback`) is honoured on both a platform-neutral
+(`net10.0`/`net11.0`) consumer — where the facade forwards it to the Windows build at run time — and a
+Windows target framework, where the Windows build applies it directly. `HostLoopback` is the optional
+hostname containers use to reach services listening on the Windows host loopback interface; it is
+session-wide and requires WSL 3.0.5 or later.
 
 Named volumes live on the session and are **retained by default**, matching Docker/Testcontainers. Set
 `ContainerCleanup.CleanUpVolumesOnExit = true`, or set `PURVIEW_CONTAINERS_CLEAN_VOLUMES=true` before the

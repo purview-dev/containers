@@ -18,7 +18,7 @@ Modules are thin packages layered on the backend-neutral abstractions
 Modules must **not** duplicate container runtime infrastructure, and they must never reference a backend
 package (`Purview.Containers.Wsl`, …): the container base resolves the backend through
 `ContainerBackends.ResolveAsync()`, which is what lets the same module package run on WSLC or Docker. Every
-module targets `net10.0` and is portable.
+module targets `net10.0` and `net11.0` and is portable.
 
 ## Builder model
 
@@ -148,7 +148,7 @@ that leans on the Testcontainers modules ports across unchanged:
 |---|---|---|---|---|
 | PostgreSQL | `postgres:17` | `pg_isready` | Npgsql | ✅ implemented |
 | Redis | `redis:7` | `redis-cli ping` | StackExchange.Redis | ✅ implemented — also usable with Valkey/Garnet via `WithImage` |
-| SQL Server | `mcr.microsoft.com/mssql/server:2025-latest` | host `SqlClient` connection | Microsoft.Data.SqlClient | ✅ implemented — requires `.AcceptLicense()`; the connection string defaults to `Database=master` (`WithDatabase(...)` to change it); session needs ≥ 2000 MB memory |
+| SQL Server | `mcr.microsoft.com/mssql/server:2025-latest` | host `SqlClient` connection | Microsoft.Data.SqlClient | ✅ implemented — requires `.AcceptLicense()`; the connection string defaults to `Database=master` (`WithDatabase(...)` to change it); the builder runs the container privileged because the non-root `mssql` user cannot create `/.system` on WSLC (`WithPrivileged(false)` to opt out); session needs ≥ 2000 MB memory |
 | RabbitMQ | `rabbitmq:3-management` | log `"Server startup complete"` | RabbitMQ.Client | ✅ implemented — AMQP + management endpoints |
 | Azurite | `mcr.microsoft.com/azure-storage/azurite` | log `"successfully listening"` | Azure.Storage.* | ✅ implemented — blob/queue/table endpoints; the connection string carries the well-known `devstoreaccount1` key (`AzuriteAccount.Key`) |
 | NATS | `nats:2` | log `"Listening for client connections"` | NATS.Client.Core | ✅ implemented — client + monitoring endpoints |

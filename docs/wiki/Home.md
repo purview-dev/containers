@@ -3,8 +3,8 @@
 Purview.Containers is a Testcontainers-style library for .NET that runs throwaway Linux containers for
 integration testing on **Microsoft WSL Containers (WSLC)** with **no Docker installation**, or on
 **Docker** through Testcontainers. The WSLC backend is built directly against the
-`Microsoft.WSL.Containers` managed package, with a bounded `wslc` CLI fallback for SDK-missing
-capabilities. See [Capabilities and Cancellation](Backend-Capabilities.md).
+`Microsoft.WSL.Containers` 3.0.5 managed package, with a bounded `wslc` CLI fallback only for
+capabilities the SDK does not expose. See [Capabilities and Cancellation](Backend-Capabilities.md).
 
 This wiki is the project documentation hub. The packages are published under the
 `Purview.Containers.*` package IDs.
@@ -65,23 +65,24 @@ This wiki is the project documentation hub. The packages are published under the
 ## Requirements
 
 - **WSL Containers backend:** Windows 11 (22H2 or later) or Windows Server 2025 with **WSL Containers**, installed via
-  `wsl --install --no-distribution`. Verified against WSL **3.0.1.0**; `wsl --version` and `wslc version`
-  should both report 3.0.1.0 or later.
+  `wsl --install --no-distribution`. Verified against WSL **3.0.5.0**; `wsl --version` and `wslc version`
+  should both report 3.0.5.0 or later.
 - **Docker backend:** any reachable Docker daemon (Docker Desktop, Docker Engine in WSL2, or a CI runner).
   Verify with `docker info`.
-- .NET SDK 11 to build (the repository pins `11.0.100-rc.1.26425.128` in `global.json`).
-- A consuming project must be a **.NET 10 or later** project when it uses the **WSL Containers backend**.
-  The recommended shape is platform-neutral (`net10.0`): it binds the portable facade and gets automatic
-  WSLC-or-Docker selection. A Windows target framework (`net10.0-windows10.0.19041.0`, x64 or arm64) binds
-  the implementation directly. The abstractions and the service modules target `net10.0` and are portable,
-  but they need a backend package to run — see
+- .NET SDK 11 to build (the repository pins `11.0.100` in `global.json`).
+- A consuming project must be a **.NET 10 or .NET 11** project when it uses the **WSL Containers backend**
+  (**.NET 8 and .NET 9 are not supported**). The recommended shape is platform-neutral (`net10.0` or
+  `net11.0`): it binds the portable facade and gets automatic WSLC-or-Docker selection. A Windows target
+  framework (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`, x64 or arm64) binds the
+  implementation directly. The abstractions and the service modules target `net10.0` and `net11.0` and are
+  portable, but they need a backend package to run — see
   [Backends: WSLC or Docker](Backends.md) for the side-by-side setup. The full contract, the exact errors
   raised when it is not met, and the `EnableWindowsTargeting` workaround for non-Windows CI agents are in
   [Consumer Requirements](Consumer-Requirements.md).
 
 ```powershell
-wsl --version     # WSL Containers installed (verified against 3.0.1.0)
-wslc version      # e.g. 3.0.1.0
+wsl --version     # WSL Containers installed (verified against 3.0.5.0)
+wslc version      # e.g. 3.0.5.0
 ```
 
 The library reports missing prerequisites through `WslContainerRuntime.GetInfoAsync()`; it never installs or

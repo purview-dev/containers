@@ -236,10 +236,9 @@ public static class ContainerBackends
 
 		if (!selection.IsAuto)
 		{
-			var named =
-				registered.FirstOrDefault(backend =>
-					string.Equals(backend.Name, selection.Name, StringComparison.OrdinalIgnoreCase)
-				)
+			var named = registered.FirstOrDefault(backend =>
+				string.Equals(backend.Name, selection.Name, StringComparison.OrdinalIgnoreCase)
+			)
 				?? throw new ContainerBackendUnavailableException(
 					$"The container backend '{selection.Name}' is not registered. Registered backends: "
 						+ $"{string.Join(", ", registered.Select(backend => backend.Name))}."

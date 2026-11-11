@@ -169,6 +169,30 @@ public class ContainerBuilderTests
 	}
 
 	[Test]
+	public async Task WithCapabilities_PopulatesConfigurationAndRemovesDuplicates()
+	{
+		var configuration = new TestBuilder()
+			.WithImage("alpine")
+			.WithCapabilityAdd("NET_ADMIN", "SYS_PTRACE", "NET_ADMIN")
+			.WithCapabilityDrop("NET_RAW")
+			.BuildConfig();
+
+		await Assert.That(configuration.CapabilityAdditions).IsEquivalentTo(["NET_ADMIN", "SYS_PTRACE"]);
+		await Assert.That(configuration.CapabilityDrops).IsEquivalentTo(["NET_RAW"]);
+	}
+
+	[Test]
+	public async Task WithCapability_InvalidName_Throws()
+	{
+		await Assert
+			.That(() => new TestBuilder().WithImage("alpine").WithCapabilityAdd(string.Empty))
+			.Throws<ContainerConfigurationException>();
+		await Assert
+			.That(() => new TestBuilder().WithImage("alpine").WithCapabilityDrop("NET RAW"))
+			.Throws<ContainerConfigurationException>();
+	}
+
+	[Test]
 	public async Task Build_WithoutImage_Throws()
 	{
 		await Assert.That(() => new TestBuilder().Build()).Throws<ContainerConfigurationException>();

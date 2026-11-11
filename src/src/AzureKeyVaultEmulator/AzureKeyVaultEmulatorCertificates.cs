@@ -278,8 +278,7 @@ static class AzureKeyVaultEmulatorCertificates
 			CreateNoWindow = true,
 		};
 
-		using var process =
-			Process.Start(startInfo)
+		using var process = Process.Start(startInfo)
 			?? throw new ContainerConfigurationException($"Failed to start /bin/bash for: {command}");
 
 		var error = process.StandardError.ReadToEnd();

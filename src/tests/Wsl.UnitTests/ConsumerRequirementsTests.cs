@@ -17,12 +17,15 @@ public class ConsumerRequirementsTests
 	static readonly string[] WindowsPlatform = ["Windows10.0.19041.0"];
 
 	[Test]
-	public async Task LibraryTargetsNet10()
+	public async Task LibraryTargetsNet11()
 	{
+		// The package ships net10.0 and net11.0 assets; this project targets net11.0-windows, so it
+		// binds the net11.0 Windows implementation. The net10.0 assets are guarded by pack validation
+		// (.config/purview-build.json), not from inside a net11 test process.
 		var targetFramework = Library.GetCustomAttribute<TargetFrameworkAttribute>();
 
 		await Assert.That(targetFramework).IsNotNull();
-		await Assert.That(targetFramework!.FrameworkName).IsEqualTo(".NETCoreApp,Version=v10.0");
+		await Assert.That(targetFramework!.FrameworkName).IsEqualTo(".NETCoreApp,Version=v11.0");
 	}
 
 	[Test]

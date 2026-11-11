@@ -77,27 +77,21 @@ public sealed class ContainerEnvironmentResolver : IDisposable
 	/// CONTAINER_ENVIRONMENT_WSL_DISTRIBUTION and CONTAINER_ENVIRONMENT_PROBE_IMAGE on first use.
 	/// </summary>
 	public static ContainerEnvironmentResolver ForRuntime(string runtimeCommand = "docker") =>
-		Environments.GetOrAdd(
-			runtimeCommand,
-			command =>
+		Environments.GetOrAdd(runtimeCommand, command =>
+		{
+			ContainerEnvironmentOptions options = new()
 			{
-				ContainerEnvironmentOptions options = new()
-				{
-					RuntimeCommand = command,
-					WslDistribution = System.Environment.GetEnvironmentVariable(
-						"CONTAINER_ENVIRONMENT_WSL_DISTRIBUTION"
-					),
-					ProbeImage =
-						System.Environment.GetEnvironmentVariable("CONTAINER_ENVIRONMENT_PROBE_IMAGE") ?? "alpine:3.19",
-				};
-				var mappings = System.Environment.GetEnvironmentVariable("CONTAINER_ENVIRONMENT_PATH_MAPPINGS");
-				if (!string.IsNullOrWhiteSpace(mappings))
-					options.PathMappings =
-						JsonSerializer.Deserialize<Dictionary<string, string>>(mappings)
-						?? throw new FormatException("CONTAINER_ENVIRONMENT_PATH_MAPPINGS must be a JSON object.");
-				return new(options);
-			}
-		);
+				RuntimeCommand = command,
+				WslDistribution = System.Environment.GetEnvironmentVariable("CONTAINER_ENVIRONMENT_WSL_DISTRIBUTION"),
+				ProbeImage = System.Environment.GetEnvironmentVariable("CONTAINER_ENVIRONMENT_PROBE_IMAGE")
+					?? "alpine:3.19",
+			};
+			var mappings = System.Environment.GetEnvironmentVariable("CONTAINER_ENVIRONMENT_PATH_MAPPINGS");
+			if (!string.IsNullOrWhiteSpace(mappings))
+				options.PathMappings = JsonSerializer.Deserialize<Dictionary<string, string>>(mappings)
+					?? throw new FormatException("CONTAINER_ENVIRONMENT_PATH_MAPPINGS must be a JSON object.");
+			return new(options);
+		});
 
 	/// <summary>Releases synchronization resources. Do not dispose instances returned by <see cref="ForRuntime"/>.</summary>
 	public void Dispose() => _resolutionLock.Dispose();
@@ -150,7 +144,7 @@ public sealed class ContainerEnvironmentResolver : IDisposable
 		for (var i = verb + 1; i < arguments.Count; i++)
 		{
 			var argument = arguments[i];
-			if (argument == "--" || !argument.StartsWith('-'))
+			if (argument == "--" || !argument.AsSpan().StartsWith("-"))
 				break;
 			if (argument == "--mount" && i + 1 < arguments.Count)
 			{
@@ -344,7 +338,7 @@ public sealed class ContainerEnvironmentResolver : IDisposable
 						cancellationToken
 					)
 					.ConfigureAwait(false);
-				if (result.ExitCode == 0 && result.Output.Trim().StartsWith('/'))
+				if (result.ExitCode == 0 && result.Output.Trim().AsSpan().StartsWith("/"))
 					candidates.Add(result.Output.Trim());
 			}
 			return candidates;

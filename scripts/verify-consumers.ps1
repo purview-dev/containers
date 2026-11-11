@@ -17,14 +17,14 @@
 	  03  ...with PlatformTarget=x86                                  -> fails PCC0002
 	  04  ...with no settings at all (buildTransitive defaults)       -> builds, wslcsdk.dll copied
 	  05  a module package with no settings (defaults are transitive)  -> builds
-	  06  net8.0-windows + AssetTargetFallback escape hatch           -> PCC0001 (the hatch does not work)
-	  07  net8.0-windows without the escape hatch                     -> PCC0001
+	  06  net8.0-windows + AssetTargetFallback escape hatch           -> PCC0001 (.NET 8 and 9 are unsupported)
+	  07  net8.0-windows without the escape hatch                     -> PCC0001 (below the .NET 10 floor)
 	  08  plain net11.0 (platform-neutral facade)                     -> builds, wsl registration generated
 	  09  ...with PlatformTarget=AnyCPU (corrected to x64)            -> builds, wslcsdk.dll copied
 	  10  the net11.0-windows shorthand TFM (no OS version)           -> PCC0001
 	  11  multi-targeting with a conditional PackageReference          -> builds
 	  12  multi-targeting with an unconditional PackageReference       -> builds (both inner builds supported)
-	  13  net10.0 + core abstractions                                 -> builds
+	  13  net10.0 + core abstractions                                 -> builds (lowest supported framework)
 	  14  net10.0 + Docker backend                                    -> builds, backend registration generated
 	  15  net10.0 + service module (no backend package)               -> builds
 	  16  net11.0 windows + both backends (auto detection)            -> builds, both registrations generated
@@ -35,6 +35,8 @@
 	  21  net10.0 + umbrella Purview.Containers + modules (one ref)   -> builds, both registrations generated
 	  22  net10.0 + standalone environment resolver                  -> builds, no backend required
 	  23  net10.0 + Aspire adapter                                  -> builds, no backend required
+	  24  plain net11.0 + WSL backend (the runtime-async facade)      -> builds, wsl registration generated
+	  25  net11.0 + umbrella Purview.Containers + modules (one ref)   -> builds, both registrations generated
 
 .PARAMETER FeedPath
 	Folder holding the packed .nupkg files. Defaults to <repo>/artifacts.
@@ -486,6 +488,18 @@ public static class Program
 	}
 }
 '@ }
+
+	New-ConsumerCase -Id '24' -Name 'plain net11.0 + WSL backend (runtime-async facade)' `
+		-Framework '<TargetFramework>net11.0</TargetFramework>' `
+		-Sources @{ 'Smoke.Portable.cs' = $portableSource } `
+		-RequireText 'WslContainerBackend.Create()'
+
+	New-ConsumerCase -Id '25' -Name 'net11.0 + umbrella Purview.Containers + modules (one reference, auto)' `
+		-Framework '<TargetFramework>net11.0</TargetFramework>' `
+		-Package 'Purview.Containers' `
+		-Items $umbrellaItems `
+		-Sources @{ 'Smoke.Auto.cs' = $autoSource } `
+		-RequireText @('WslContainerBackend.Create()', 'DockerContainerBackend.Create()')
 )
 
 

@@ -5,33 +5,37 @@
 > support guarantee. Treat every version as a preview and pin the exact package version you build
 > against.
 
-The WSL Containers backend package is **multi-target**. It ships a Windows build
-(`net10.0-windows10.0.19041.0`, the implementation, built on the `Microsoft.WSL.Containers`
-projection) and a platform-neutral build (`net10.0`, a facade). A Windows-targeting project binds the
-implementation directly; any other project binds the facade, which builds on **every** platform and, on
-a Windows host, loads the implementation at run time. That is what lets a `net10.0` test project that
-references the WSL backend (or the umbrella `Purview.Containers`, which also brings Docker) run on WSLC on
-a developer's Windows machine and on Docker in a Linux CI job with no configuration change. This page is
-the authoritative statement of that contract, of the workarounds
-that exist for it, and of how each of them is verified.
+The WSL Containers backend package is **multi-target**. It ships Windows builds
+(`net10.0-windows10.0.19041.0` and `net11.0-windows10.0.19041.0`, the implementations, built on the
+`Microsoft.WSL.Containers` projection) and platform-neutral builds (`net10.0` and `net11.0`, facades). A
+Windows-targeting project binds the matching implementation directly; any other project binds the facade,
+which builds on **every** platform and, on a Windows host, loads the implementation at run time. That is
+what lets a `net10.0` or `net11.0` test project that references the WSL backend (or the umbrella
+`Purview.Containers`, which also brings Docker) run on WSLC on a developer's Windows machine and on Docker
+in a Linux CI job with no configuration change. This page is the authoritative statement of that contract,
+of the workarounds that exist for it, and of how each of them is verified.
+
+**.NET 8 and .NET 9 are not supported.** The lowest consumer is .NET 10, and a .NET 11 consumer binds
+the `net11.0` assets, which are compiled with `runtime-async=on` and can use the .NET 11 library surface.
 
 ## Which package requires what
 
-The WSLC SDK-only path keeps its existing prerequisites. Entry-point/user/label overrides, managed
-networks, reuse, file copy and Dockerfile builds additionally require the installed `wslc` CLI on PATH.
+The WSLC SDK-only path keeps its existing prerequisites. Entry-point/user/label overrides, reuse, file
+copy and Dockerfile builds additionally require the installed `wslc` CLI on PATH; named networks,
+aliases, Linux capabilities and host loopback use the managed SDK (3.0.5+).
 The CLI operates in the SDK-owned session/store, not the user's default CLI session. Missing CLI support
 fails explicitly, without switching backends. See [Capabilities and Cancellation](Backend-Capabilities.md)
 for operation deadlines, resource ownership and native cancellation limits.
 
 | Package | Target framework | Notes |
 | --- | --- | --- |
-| `Purview.Containers` | `net10.0`, any platform | The umbrella: brings `Purview.Containers.Core` plus both backends. One reference; no target-framework requirement beyond .NET 10. |
-| `Purview.Containers.Core` | `net10.0`, any platform | Backend-neutral abstractions (namespace `Purview.Containers`). |
-| `Purview.Containers.<Module>` | `net10.0`, any platform | Service modules. Restore anywhere; needs a backend package to actually run. |
-| `Purview.Containers.Wsl` | `net10.0` and `net10.0-windows10.0.19041.0` | The WSL Containers backend: a portable facade plus the Windows implementation. **The requirements on this page are its contract.** |
-| `Purview.Containers.Docker` | `net10.0`, any platform | The Docker backend (Testcontainers). Needs a reachable Docker daemon, not a Windows target framework. |
-| `Purview.Containers.Environment` | `net10.0`, any platform | Standalone Docker-compatible CLI bind-sharing resolver; no Aspire, Testcontainers or WSLC dependency. |
-| `Purview.Containers.Aspire` | `net10.0`, any platform | Optional adapter requiring Aspire 13.6.4+ and the Environment package; no backend dependency. |
+| `Purview.Containers` | `net10.0` and `net11.0`, any platform | The umbrella: brings `Purview.Containers.Core` plus both backends. One reference; no target-framework requirement beyond .NET 10. |
+| `Purview.Containers.Core` | `net10.0` and `net11.0`, any platform | Backend-neutral abstractions (namespace `Purview.Containers`). |
+| `Purview.Containers.<Module>` | `net10.0` and `net11.0`, any platform | Service modules. Restore anywhere; needs a backend package to actually run. |
+| `Purview.Containers.Wsl` | `net10.0`, `net11.0`, `net10.0-windows10.0.19041.0` and `net11.0-windows10.0.19041.0` | The WSL Containers backend: portable facades plus the Windows implementations. **The requirements on this page are its contract.** |
+| `Purview.Containers.Docker` | `net10.0` and `net11.0`, any platform | The Docker backend (Testcontainers). Needs a reachable Docker daemon, not a Windows target framework. |
+| `Purview.Containers.Environment` | `net10.0` and `net11.0`, any platform | Standalone Docker-compatible CLI bind-sharing resolver; no Aspire, Testcontainers or WSLC dependency. |
+| `Purview.Containers.Aspire` | `net10.0` and `net11.0`, any platform | Optional adapter requiring Aspire 13.6.5+ and the Environment package; no backend dependency. |
 
 The standalone resolver requires a reachable Linux-container daemon through its selected CLI, working
 credential helpers on `PATH`, and client write access to bind-source directories for verification markers.
@@ -43,8 +47,8 @@ See the [resolver guide](https://github.com/purview-dev/containers/blob/main/src
 The portable package contracts are exercised by `just verify-consumers` cases 22 and 23.
 
 Everything below describes the **WSL Containers backend**. A consumer of a different backend (for
-example `Purview.Containers.Docker`) needs only a portable `net10.0` project: the
-abstractions and the service modules are portable `net10.0` assets. For how to use and switch between the
+example `Purview.Containers.Docker`) needs only a portable `net10.0` or `net11.0` project: the
+abstractions and the service modules are portable assets. For how to use and switch between the
 backends, see [Backends: WSLC or Docker](Backends.md).
 
 For Windows bind mounts targeting a local WSL2 Docker Engine, the Docker backend automatically
@@ -55,8 +59,8 @@ the owning distribution's default user must be able to run `docker info` against
 
 ## Copy this into your project
 
-Most projects need **nothing at all**: a `net10.0` project binds the facade and gets automatic backend
-selection. A Windows-targeting project can be explicit:
+Most projects need **nothing at all**: a `net10.0` or `net11.0` project binds the facade and gets automatic
+backend selection. A Windows-targeting project can be explicit:
 
 ```xml
 <PropertyGroup>
@@ -75,17 +79,19 @@ file, and because the defaults only fill in a value when you have not chosen one
 
 | # | Requirement | Why it exists |
 | --- | --- | --- |
-| 1 | **.NET 10 or later** | `Purview.Containers.Wsl` ships `lib/net10.0/` (facade) and `lib/net10.0-windows10.0.19041/` (implementation). `Purview.Containers` and the service modules ship `lib/net10.0/` too. |
-| 2 | **A Windows-specific target framework that names the OS version** (`net10.0-windows10.0.19041.0` or later) — *only when you want the implementation bound directly; a platform-neutral `net10.0` project binds the facade and still runs WSLC on a Windows host* | The `Microsoft.WSL.Containers` projection only ships Windows assets. `net10.0-windows` on its own is not enough. |
+| 1 | **.NET 10 or .NET 11** | `Purview.Containers.Wsl` ships `lib/net10.0/` and `lib/net11.0/` (facades) and `lib/net10.0-windows10.0.19041/` and `lib/net11.0-windows10.0.19041/` (implementations). `Purview.Containers` and the service modules ship `lib/net10.0/` and `lib/net11.0/` too. Anything older — including .NET 8 and .NET 9 — is unsupported. |
+| 2 | **A Windows-specific target framework that names the OS version** (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`) — *only when you want the implementation bound directly; a platform-neutral project binds the facade and still runs WSLC on a Windows host* | The `Microsoft.WSL.Containers` projection only ships Windows assets. `net10.0-windows` on its own is not enough. |
 | 3 | **64-bit** (`PlatformTarget` `x64`/`arm64`, or a matching `RuntimeIdentifier`) | The native `wslcsdk.dll` ships for `win-x64` and `win-arm64` only. |
 | 4 | **`WindowsSdkPackageVersion` at least `10.0.26100.80`** | The projection is compiled against `Microsoft.Windows.SDK.NET` `10.0.26100.79`; the pack the SDK resolves for a `10.0.19041.0` target framework is older. |
 | 5 | **A Windows 11 (22H2 or later) or Windows Server 2025 host with WSL Containers** to actually run containers | The library drives WSLC; it never installs or updates WSL for you. Windows 10 and Windows Server 2022 are not supported by WSL Containers. |
 
-### 1. .NET 10 or later
+### 1. .NET 10 or .NET 11
 
-`Purview.Containers.Wsl` ships a `net10.0` facade and a `net10.0-windows10.0.19041.0` implementation,
-so it restores on any .NET 10+ project. The repository's own SDK is .NET 11 (`global.json` pins
-`11.0.100-rc.1.26425.128`), but that is a build-time detail, not a consumer requirement.
+`Purview.Containers.Wsl` ships `net10.0` and `net11.0` facades and `net10.0-windows10.0.19041.0` and
+`net11.0-windows10.0.19041.0` implementations, so it restores on any .NET 10+ project. A .NET 11 consumer
+binds the `net11.0` assets, which are compiled with `runtime-async=on`; a .NET 10 consumer keeps the
+`net10.0` assets. The repository's own SDK is .NET 11 (`global.json` pins `11.0.100`), but that is a
+build-time detail, not a consumer requirement.
 
 ### 2. A Windows-specific target framework (optional)
 
@@ -96,10 +102,18 @@ gives you the automatic "WSLC on a Windows machine, Docker everywhere else" beha
 <TargetFramework>net10.0</TargetFramework>                      <!-- portable facade; auto-selects WSLC or Docker -->
 ```
 
+```xml
+<TargetFramework>net11.0</TargetFramework>                      <!-- same, with the runtime-async assets -->
+```
+
 A Windows target framework binds the implementation directly (no run-time load):
 
 ```xml
 <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>  <!-- implementation; correct -->
+```
+
+```xml
+<TargetFramework>net11.0-windows10.0.19041.0</TargetFramework>  <!-- implementation; correct -->
 ```
 
 ```xml
@@ -109,7 +123,7 @@ A Windows target framework binds the implementation directly (no run-time load):
 `net10.0-windows` resolves its platform version to `7.0`, which is older than the `10.0.19041.0`
 the implementation was built against, so NuGet selects no compile assets for it. Always spell out the
 version. (The `Microsoft.WSL.Containers` package itself is `net8.0-windows10.0.19041.0`, which a
-`net10.0-windows10.0.19041.0` project consumes without issue.)
+`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0` project consumes without issue.)
 
 ### 3. 64-bit consumers only
 
@@ -122,9 +136,10 @@ error PCC0002: Purview.Containers.Wsl requires a 64-bit (x64 or arm64) consumer 
 
 ### 4. Windows SDK targeting pack version
 
-`Microsoft.WSL.Containers` 3.0.3's projection references `Microsoft.Windows.SDK.NET`
-`10.0.26100.79`. Targeting a Windows target framework (`net10.0-windows10.0.19041.0`) resolves a lower pack
-(`10.0.19041.x`) by default and the compiler rejects the mismatch:
+`Microsoft.WSL.Containers` 3.0.5's projection references `Microsoft.Windows.SDK.NET`
+`10.0.26100.79`. Targeting a Windows target framework (`net10.0-windows10.0.19041.0` or
+`net11.0-windows10.0.19041.0`) resolves a lower pack (`10.0.19041.x`) by default and the compiler rejects
+the mismatch:
 
 ```text
 error CS1705: Assembly 'wslcsdkcs' ... uses 'Microsoft.Windows.SDK.NET' which has a higher
@@ -183,7 +198,7 @@ always wins over these defaults.
 
 | Error | Raised by | Meaning | Fix |
 | --- | --- | --- | --- |
-| `PCC0001` | the shipped guard target | The consumer's target framework is neither .NET 10+ on Windows 10.0.19041.0+ nor a platform-neutral .NET 10+ framework | Retarget as above. |
+| `PCC0001` | the shipped guard target | The consumer's target framework is neither .NET 10/.NET 11 on Windows 10.0.19041.0+ nor a platform-neutral .NET 10/.NET 11 framework | Retarget as above. |
 | `PCC0002` | the shipped guard target | The consumer is not 64-bit | Remove your `PlatformTarget`, set it to `x64`/`arm64`, or choose a matching `RuntimeIdentifier`. |
 | `CS1705` | the C# compiler | `WindowsSdkPackageVersion` is older than the projection requires | Set `WindowsSdkPackageVersion` to `10.0.26100.80` or later. |
 | `CS8012` | the C# compiler | A referenced assembly targets a different processor (seen when a consumer forces `x86`) | Use a 64-bit consumer. |
@@ -219,7 +234,8 @@ What it does and does not do:
 
 **There is none.** A project that targets Windows but not .NET 10 (for example
 `net8.0-windows10.0.19041.0`) cannot use these packages, and the repository verifies that no
-escape hatch exists.
+escape hatch exists. .NET 8 and .NET 9 are explicitly dropped: they are not built, tested or
+documented, and `PCC0001` rejects them.
 
 The historical suggestion is `AssetTargetFallback`, which tells NuGet to consider an additional
 target framework for the project's package references:
@@ -244,26 +260,27 @@ consume the packages from the older project.
 
 ## Multi-targeting
 
-Multi-targeting is **no longer required** for the WSL Containers backend: a platform-neutral `net10.0`
-target binds the portable facade. If you multi-target for other reasons, reference the package
-unconditionally — both inner builds are supported:
+Multi-targeting is **no longer required** for the WSL Containers backend: a platform-neutral `net10.0` or
+`net11.0` target binds the portable facade. If you multi-target for other reasons, reference the package
+unconditionally — every inner build is supported:
 
 ```xml
 <PropertyGroup>
-	<TargetFrameworks>net10.0;net10.0-windows10.0.19041.0</TargetFrameworks>
+	<TargetFrameworks>net10.0;net11.0;net10.0-windows10.0.19041.0</TargetFrameworks>
 </PropertyGroup>
 <ItemGroup>
 	<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.1" />
 </ItemGroup>
 ```
 
-The Windows inner build binds the implementation; the portable inner build binds the facade. The
+The Windows inner build binds the implementation; the portable inner builds bind the facade. The
 historical pattern — multi-targeting with the reference only on the Windows inner build — still works,
-because the package keeps a `net10.0-windows10.0.19041` build, but the condition is no longer needed.
+because the package keeps `net10.0-windows10.0.19041` and `net11.0-windows10.0.19041` builds, but the
+condition is no longer needed.
 
 ## Verifying these requirements
 
-`just verify-consumers` packs the solution and builds twenty-one throwaway consumer projects against the
+`just verify-consumers` packs the solution and builds twenty-five throwaway consumer projects against the
 produced packages, asserting every claim on this page:
 
 | Case | Consumer | Expected outcome |
@@ -273,8 +290,8 @@ produced packages, asserting every claim on this page:
 | 03 | …with `PlatformTarget=x86` | `PCC0002` |
 | 04 | …with no settings at all | builds via the shipped `buildTransitive` defaults |
 | 05 | a module package plus the WSL Containers backend, with no settings | builds; `wslcsdk.dll` copied (the defaults are transitive through the backend) |
-| 06 | `net8.0-windows` + `AssetTargetFallback` | `PCC0001` — the escape hatch does not work |
-| 07 | `net8.0-windows` | `PCC0001` |
+| 06 | `net8.0-windows` + `AssetTargetFallback` | `PCC0001` — .NET 8 is unsupported and the escape hatch does not work |
+| 07 | `net8.0-windows` | `PCC0001` — below the .NET 10 floor |
 | 08 | plain `net11.0` (platform-neutral facade) | builds; the `wsl` registration is generated |
 | 09 | …with `PlatformTarget=AnyCPU` | builds (corrected to `x64`) |
 | 10 | the `net11.0-windows` shorthand (no OS version) | `PCC0001` |
@@ -289,6 +306,10 @@ produced packages, asserting every claim on this page:
 | 19 | a plain `net10.0` consumer of the WSL Containers backend | builds; the `wsl` registration is generated (the portable facade) |
 | 20 | a `net10.0` consumer of two modules with **both** backends (the auto shape) | builds; both registrations are generated |
 | 21 | a `net10.0` consumer of modules with only the umbrella `Purview.Containers` | builds; both registrations are generated (one reference) |
+| 22 | a `net10.0` consumer of the standalone environment resolver | builds; no backend required |
+| 23 | a `net10.0` consumer of the Aspire adapter | builds; no backend required |
+| 24 | a plain `net11.0` consumer of the WSL Containers backend | builds; the `wsl` registration is generated (the runtime-async facade) |
+| 25 | a `net11.0` consumer of modules with only the umbrella `Purview.Containers` | builds; both registrations are generated (one reference) |
 
 The script is `scripts/verify-consumers.ps1` and it only writes to the temp folder. It needs network
 access (it restores transitive dependencies from nuget.org), so it is a local/CI-explicit step

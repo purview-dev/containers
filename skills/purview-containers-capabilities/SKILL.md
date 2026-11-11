@@ -12,8 +12,9 @@ metadata:
 
 # Capabilities on Docker and WSLC
 
-Docker uses Testcontainers for .NET. WSLC ordinarily uses its managed SDK; entrypoint/user/labels,
-managed networks, reuse, image builds and copy need the `wslc` CLI on PATH. The CLI targets the same
+Docker uses Testcontainers for .NET. WSLC ordinarily uses its managed SDK (3.0.5): lifecycle, images,
+named networks and aliases, Linux capabilities and host loopback are SDK-backed; entrypoint/user/labels,
+reuse, image builds and copy need the `wslc` CLI on PATH. The CLI targets the same
 SDK-owned session and image store, not the user's default CLI session. There is no Docker dependency
 on the WSLC path and no silent runtime fallback when an operation is unsupported.
 
@@ -125,7 +126,8 @@ exec-process kill endpoint. WSLC signals its owned exec process. Dispose the con
 processes and never assume cancellation rolls back application side effects.
 
 CLI-only creation currently rejects privileged mode and multi-line environment values. Ordinary
-SDK-backed privileged containers are unaffected. Never put secrets in names or labels; CLI errors
+SDK-backed privileged containers are unaffected, and `WithCapabilityAdd`/`WithCapabilityDrop` map to
+the managed SDK (or `--cap-add`/`--cap-drop` on the CLI path). Never put secrets in names or labels; CLI errors
 omit raw command/build output to prevent accidental disclosure.
 
 ## Related skills

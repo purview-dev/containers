@@ -35,15 +35,13 @@ public class BackendContractTests
 	{
 		// Arrange
 		await EnsureAvailableAsync();
-		await using var container = CreateContainer(
-			CreateBackend(),
-			builder =>
-				builder
-					.WithEntrypoint("/bin/sh")
-					.WithCommand("-c", "echo ready; sleep 300")
-					.WithUser("1000:1000")
-					.WithLabel("purview.test", "metadata")
-					.WithWaitStrategy(Wait.ForLogMessage("ready"))
+		await using var container = CreateContainer(CreateBackend(), builder =>
+			builder
+				.WithEntrypoint("/bin/sh")
+				.WithCommand("-c", "echo ready; sleep 300")
+				.WithUser("1000:1000")
+				.WithLabel("purview.test", "metadata")
+				.WithWaitStrategy(Wait.ForLogMessage("ready"))
 		);
 		await container.StartAsync(cancellationToken);
 		var directory = "/tmp/a'b$HOME";
@@ -78,18 +76,16 @@ public class BackendContractTests
 			var emptyDirectory = Directory.CreateDirectory(Path.Combine(directory, "empty")).FullName;
 			byte[] content = [0, 1, 2, 255, 13, 10, 128];
 			await File.WriteAllBytesAsync(source, content, cancellationToken);
-			await using var container = CreateContainer(
-				CreateBackend(),
-				builder =>
-					builder
-						.WithResourceMapping(source, "/tmp/pre-start.bin")
-						.WithResourceMapping(directory, "/tmp/pre-start-dir")
-						.WithCommand(
-							"/bin/sh",
-							"-c",
-							"test -f /tmp/pre-start.bin && test -f /tmp/pre-start-dir/input.bin && test -d /tmp/pre-start-dir/empty && echo ready; sleep 300"
-						)
-						.WithWaitStrategy(Wait.ForLogMessage("ready"))
+			await using var container = CreateContainer(CreateBackend(), builder =>
+				builder
+					.WithResourceMapping(source, "/tmp/pre-start.bin")
+					.WithResourceMapping(directory, "/tmp/pre-start-dir")
+					.WithCommand(
+						"/bin/sh",
+						"-c",
+						"test -f /tmp/pre-start.bin && test -f /tmp/pre-start-dir/input.bin && test -d /tmp/pre-start-dir/empty && echo ready; sleep 300"
+					)
+					.WithWaitStrategy(Wait.ForLogMessage("ready"))
 			);
 
 			// Act
@@ -122,13 +118,11 @@ public class BackendContractTests
 	{
 		// Arrange
 		await EnsureAvailableAsync();
-		await using var container = CreateContainer(
-			CreateBackend(),
-			builder =>
-				builder
-					.WithEntrypoint("/bin/sh")
-					.WithCommand("-c", "sleep 1; echo complete; exit 7")
-					.WithWaitStrategy(Wait.ForExitCode(7))
+		await using var container = CreateContainer(CreateBackend(), builder =>
+			builder
+				.WithEntrypoint("/bin/sh")
+				.WithCommand("-c", "sleep 1; echo complete; exit 7")
+				.WithWaitStrategy(Wait.ForExitCode(7))
 		);
 
 		// Act
@@ -145,15 +139,10 @@ public class BackendContractTests
 	{
 		// Arrange
 		await EnsureAvailableAsync();
-		await using var container = CreateContainer(
-			CreateBackend(),
-			builder =>
-				builder
-					.WithEntrypoint("/bin/sh")
-					.WithCommand(
-						"-c",
-						"printf first; sleep 1; printf ' line\\n'; printf 'problem\\n' >&2; printf final"
-					)
+		await using var container = CreateContainer(CreateBackend(), builder =>
+			builder
+				.WithEntrypoint("/bin/sh")
+				.WithCommand("-c", "printf first; sleep 1; printf ' line\\n'; printf 'problem\\n' >&2; printf final")
 		);
 		await container.StartAsync(cancellationToken);
 		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -178,10 +167,8 @@ public class BackendContractTests
 	{
 		// Arrange
 		await EnsureAvailableAsync();
-		await using var container = CreateContainer(
-			CreateBackend(),
-			builder =>
-				builder.WithEntrypoint("/bin/sh").WithCommand("-c", "exit 2").WithWaitStrategy(Wait.ForExitCode())
+		await using var container = CreateContainer(CreateBackend(), builder =>
+			builder.WithEntrypoint("/bin/sh").WithCommand("-c", "exit 2").WithWaitStrategy(Wait.ForExitCode())
 		);
 
 		// Act
@@ -198,9 +185,8 @@ public class BackendContractTests
 		await EnsureAvailableAsync();
 		var backend = CreateBackend();
 		await using var network = await backend.CreateNetworkAsync(cancellationToken: cancellationToken);
-		await using var server = CreateContainer(
-			backend,
-			builder => builder.WithNetwork(network.Name).WithNetworkAliases("peer")
+		await using var server = CreateContainer(backend, builder =>
+			builder.WithNetwork(network.Name).WithNetworkAliases("peer")
 		);
 		await using var client = CreateContainer(backend, builder => builder.WithNetwork(network.Name));
 		await server.StartAsync(cancellationToken);
@@ -244,14 +230,12 @@ public class BackendContractTests
 			await using var container = CreateContainer(backend, builder => builder.WithImage(image.Name));
 			await container.StartAsync(cancellationToken);
 			var bytes = await container.ReadFileAsync("/probe", cancellationToken);
-			await using var job = CreateContainer(
-				backend,
-				builder =>
-					builder
-						.WithImage(image.Name)
-						.WithEntrypoint("/bin/sh", "-c")
-						.WithCommand("echo explicit-command")
-						.WithWaitStrategy(Wait.ForExitCode())
+			await using var job = CreateContainer(backend, builder =>
+				builder
+					.WithImage(image.Name)
+					.WithEntrypoint("/bin/sh", "-c")
+					.WithCommand("echo explicit-command")
+					.WithWaitStrategy(Wait.ForExitCode())
 			);
 			await job.StartAsync(cancellationToken);
 			var logs = await job.GetLogsAsync(stream: null, cancellationToken: cancellationToken);
@@ -300,14 +284,12 @@ public class BackendContractTests
 		await EnsureAvailableAsync();
 		var backend = CreateBackend();
 		var name = $"purview-collision-{Guid.NewGuid():N}";
-		await using var first = CreateContainer(
-			backend,
-			builder => builder.WithName(name).WithLabel("suite", "collision")
+		await using var first = CreateContainer(backend, builder =>
+			builder.WithName(name).WithLabel("suite", "collision")
 		);
 		await first.StartAsync(cancellationToken);
-		await using var second = CreateContainer(
-			backend,
-			builder => builder.WithName(name).WithLabel("suite", "collision")
+		await using var second = CreateContainer(backend, builder =>
+			builder.WithName(name).WithLabel("suite", "collision")
 		);
 
 		// Act
@@ -378,12 +360,8 @@ public class BackendContractTests
 		// Arrange
 		await EnsureAvailableAsync();
 		TaskCompletionSource<bool> never = new(TaskCreationOptions.RunContinuationsAsynchronously);
-		await using var container = CreateContainer(
-			CreateBackend(),
-			builder =>
-				builder
-					.WithStartupTimeout(TimeSpan.FromSeconds(2))
-					.WithWaitStrategy(Wait.ForCustom((_, _) => never.Task))
+		await using var container = CreateContainer(CreateBackend(), builder =>
+			builder.WithStartupTimeout(TimeSpan.FromSeconds(2)).WithWaitStrategy(Wait.ForCustom((_, _) => never.Task))
 		);
 
 		// Act

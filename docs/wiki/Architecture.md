@@ -7,8 +7,8 @@ Design for a Testcontainers-style .NET library with pluggable container backends
 The library is split into a backend-neutral abstraction assembly and one assembly per backend:
 
 ```
-Purview.Containers                       (net10.0)   umbrella: references Core, Wsl and Docker
- └─ Purview.Containers.Core              (net10.0, portable)   the backend-neutral abstractions
+Purview.Containers                       (net10.0 + net11.0)   umbrella: references Core, Wsl and Docker
+ └─ Purview.Containers.Core              (net10.0 + net11.0, portable)   the backend-neutral abstractions
      ├─ IContainer / IContainerConfiguration / ContainerConfiguration   the container contract
      ├─ ContainerBuilder<TBuilder, TContainer, TConfiguration>          fluent configuration + validation
      ├─ ContainerBase                                                   typed module container (delegates to the backend)
@@ -17,7 +17,8 @@ Purview.Containers                       (net10.0)   umbrella: references Core, 
      ├─ IConnectionStringProvider / ConnectionMode / ContainerConnectionStringProvider   connection strings
      └─ Runtime/ContainerException                                      neutral error taxonomy
 
-Purview.Containers.Wsl                   (net10.0 facade + net10.0-windows10.0.19041.0 implementation)
+Purview.Containers.Wsl                   (net10.0 + net11.0 facades,
+                                          net10.0 + net11.0 windows10.0.19041.0 implementations)
  ├─ WslContainerBackend : IContainerBackend  registers itself as "wsl"
  ├─ WslContainerRuntime : IContainerRuntime  process singleton, owns the shared session
  │   ├─ SessionSettings (name, storagePath, cpu/mem, gpu, timeout)
@@ -27,7 +28,7 @@ Purview.Containers.Wsl                   (net10.0 facade + net10.0-windows10.0.1
  │   └─ SessionHandle   -> Microsoft.WSL.Containers.Session (internal)
  ├─ WslContainer        : IContainer         WSLC-backed container
  ├─ WslContainerSession : IContainerSession  image pull + container create/start/stop/delete/exec
- └─ WslCommand / WslResource / WslFileCopy   bounded CLI fallback in that same session
+ └─ WslResource / WslCommand / WslFileCopy  owned resources; bounded CLI fallback in that same session
 
 IContainer : IConnectionStringProvider, IAsyncDisposable
   StartAsync / StopAsync / DisposeAsync / ExecAsync / GetMappedPublicPort /
@@ -36,9 +37,10 @@ IContainer : IConnectionStringProvider, IAsyncDisposable
 ```
 
 `IContainerBackend.CreateNetworkAsync` and `BuildImageAsync` return owned `IContainerResource`
-instances on either backend. Docker delegates to Testcontainers. WSLC CLI-backed resources target
-the SDK-owned session/store, while ordinary lifecycle operations remain SDK-backed. Dispose containers
-before networks/images. See [Capabilities and Cancellation](Backend-Capabilities.md).
+instances on either backend. Docker delegates to Testcontainers. WSLC networks and their deletion use the
+managed SDK; CLI-backed resources (image builds) target the SDK-owned session/store, while lifecycle,
+images and network operations remain SDK-backed. Dispose containers before networks/images. See
+[Capabilities and Cancellation](Backend-Capabilities.md).
 
 A module (`Purview.Containers.PostgreSql`, `Purview.Containers.Redis`, …) derives its container from
 `ContainerBase` and references `Purview.Containers.Core` only. The backend is resolved at run time through
@@ -47,6 +49,28 @@ umbrella package: it carries no code of its own and simply references `Core` plu
 reference gives a consumer the whole "auto" setup.
 
 Microsoft types (`Session`, `Container`, `Process`, `ContainerSettings`, …) are **runtime implementation details** kept behind the public interfaces. They are not exposed through the public API surface (an opt-in accessor is the only escape hatch).
+
+## Target frameworks
+
+Every package ships `net10.0` and `net11.0` assets. **.NET 8 and .NET 9 are dropped**; the contract is in
+[Consumer Requirements](Consumer-Requirements.md). Purview.BuildSdk's `Current` target-framework set
+supplies that pair; the repository does not hand-maintain it.
+
+- `net10.0` is the floor. A consumer that has not moved to .NET 11 keeps the classic compiler-generated
+  async state machines and the .NET 10 library surface.
+- `net11.0` is compiled with `runtime-async=on` and the C# 15 updated memory-safety rules
+  (`MemorySafetyRules=2`). The runtime manages suspension and resumption instead of compiler-generated
+  state machines, which lowers async overhead and makes live stack traces (profiler, `new StackTrace()`,
+  debugger) name the real methods. `PurviewRuntimeAsync=false` opts out for a local experiment;
+  `Wsl.UnitTests/BuildFeatureTests.cs` guards that the shipped default is on.
+- The WSL Containers backend uses the same split for its Windows builds, and a single implementation
+  payload serves both portable targets because a .NET 11 process loads a .NET 10 assembly.
+
+C# 15 `closed` hierarchies and `union` types are deliberately **not** used. Both need .NET 11 runtime types
+(`IsClosedTypeAttribute`, `UnionAttribute`), so they could only exist in the `net11.0` assets and would
+split the public API by target framework. No type here is a closed hierarchy in the language sense either:
+the wait strategies, `ContainerException` and the backend interfaces are documented extension points, and
+the service modules derive from `ContainerBase` in their own assemblies.
 
 ## Backend selection
 
@@ -82,7 +106,7 @@ cache. Package consumers get registration from the generated module initializer 
 
 Design rules:
 
-1. **One lazily-started session per process** with a deterministic name `wslc-{processId}-{8 hex}` (unique per machine; session names are reserved until the session is disposed) and a **stable storage path** (default `%LOCALAPPDATA%\Purview\WslContainers\images`), configurable via `WslContainerRuntimeOptions.StoragePath` or `PURVIEW_CONTAINERS_STORAGE_PATH`.
+1. **One lazily-started session per process** with a deterministic name `purview-{processId}-{8 hex}` (unique per machine; session names are reserved until the session is disposed) and a **stable storage path** (default `%LOCALAPPDATA%\Purview\WslContainers\images`), configurable via `WslContainerRuntimeOptions.StoragePath` or `PURVIEW_CONTAINERS_STORAGE_PATH`.
 2. The session VM is capped at **4096 MB by default** (`WslContainerRuntimeOptions.Default`). This is required for SQL Server (which refuses to start below 2000 MB — `sqlservr: This program requires a machine with at least 2000 megabytes of memory`) and harmless for lighter containers. Override via `WslContainerRuntimeOptions.MemorySizeInMB`.
 2. `IContainerBackend` is the seam for backends: a backend package (starting with `Purview.Containers.Wsl`) supplies `IContainer` instances, and `ContainerBackends` resolves which one runs. `IContainerRuntime` remains the WSLC-internal seam so advanced users/tests can substitute a per-container-session runtime for isolation experiments.
 3. Container `DisposeAsync` never terminates the shared session; it deletes the container only.
@@ -90,7 +114,7 @@ Design rules:
 
 ## Session naming and storage
 
-- Name: `wslc-{pid}-{random8}`. Never place secrets/credentials in names, paths, or logs.
+- Name: `purview-{pid}-{random8}`. Never place secrets/credentials in names, paths, or logs.
 - **Storage is shared by default** (`StorageMode.Shared`): all sessions use
   `%LOCALAPPDATA%\Purview\WslContainers\images`, so the image store is pulled once and reused across
   process runs. Set `StorageMode.PerSession` (or an explicit `StoragePath` /
@@ -102,7 +126,7 @@ Design rules:
   first store access, so contention can surface on `GetImages()` rather than at session start; the runtime
   detects it there too and falls back to an isolated per-process store.
   Sequential reuse works: after a session ends, a new session on the same path sees its images.
-- Cleanup: normal shutdown terminates+disposes the session (frees the name). Orphaned sessions from crashed processes block only their own name; they do not block other sessions or storage-path reuse.
+- Cleanup: normal shutdown terminates+disposes the session (frees the name). Orphaned sessions from crashed processes block only their own name, not other sessions or storage-path reuse. They are swept automatically before the next session starts (the runtime terminates `purview-*` and legacy `wslc-*` sessions whose creator PID is gone).
 
 ## Image management
 
@@ -142,7 +166,7 @@ Isolated stores are transient and are removed when their session terminates.
 
 - `Session.Dispose()` removes the session from the manager and frees its name.
 - The library registers a process-exit handler so the session is always disposed on normal termination.
-- Crash residue: an orphaned session from a dead process remains registered with a dead `Creator PID`. It reserves only its own name. It can be swept with `wslc --session <name> system session terminate`; the library documents this as an optional maintenance step and may offer a dev-time sweep utility (CLI-based, clearly isolated from the core runtime).
+- Crash residue: an orphaned session from a dead process remains registered with a dead `Creator PID`. The runtime sweeps `purview-*` (and legacy `wslc-*`) sessions whose creator PID is gone before the first session starts, removes the matching per-session storage directories, removes stale containers whose generated name embeds a dead PID, and prunes unused anonymous volumes. `WslContainerRuntime.SweepOrphanedSessionsAsync()` runs the session sweep explicitly and `CleanUpAsync()` also removes container residue; neither touches a live session.
 - `Container.DisposeAsync` is idempotent: stop (SIGTERM→SIGKILL) then `Delete(Force)`; swallow `RPC_E_DISCONNECTED`/`ContainerNotFound` on double-delete.
 
 ## Observability

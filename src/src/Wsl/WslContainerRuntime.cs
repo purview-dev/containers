@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.WSL.Containers;
+using Purview.Containers.Runtime;
+using Win32Exception = System.ComponentModel.Win32Exception;
 
 namespace Purview.Containers.Wsl;
 
@@ -41,6 +43,8 @@ public sealed class WslContainerRuntime : IContainerRuntime
 	WslContainerSession? _session;
 	int _disposed;
 	int _storeVerified;
+	int _sweepAttempted;
+	int _containerSweepAttempted;
 
 	/// <summary>Creates a runtime with default options. Registers a process-exit cleanup hook.</summary>
 	public WslContainerRuntime()
@@ -95,10 +99,12 @@ public sealed class WslContainerRuntime : IContainerRuntime
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) == 1, this);
+		await SweepOrphansOnceAsync(cancellationToken).ConfigureAwait(false);
 		var local = GetOrCreateSession();
 		if (Volatile.Read(ref _storeVerified) == 1)
 		{
 			await local.EnsureStartedAsync(cancellationToken).ConfigureAwait(false);
+			await SweepContainerResidueOnceAsync(local, cancellationToken).ConfigureAwait(false);
 			return local;
 		}
 
@@ -121,6 +127,7 @@ public sealed class WslContainerRuntime : IContainerRuntime
 				await local.EnsureStartedAsync(cancellationToken).ConfigureAwait(false);
 			}
 
+			await SweepContainerResidueOnceAsync(local, cancellationToken).ConfigureAwait(false);
 			return local;
 		}
 		finally
@@ -151,11 +158,99 @@ public sealed class WslContainerRuntime : IContainerRuntime
 	}
 
 	/// <inheritdoc />
-	public Task CleanUpAsync(CancellationToken cancellationToken = default)
+	public async Task CleanUpAsync(CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		_session?.CleanUpRetainedResources(force: true);
-		return Task.CompletedTask;
+		var session = _session;
+		if (session is null)
+			return;
+
+		session.CleanUpRetainedResources(force: true);
+		try
+		{
+			await session.RemoveStaleContainersAsync(cancellationToken).ConfigureAwait(false);
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			throw;
+		}
+		catch (Exception exception)
+			when (exception
+					is ContainerPrerequisiteException
+						or Win32Exception
+						or IOException
+						or InvalidOperationException
+						or TimeoutException
+						or UnauthorizedAccessException
+			)
+		{
+			// Cleanup is best effort; the session's own resources were already released.
+		}
+	}
+
+	/// <summary>
+	/// Sweeps sessions and per-session storage directories left behind by processes that exited without
+	/// running their process-exit hook (a timed-out test host, a debugger stop or a cancelled CI job).
+	/// A session or directory whose creator process is still running is never touched, and the sweep
+	/// ignores sessions created by other tools. Runs automatically once per process before the first
+	/// session starts; this method exposes the same operation for a maintenance step.
+	/// </summary>
+	public Task<WslSessionSweepResult> SweepOrphanedSessionsAsync(CancellationToken cancellationToken = default) =>
+		WslSessionSweeper.SweepAsync(cancellationToken);
+
+	async Task SweepOrphansOnceAsync(CancellationToken cancellationToken)
+	{
+		if (Interlocked.Exchange(ref _sweepAttempted, 1) == 1)
+			return;
+
+		try
+		{
+			await WslSessionSweeper.SweepAsync(cancellationToken).ConfigureAwait(false);
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			throw;
+		}
+		catch (Exception exception)
+			when (exception
+					is ContainerPrerequisiteException
+						or Win32Exception
+						or IOException
+						or InvalidOperationException
+						or TimeoutException
+						or UnauthorizedAccessException
+			)
+		{
+			// Best effort: a host without wslc, or a transient CLI failure, must not stop the runtime
+			// from starting a session through the SDK.
+		}
+	}
+
+	async Task SweepContainerResidueOnceAsync(WslContainerSession session, CancellationToken cancellationToken)
+	{
+		if (Interlocked.Exchange(ref _containerSweepAttempted, 1) == 1)
+			return;
+
+		try
+		{
+			await session.RemoveStaleContainersAsync(cancellationToken).ConfigureAwait(false);
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			throw;
+		}
+		catch (Exception exception)
+			when (exception
+					is ContainerPrerequisiteException
+						or Win32Exception
+						or IOException
+						or InvalidOperationException
+						or TimeoutException
+						or UnauthorizedAccessException
+			)
+		{
+			// Best effort: containment residue cleanup never blocks a session that already started.
+		}
 	}
 
 	/// <inheritdoc />
@@ -256,10 +351,10 @@ public sealed class WslContainerRuntime : IContainerRuntime
 
 	static string NextSessionName()
 	{
-		return $"wslc-{Environment.ProcessId}-{Guid.NewGuid().ToString("N")[..8]}";
+		return $"purview-{Environment.ProcessId}-{Guid.NewGuid().ToString("N")[..8]}";
 	}
 
-	static string PerSessionRoot =>
+	internal static string PerSessionRoot =>
 		Path.Combine(
 			Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
 			"Purview",

@@ -16,6 +16,13 @@ public class RabbitMqBuilder : ContainerBuilder<RabbitMqBuilder, RabbitMqContain
 	/// <summary>Default image (includes the management plugin).</summary>
 	public const string RabbitMqImage = "rabbitmq:3-management";
 
+	// WSLC provisions the image's declared /var/lib/rabbitmq volume with an empty .erlang.cookie.
+	// Erlang treats an existing empty file as a too-short cookie and refuses to boot, so the module
+	// supplies a valid one before the init process starts (and keeps the env var in step for the CLI).
+	const string ErlangCookie = "purview-containers-rabbitmq-cookie";
+
+	static readonly Lazy<string> ErlangCookieFilePath = new(WriteErlangCookieFile);
+
 	string _username = "guest";
 	Secret _password = Secret.From("guest");
 	string _virtualHost = "/";
@@ -79,6 +86,10 @@ public class RabbitMqBuilder : ContainerBuilder<RabbitMqBuilder, RabbitMqContain
 			["RABBITMQ_DEFAULT_USER"] = _username,
 			["RABBITMQ_DEFAULT_PASS"] = _password.Value,
 			["RABBITMQ_DEFAULT_VHOST"] = _virtualHost,
+			["RABBITMQ_ERLANG_COOKIE"] = ErlangCookie,
+			// The managed SDK does not carry the image's HOME into the init process, and Erlang looks
+			// for ~/.erlang.cookie relative to it. Without this the server reads no cookie and fails.
+			["HOME"] = "/var/lib/rabbitmq",
 		};
 		var waitStrategies =
 			configuration.WaitStrategies.Count > 0
@@ -94,8 +105,24 @@ public class RabbitMqBuilder : ContainerBuilder<RabbitMqBuilder, RabbitMqContain
 			Password = _password,
 			VirtualHost = _virtualHost,
 			Environment = environment,
+			ResourceMappings =
+			[
+				.. configuration.ResourceMappings,
+				new ContainerResourceMapping(ErlangCookieFilePath.Value, "/var/lib/rabbitmq/.erlang.cookie")
+				{
+					// Erlang requires the cookie file to be owner-readable only (400).
+					Mode = UnixFileMode.UserRead,
+				},
+			],
 			WaitStrategies = waitStrategies,
 		};
+	}
+
+	static string WriteErlangCookieFile()
+	{
+		var path = Path.Combine(Path.GetTempPath(), "purview-rabbitmq-erlang-cookie");
+		File.WriteAllText(path, ErlangCookie);
+		return path;
 	}
 
 	/// <inheritdoc />

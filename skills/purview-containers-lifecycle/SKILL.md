@@ -69,13 +69,16 @@ These are the ones that matter when a test throws:
 - A **session crash** marks the runtime session dead, and subsequent operations throw
   `WslContainerSessionTerminatedException` rather than failing obscurely.
 - **Test-process termination** disposes the shared session through a process-exit hook, freeing the
-  name. A *crashed* process leaves an orphaned session that only reserves its name; sweep it with
-  `wslc --session <name> system session terminate`.
+  name. A *crashed* process leaves an orphaned session; the runtime sweeps `purview-*` (and legacy
+  `wslc-*`) sessions whose creator PID is gone before the next session starts, deletes their
+  per-session storage directories, removes stale containers whose generated name embeds a dead PID and
+  prunes unused anonymous volumes. `WslContainerRuntime.SweepOrphanedSessionsAsync()` does the session
+  sweep explicitly; `CleanUpAsync()` also removes container residue.
 
 ## Secrets and names
 
 Container names are generated uniquely as `{service}-{processId}-{random8}` and **never contain
-credentials**; session names are `wslc-{pid}-{random8}`. Diagnostics redact secrets through a
+credentials**; session names are `purview-{pid}-{random8}`. Diagnostics redact secrets through a
 `Secret` wrapper whose `ToString()` returns `<redacted>`.
 Application output can contain secrets; do not assume log snapshots or timeout diagnostics are safe
 to publish. CLI failures omit raw command/build output.
@@ -145,7 +148,7 @@ Verified WSLC behaviour, and the parts that surprise people:
   `http://<container-name>:8080/` fail with "bad address"; `/etc/hosts` holds only localhost and the
   container's own `IP <short-id>`.
 - Use `IContainerBackend.CreateNetworkAsync` and `WithNetwork`/`WithNetworkAliases` for managed
-  networks with alias DNS on both backends. WSLC uses the CLI in the SDK-owned session.
+  networks with alias DNS on both backends. WSLC uses the managed SDK network API in the SDK-owned session.
 
 How the library models it: `GetMappedPublicPort(containerPort)` reads
 `Inspect().Ports["<port>/tcp"][0].HostPort`; `IContainer.NetworkIp` is the bridge IP after start

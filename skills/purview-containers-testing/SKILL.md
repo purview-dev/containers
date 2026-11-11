@@ -21,7 +21,7 @@ tier is a property of the project rather than of a hand-written attribute:
 | --- | --- | --- |
 | `*.UnitTests` | `Unit` | none — logic, parsing, configuration, wait-strategy units, in-process fakes |
 | `Wsl.*` and module `*.IntegrationTests` | `Integration` | a **WSLC host** |
-| `Docker.IntegrationTests`, `Modules.DockerIntegrationTests` | `Integration` | any **Docker daemon**; these target `net10.0`, so they run on Linux too |
+| `Docker.IntegrationTests`, `Modules.DockerIntegrationTests` | `Integration` | any **Docker daemon**; these target `net10.0`, so they run on Linux too and keep the lowest supported framework under test |
 
 The shared pipeline filters to `/*/*/*/*[Category=Unit]`, so **the standard pipeline never starts a
 container**. The Docker suites are the exception: the PR workflow adds an `integration-docker` job on
@@ -89,7 +89,7 @@ Self-hosted runner prerequisites: a **Windows x64** runner labelled `self-hosted
 WSL Containers installed (`wsl --install --no-distribution`) and the pinned .NET SDK. Tell
 `actionlint` about the custom label in `.github/actionlint.yaml`.
 
-> The shared pipeline runs on `ubuntu-latest`, so it builds the portable `net10.0` projects **and**
+> The shared pipeline runs on `ubuntu-latest`, so it builds the portable `net10.0`/`net11.0` projects **and**
 > the Windows-targeted test projects on Linux. That works only because `src/Directory.Build.props`
 > sets `EnableWindowsTargeting=true`; without it the SDK reports `NETSDK1100`.
 

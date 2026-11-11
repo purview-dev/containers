@@ -6,7 +6,9 @@ sealed class WslResource(WslContainerSession session, string name, bool network,
 	public string Name => name;
 
 	public Task DeleteAsync(CancellationToken cancellationToken = default) =>
-		session.RunCommandAsync(network ? ["network", "remove", Name] : ["rmi", Name], timeout, cancellationToken);
+		network
+			? session.DeleteNetworkAsync(Name, timeout, cancellationToken)
+			: session.DeleteImageAsync(Name, timeout, cancellationToken);
 
 	public async ValueTask DisposeAsync()
 	{
