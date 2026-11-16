@@ -50,6 +50,8 @@ for inspection, and `.WithAutoRemove()` is opted into separately. See
 > volumes the library created when the process or session ends. Runnable samples live in
 > `samples/getting-started`.
 
+**Documentation:** [Containers documentation](https://purview.dev/docs/containers/)
+
 ## Prerequisites
 
 ### Standalone bind sharing and Aspire
