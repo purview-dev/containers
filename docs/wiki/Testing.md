@@ -109,7 +109,8 @@ the workflow adds `C:\Program Files\WSL` and calls it by absolute path.
 
 Coverage is split for cost:
 
-- **Every pull request**: `pr.yml` runs `Wsl.IntegrationTests` on `windows-2025` (the contract suite).
+- **Every pull request and push to `main`**: `pr.yml` runs `Wsl.IntegrationTests` on `windows-2025`
+  (the contract suite).
 - **Nightly**: `.github/workflows/integration-wsl.yml` runs the contract suite and the nine service-module
   suites on `windows-2025`, one project at a time.
 - **On demand**: the same workflow accepts `runner: self-hosted` to use a warm self-hosted Windows runner

@@ -6,10 +6,15 @@ on:
     # `ready_for_review` is not one of the default activity types, so a draft PR would never
     # re-evaluate the required build gate once it is marked ready for review.
     types: [opened, synchronize, reopened, ready_for_review]
+  # Every merge to main is built and tested too, so main's own status reflects what was merged rather
+  # than the last PR head. This never publishes: releases still come only from release/** (release.yml).
+  push:
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer push to a PR supersedes the older run; on main every merge gets its own complete run.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
