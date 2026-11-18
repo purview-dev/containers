@@ -50,45 +50,39 @@ the run with the failing module's output.
 
 - `.github/workflows/pr.yml` — pull requests **and every push to `main`** build and test via the shared
   `purview-dev/build/.github/workflows/purview-build.yml`, with pack and validation enabled, plus the
-  Docker and WSLC contract jobs. A push to `main` builds only; it never publishes.
-- `.github/workflows/release.yml` — a push to a **`release/**` branch** (or a manual `workflow_dispatch`)
-  calls `purview-dev/build/.github/workflows/purview-release.yml` with `release-mode: NuGet`. It evaluates
-  release eligibility and, when eligible, builds, tests, packs, publishes to NuGet and creates the
-  `v<version>` tag and GitHub release. A push to `main` does **not** release.
+  Docker and WSLC contract jobs.
+- `.github/workflows/release.yml` — **every push to `main`** (or a manual `workflow_dispatch`) runs the
+  shared `purview-dev/build/actions/purview-release` action with `release-mode: NuGet`. It evaluates
+  release eligibility and, when the verdict is `Release`, builds, tests, packs, publishes to NuGet and
+  creates the `v<version>` tag and GitHub release. A merge that does not change the `package.json` version
+  is skipped and publishes nothing. Release runs are never cancelled mid-flight; a later merge queues.
 
 Both workflows pin `dotnet-version` to the SDK in `global.json`; keep them in sync when the SDK is bumped,
 and keep `purview-build.json` pointing at `src/Containers.slnx`.
 
 ## Cutting a release
 
-1. Bump `version` in `package.json` on a branch (keep the `-prerelease.N` suffix), and merge it into
-   `main` through a pull request.
-2. Push a release branch named after the version from `main`. The convention is `release/v<major>.<minor>.<N>`,
-   where `N` is the prerelease number, for example `release/v1.0.9` for `1.0.0-prerelease.9`:
+1. Bump `version` in `package.json` on a branch (keep the `-prerelease.N` suffix until 1.0.0), and merge
+   it into `main` through a pull request.
+2. The Release workflow runs on that merge and publishes the new version. Nothing else is needed: no
+   release branch and no manual tag.
 
-   ```bash
-   git switch main && git pull
-   git push origin main:refs/heads/release/v1.0.9
-   ```
-
-3. The Release workflow runs on that push. Each release is a new `package.json` version and a new
-   release branch.
+Every release is a new `package.json` version. A merge without a version bump runs the Release workflow
+too, which skips (`REL002`: the tag already exists) and finishes green.
 
 Check the decision locally before pushing with `dotnet tool run purview-build -- release-explain`. It runs
 nothing and publishes nothing; it reports the verdict and the rule that decided it.
 
 ### Eligibility
 
-`.config/purview-build.json` selects the **`TrunkReservesMinor`** policy: `main` is the trunk, and
-`release/*` branches are the stable and servicing refs that publish. The tool evaluates these rules:
+`.config/purview-build.json` selects the **`ReleaseOnMain`** policy (the tool's default): `main` is the
+ref that publishes, for prereleases and stable versions alike. The tool evaluates these rules:
 
 | Rule | Checks |
 | --- | --- |
 | `REL001` | The version is valid for NuGet. |
 | `REL002` | No `v<version>` tag exists yet. A version that has already been released is **skipped**, so every release needs a new `package.json` version. |
-| `REL003` | Constrains stable (non-prerelease) versions; prereleases pass. |
-| `REL004` | Constrains versions with a non-zero PATCH component. |
-| `REL005` | The version is consistent with what already exists on its `<major>.<minor>` line. |
+| `REL003` | A stable (non-prerelease) version is released only from `main`; prereleases pass. |
 
 The workflow fails on a `Fail` verdict, logs a notice and publishes nothing on `Skip`, and publishes only
 on `Release`.

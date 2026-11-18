@@ -1,8 +1,12 @@
 name: Release
 
+# A merge to main releases. The release tool decides per push (`release-explain`, policy ReleaseOnMain in
+# .config/purview-build.json): a package.json version with no `v<version>` tag yet is published to
+# nuget.org and tagged with a GitHub release; a version that is already released is skipped and the job
+# finishes green, so a merge that does not bump the version publishes nothing. Bump package.json to ship.
 on:
   push:
-    branches: ["release/**"]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -15,7 +19,9 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a release in flight: a run cancelled between publishing to nuget.org and tagging would
+  # leave a published version with no tag or GitHub release. Later merges queue behind it instead.
+  cancel-in-progress: false
 
 jobs:
   release:
