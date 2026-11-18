@@ -32,9 +32,9 @@ Service modules (`Purview.Containers.PostgreSql`, `Redis`, …) are backend-neut
 |  | WSL Containers | Docker |
 | --- | --- | --- |
 | **Package** | `Purview.Containers.Wsl` | `Purview.Containers.Docker` |
-| **Prerequisite** | Windows 11 (22H2 or later) or Windows Server 2025 with WSL Containers (`wsl --install --no-distribution`) | any reachable Docker daemon (Docker Desktop, Docker Engine in WSL2, a VM, or a CI runner) |
-| **Host OS** | Windows only | Windows, Linux, macOS |
-| **Project target framework** | `net10.0` or `net11.0`, any platform (portable facade), or `net10.0-windows10.0.19041.0`/`net11.0-windows10.0.19041.0`, x64 or arm64 (implementation bound directly) | `net10.0` or `net11.0`, any platform |
+| **Prerequisite** | an x64 Windows host where WSL 2 runs (Windows 11, Windows 10 2004+, Windows Server 2025) with WSL 3.0.5 or later (`wsl --install --no-distribution` or `wsl --update`); see [host requirements](Consumer-Requirements.md#host-requirements-wsl-containers-backend) | any reachable Docker daemon (Docker Desktop, Docker Engine in WSL2, a VM, or a CI runner) |
+| **Host OS** | Windows only, x64 only (no ARM64) | Windows, Linux, macOS |
+| **Project target framework** | `net10.0` or `net11.0`, any platform (portable facade), or `net10.0-windows10.0.19041.0`/`net11.0-windows10.0.19041.0`, x64 only (implementation bound directly) | `net10.0` or `net11.0`, any platform |
 | **How containers run** | the managed SDK, with `wslc` CLI fallback for SDK-missing features | the Docker Engine API via Testcontainers |
 | **Images** | a shared store (`%LOCALAPPDATA%\Purview\WslContainers\images`) reused across runs; the location is configurable | the daemon's own image store |
 | **Leak protection** | session disposal plus a process-exit hook | the Testcontainers resource reaper (Ryuk) |
@@ -136,8 +136,8 @@ inside a test.
 WSL Containers:
 
 ```powershell
-wsl --version      # WSL itself
-wslc version       # the WSLC runtime
+wsl --version      # WSL itself: 3.0.5 or later ('wsl --update' if older)
+wslc version       # the WSLC CLI, shipped with WSL (%ProgramFiles%\WSL\wslc.exe)
 ```
 
 ```csharp
@@ -231,10 +231,10 @@ dotnet add package Purview.Containers.Wsl
 
 This project runs WSLC on a Windows host. A platform-neutral `net10.0` or `net11.0` project binds the
 portable facade; a Windows target framework (`net10.0-windows10.0.19041.0` or
-`net11.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly.
+`net11.0-windows10.0.19041.0`, x64 only) binds the implementation directly.
 `WindowsSdkPackageVersion` is supplied by the package. A project older than
-.NET 10 (including .NET 8 and .NET 9) fails the build with `PCC0001`, and a 32-bit Windows consumer with
-`PCC0002`; see [Consumer Requirements](Consumer-Requirements.md).
+.NET 10 (including .NET 8 and .NET 9) fails the build with `PCC0001`, and a non-x64 (ARM64 or x86)
+Windows consumer with `PCC0002`; see [Consumer Requirements](Consumer-Requirements.md).
 
 > On a non-Windows host this project has **no usable backend** (the facade reports `wsl` unavailable).
 > To also run on Docker there, add `Purview.Containers.Docker` or use the umbrella — see Option 3.
@@ -369,7 +369,7 @@ backend when it starts. That is what lets the same test suite run on whichever r
 
 To fail loudly instead of falling back — the usual choice in CI — name the backend:
 
-```
+```shell
 PURVIEW_CONTAINERS_BACKEND=docker   # if Docker is not reachable, the test fails and says why
 ```
 
@@ -410,8 +410,9 @@ jobs:
   the probe report instead of quietly selecting something else.
 
 For a **Windows** job that should exercise WSLC, use a `windows-2025` runner (Windows Server 2025 with
-nested virtualisation). The WSL build with `wslc` is in the pre-release channel and its directory is not on
-`PATH`:
+nested virtualisation). WSL Containers ships in the stable WSL channel, so `wsl --update` brings the
+runner to WSL 3.0.5 or later; the library finds `wslc` at `%ProgramFiles%\WSL\wslc.exe` without a `PATH`
+change:
 
 ```yaml
   integration-windows:
@@ -430,17 +431,16 @@ nested virtualisation). The WSL build with `wslc` is in the pre-release channel 
       - name: Install WSL Containers
         shell: pwsh
         run: |
-          wsl --update --pre-release
+          wsl --update
           wsl --version
-          $env:PATH = "C:\Program Files\WSL;$env:PATH"
           & 'C:\Program Files\WSL\wslc.exe' version
       - run: dotnet restore
       - run: dotnet build --configuration Release --no-restore
       - run: dotnet test --configuration Release --no-build --retry-failed-tests 2 --retry-failed-tests-delay 5s
 ```
 
-> `windows-2025` is the only hosted runner that supports WSL Containers: Windows Server 2022 and Windows 10
-> are not supported. Windows runners bill at 2×, and a cold runner has to pull every image, so run the fast
+> The WSLC suites run on the hosted `windows-2025` runner; GitHub's hosted `windows-2022` runner cannot
+> run them. Windows runners bill at 2×, and a cold runner has to pull every image, so run the fast
 > contract suite on pull requests and the full service-module matrix nightly or on demand. If you run on a
 > self-hosted Windows runner instead, keep `PURVIEW_CONTAINERS_REQUIRE_BACKEND=wsl` so a host without WSLC
 > fails rather than silently skipping every test.
@@ -480,7 +480,7 @@ release its image-store VHD.
 Unsupported options throw `ContainerNotSupportedException` rather than being ignored, so a difference
 between backends never turns into a silently weaker test.
 
-See [Capabilities and Cancellation](Backend-Capabilities.md) for shared APIs, managed deadlines,
+See [Capabilities and Cancellation](guide/Backend-Capabilities.md) for shared APIs, managed deadlines,
 resource ownership and the synchronous-native-call cancellation limitation.
 
 ## Troubleshooting
@@ -499,8 +499,9 @@ No usable container backend was found (selection: auto).
 Install or fix a backend, or set PURVIEW_CONTAINERS_BACKEND to one of: wsl, docker.
 ```
 
-Fix the runtime it names (for WSLC: `wsl --install --no-distribution`; for Docker: start the daemon, or
-point `DOCKER_HOST` at it), or pin the backend that does work.
+Fix the runtime it names (for WSLC: `wsl --install --no-distribution`, or `wsl --update` for a WSL older
+than 3.0.5; for Docker: start the daemon, or point `DOCKER_HOST` at it), or pin the backend that does work.
+Each reason names its own fix.
 
 **`The selected container backend 'docker' is not usable: …`** — you named a backend that cannot run here.
 This is intentional: a named backend never falls back to another one, so a CI job cannot pass by silently
@@ -510,7 +511,8 @@ using the wrong runtime.
 backend whose package is not referenced by the project.
 
 **`PCC0001` / `PCC0002`** — a build-time guard from the WSL Containers backend package: the consuming project
-is neither .NET 10 nor .NET 11 (Windows or platform-neutral), or is a 32-bit Windows consumer. See
+is neither .NET 10 nor .NET 11 (Windows or platform-neutral), or is a non-x64 (ARM64 or x86) Windows
+consumer — the backend is x64 only. See
 [Consumer Requirements](Consumer-Requirements.md), or switch the project to the Docker backend.
 
 **The same image is pulled twice** — expected when both runtimes are used: WSLC and Docker keep separate
@@ -520,6 +522,6 @@ image stores.
 
 - [Getting Started](Getting-Started.md) — install, first container, first typed module.
 - [Consumer Requirements](Consumer-Requirements.md) — the target-framework contract, the guards and the workarounds.
-- [Architecture](Architecture.md#backend-selection) — how resolution and registration work internally.
+- [Architecture](contributing/Architecture.md#backend-selection) — how resolution and registration work internally.
 - [Modules](Modules.md) — the service modules and their readiness strategies.
 

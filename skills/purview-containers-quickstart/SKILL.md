@@ -81,8 +81,13 @@ A **named** backend never silently falls back: if it cannot run, the test fails 
 diagnostics. That is usually what you want in CI.
 
 The library never installs a runtime. `WslContainerRuntime.GetInfoAsync()` and
-`DockerContainerBackend.GetInfoAsync()` report what is missing. Verify a host with `wsl --version` and
-`wslc version`, or `docker info`.
+`DockerContainerBackend.GetInfoAsync()` report what is missing and how to fix it. Verify a host with
+`wsl --version` and `wslc version`, or `docker info`.
+
+WSLC needs an **x64** Windows host where WSL 2 runs (Windows 11, Windows 10 version 2004 or later, or
+Windows Server 2025) with virtualisation enabled and **WSL 3.0.5 or later** from the stable channel:
+`wsl --install --no-distribution`, or `wsl --update`. ARM64 is not supported; on a non-x64 process
+`wsl` reports unavailable and automatic selection falls through to Docker.
 
 ## A generic container
 

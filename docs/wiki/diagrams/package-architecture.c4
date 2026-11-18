@@ -1,0 +1,77 @@
+// How the Purview.Containers packages fit together, and what each backend drives.
+// Rendered on purview.dev in place of the Mermaid diagram in contributing/Architecture.md;
+// change both in the same commit.
+specification {
+  element package {
+    style {
+      shape rectangle
+    }
+  }
+  element consumer {
+    style {
+      shape person
+      color secondary
+    }
+  }
+  element external {
+    style {
+      shape rectangle
+      color muted
+    }
+  }
+}
+
+model {
+  tests = consumer 'Your tests' {
+    description 'Reference the umbrella, or one module plus a backend'
+  }
+  umbrella = package 'Purview.Containers' {
+    description 'Umbrella: Core plus both backends, no code of its own'
+  }
+  modules = package 'Service modules' {
+    description 'PostgreSql, Redis, MsSql, MySql, RabbitMq, Azurite, Nats, Key Vault and Service Bus emulators'
+  }
+  core = package 'Purview.Containers.Core' {
+    description 'Backend-neutral contract, builders, wait strategies and ContainerBackends selection'
+  }
+  wsl = package 'Purview.Containers.Wsl' {
+    description 'WSLC backend: portable facades plus the x64 Windows implementation'
+  }
+  docker = package 'Purview.Containers.Docker' {
+    description 'Docker backend over Testcontainers'
+  }
+  wslcSdk = external 'Microsoft.WSL.Containers SDK' {
+    description 'Managed WSLC API'
+  }
+  wslcCli = external 'wslc CLI' {
+    description 'Bounded fallback for SDK-missing features'
+  }
+  wslcSession = external 'WSLC session' {
+    description 'One shared, process-wide session'
+  }
+  testcontainers = external 'Testcontainers'
+  dockerDaemon = external 'Docker daemon'
+
+  tests -> umbrella 'references'
+  tests -> modules 'references'
+  umbrella -> core
+  umbrella -> wsl
+  umbrella -> docker
+  modules -> core 'references only'
+  wsl -> core 'implements IContainerBackend'
+  docker -> core 'implements IContainerBackend'
+  wsl -> wslcSdk 'lifecycle, images, networks'
+  wsl -> wslcCli 'entrypoint, copy, builds, reuse'
+  wslcSdk -> wslcSession
+  wslcCli -> wslcSession
+  docker -> testcontainers
+  testcontainers -> dockerDaemon
+}
+
+views {
+  view packageArchitecture {
+    title 'Package architecture'
+    include *
+    autoLayout TopBottom
+  }
+}

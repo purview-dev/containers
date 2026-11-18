@@ -2,31 +2,36 @@
 
 Composable readiness waits. **A started WSLC container is not necessarily a ready service** — `Container.Start()` returns once the init process is running; readiness is checked separately.
 
-> **Status: implemented.** Verified by integration tests (`tests/Wsl.IntegrationTests/WaitStrategyTests.cs`).
-
 ## Model
 
+Every strategy implements `IWaitStrategy`, and the built-in ones derive from `WaitStrategy`, which adds
+the fluent `WithTimeout`, `WithInterval` and `WithRetries`:
+
+```csharp
+public interface IWaitStrategy
+{
+    TimeSpan? Timeout { get; }   // null: the container's StartupTimeout
+    TimeSpan Interval { get; }   // default 250 ms
+    int? Retries { get; }        // optional maximum number of failed checks
+
+    Task<bool> UntilAsync(WaitContext context, CancellationToken cancellationToken);
+}
+
+// WaitContext: Container, NetworkIp, GetHostPort(ushort containerPort), FirstHostPort
 ```
-IWaitStrategy
-  TimeSpan? Timeout         // null → container StartupTimeout
-  TimeSpan  Interval        // default 250 ms
-  int?      Retries         // optional max failed checks
-  Task<bool> UntilAsync(WaitContext context, CancellationToken ct)
 
-WaitContext { IContainer Container; string? NetworkIp; int? GetHostPort(ushort); int? FirstHostPort; }
+The `Wait` factory creates them:
 
-Wait (factory)
-  ForContainerRunning()
-  ForExitCode(long expectedExitCode = 0)
-  ForTcpPort(ushort containerPort, TimeSpan? connectTimeout = null)
-  ForHttp(string path = "/") → HttpWaitStrategy { ForPort, ForScheme, ForStatusCode, ForStatusPredicate, ForHeader, AllowInsecureTls }
-  ForLogMessage(string) | ForLogMessage(Regex)
-  ForCommand(params string[]) → CommandWaitStrategy { ForExitCode }
-  ForCustom(Func<WaitContext, CancellationToken, Task<bool>>)
-  ForAll(params IWaitStrategy[]) | ForAny(params IWaitStrategy[])
-
-WaitStrategy.WithTimeout / .WithInterval / .WithRetries   (fluent)
-```
+| Factory | Ready when |
+| --- | --- |
+| `Wait.ForContainerRunning()` | The init process is running (not a service-readiness check) |
+| `Wait.ForExitCode(long exitCode = 0)` | A one-shot container exits with the expected code |
+| `Wait.ForTcpPort(ushort containerPort, TimeSpan? connectTimeout = null)` | A TCP connection to the mapped host port succeeds |
+| `Wait.ForHttp(string path = "/")` | An HTTP(S) request succeeds; returns `HttpWaitStrategy` with `ForPort`, `ForScheme`, `ForStatusCode`, `ForStatusPredicate`, `ForHeader` and `AllowInsecureTls` |
+| `Wait.ForLogMessage(string)`, `Wait.ForLogMessage(Regex)` | The container output contains the message |
+| `Wait.ForCommand(params string[] command)` | A command run in the container succeeds. It returns `WaitStrategy`; the instance is a `CommandWaitStrategy`, whose `ForExitCode(int)` sets a different expected code |
+| `Wait.ForCustom(Func<WaitContext, CancellationToken, Task<bool>>)` | Your predicate returns `true` |
+| `Wait.ForAll(params IWaitStrategy[])`, `Wait.ForAny(params IWaitStrategy[])` | Every one, or any one, of the strategies is ready |
 
 - Waits run inside `StartAsync()` after the container starts. `StartAsync` only returns once every configured strategy is ready (or throws `ContainerTimeoutException`).
 - Default timeout = the container's `StartupTimeout` (5 min). This is also the total managed startup

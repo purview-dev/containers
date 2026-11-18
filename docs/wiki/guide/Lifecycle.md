@@ -1,6 +1,7 @@
 # Lifecycle
 
-Container lifecycle semantics for `Purview.Containers`.
+How a `Purview.Containers` test container starts, stops and is disposed on WSL Containers or Docker:
+the state model, cleanup guarantees, startup deadlines and container reuse.
 
 ## Public API
 

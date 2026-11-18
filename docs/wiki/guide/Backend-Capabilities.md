@@ -1,5 +1,8 @@
 # Backend capabilities and cancellation
 
+Which container features `Purview.Containers` supports on WSL Containers and on Docker, where the
+WSLC backend uses the managed SDK or the `wslc` CLI, and how timeouts and cancellation behave.
+
 The Docker backend is implemented with Testcontainers for .NET. WSLC uses
 `Microsoft.WSL.Containers` 3.0.5 for lifecycle, images, named networks and aliases, Linux capabilities
 and session host-loopback support, with the `wslc` CLI only for capabilities missing from the managed

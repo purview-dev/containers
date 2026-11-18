@@ -1,0 +1,17 @@
+# Moved and removed pages, kept reachable on purview.dev. previous: current
+# Either side is a slug or a Markdown path from the docs root. Never remove a released pair; when a
+# page moves again, update its destination here rather than chaining redirects.
+redirects:
+  # Grouped into topic folders.
+  lifecycle: guide/lifecycle
+  wait-strategies: guide/wait-strategies
+  networking: guide/networking
+  connection-strings: guide/connection-strings
+  backend-capabilities: guide/backend-capabilities
+  architecture: contributing/architecture
+  testing: contributing/testing
+  packaging: contributing/packaging
+  release-flow: contributing/release-flow
+  # Removed in b0e31f8; their content now lives in Capabilities and Cancellation.
+  wslc-api-investigation: guide/backend-capabilities
+  wslc-capability-matrix: guide/backend-capabilities

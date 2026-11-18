@@ -59,8 +59,8 @@ not change.
 - **.NET 10 or .NET 11** (.NET 8 and .NET 9 are not supported). The abstractions and service modules are
   portable; the WSL Containers backend is multi-target and stays dormant on non-Windows hosts. See the
   [consumer requirements](https://github.com/purview-dev/containers/blob/main/docs/wiki/Consumer-Requirements.md).
-- Either a Windows 10/11 host with **WSL Containers** (`wsl --install --no-distribution`) or a reachable
-  **Docker** daemon.
+- Either an x64 Windows host with **WSL 3.0.5 or later** (`wsl --install --no-distribution` or
+  `wsl --update`; ARM64 is not supported) or a reachable **Docker** daemon.
 
 ## Documentation
 

@@ -25,7 +25,8 @@ A consumer of any backend other than WSL needs only a portable `net10.0` or `net
 .NET 9 are unsupported.
 
 WSLC features missing from the managed SDK (entrypoint/user/labels, reuse, copy
-and Dockerfile builds) additionally require `wslc` on PATH; networks/aliases, Linux capabilities and
+and Dockerfile builds) additionally require the `wslc` CLI that ships with WSL (found on PATH or at
+`%ProgramFiles%\WSL\wslc.exe`); networks/aliases, Linux capabilities and
 host loopback use the managed SDK 3.0.5. The ordinary SDK-only path is unchanged.
 Use `purview-containers-capabilities` for the feature/cancellation boundary.
 
@@ -44,7 +45,7 @@ A Windows-targeting project binds the implementation directly, with no run-time 
 ```xml
 <PropertyGroup>
   <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-  <PlatformTarget>x64</PlatformTarget>                      <!-- or arm64; defaulted for you -->
+  <PlatformTarget>x64</PlatformTarget>                      <!-- x64 only; defaulted for you -->
   <WindowsSdkPackageVersion>10.0.26100.80</WindowsSdkPackageVersion>  <!-- defaulted for you -->
 </PropertyGroup>
 ```
@@ -59,9 +60,29 @@ value you have not chosen.
 | --- | --- | --- |
 | 1 | **.NET 10 or .NET 11** (.NET 8 and .NET 9 are unsupported) | the package ships `lib/net10.0/` and `lib/net11.0/` (facades) plus `lib/net10.0-windows10.0.19041/` and `lib/net11.0-windows10.0.19041/` (implementations) |
 | 2 | **A Windows target framework that names the OS version** — *only* if you want the implementation bound directly | the `Microsoft.WSL.Containers` projection ships Windows assets only |
-| 3 | **64-bit** — `PlatformTarget` `x64`/`arm64`, or a matching `RuntimeIdentifier` | the native `wslcsdk.dll` ships for `win-x64` and `win-arm64` only |
+| 3 | **x64** — `PlatformTarget` `x64` (the default), or the `win-x64` `RuntimeIdentifier` | the implementation is compiled for x64 and only the `win-x64` native `wslcsdk.dll` is deployed; ARM64 and x86 are not supported |
 | 4 | **`WindowsSdkPackageVersion` ≥ `10.0.26100.80`** | the projection is compiled against `Microsoft.Windows.SDK.NET` `10.0.26100.79`, and the pack the SDK resolves for a `10.0.19041.0` target framework is older |
-| 5 | **Windows 11 or Windows Server 2025 with WSL Containers**, to actually run anything | the library drives WSLC; it never installs or updates it for you; a Windows target framework does not imply Windows 10 runtime support |
+| 5 | **A host that can run WSL Containers**, to actually run anything (see below) | the library drives WSLC; it never installs or updates it for you |
+
+### Host requirements
+
+- **x64 only.** A non-x64 Windows-target consumer fails the build with `PCC0002`; a platform-neutral
+  consumer in a non-x64 process sees `wsl` reported unavailable ("supports x64 processes only"), so
+  automatic selection falls through to Docker.
+- **WSL 3.0.5 or later** from the normal stable channel — `wsl --install --no-distribution` for a new
+  install, or `wsl --update`. The `--pre-release` channel is not needed. The floor follows the bundled
+  `Microsoft.WSL.Containers` SDK (3.0.5) and is checked at run time.
+- **Windows wherever WSL 2 runs**: Windows 11, Windows 10 version 2004 (build 19041) or later with
+  current updates, or Windows Server 2025. The library adds no Windows-version check; WSL reports an
+  unsupported Windows as `WSL_E_OS_NOT_SUPPORTED`.
+- **Virtualisation** enabled in firmware plus the Virtual Machine Platform feature
+  (`wsl --install --no-distribution` enables it; restart required).
+- **`wslc`** ships with WSL and is needed only for the CLI-backed features; it is found on PATH or at
+  `%ProgramFiles%\WSL\wslc.exe`.
+
+Tested on Windows 11 23H2 and Windows Server 2025; Windows 10 and Windows Server 2022 are untested.
+`GetInfoAsync()` and `ContainerBackendUnavailableException` name the fix for each shortfall (for
+example "Run 'wsl --update'").
 
 ### Always spell out the Windows version
 
@@ -101,7 +122,7 @@ package, and use `PURVIEW_CONTAINERS_BACKEND` to pin which one runs.
 | Error | Raised by | Means | Fix |
 | --- | --- | --- | --- |
 | `PCC0001` | the shipped guard target | the target framework is neither .NET 10 nor .NET 11 on Windows `10.0.19041.0`+ nor a platform-neutral .NET 10/.NET 11 framework | retarget as above |
-| `PCC0002` | the shipped guard target | the consumer is not 64-bit | remove `PlatformTarget`, set it to `x64`/`arm64`, or choose a matching `RuntimeIdentifier` |
+| `PCC0002` | the shipped guard target | the consumer is not x64 (ARM64 and x86 are not supported) | remove `PlatformTarget` (x64 is the default), set it to `x64`, or choose the `win-x64` `RuntimeIdentifier` |
 | `CS1705` naming `Microsoft.Windows.SDK.NET` | the compiler | the resolved Windows SDK targeting pack is older than the projection's | pin `WindowsSdkPackageVersion` to `10.0.26100.80` |
 | `CS0234`/`CS0246` for `Microsoft.WSL`/`Purview` types | the compiler | the package contributed no compile assets — an unsupported target framework, or an unverified escape hatch | fix the target framework; `PCC0001` says the same thing more clearly |
 | `NETSDK1100` | the SDK | building a Windows-targeted project on a non-Windows agent | set `EnableWindowsTargeting=true` |
@@ -122,7 +143,8 @@ The repository proves every row above rather than asserting it:
   compiler-generated async state machines (runtime-async is on). If either drifts, the test fails, and
   this page, the package READMEs and the `buildTransitive` defaults all have to move with it.
 - `just verify-consumers` proves the **behaviour**: it packs, then builds throwaway consumer projects
-  for every documented outcome, including the guard errors (`PlatformTarget=x86` → `PCC0002`;
+  for every documented outcome, including the guard errors (`PlatformTarget=x86`, `PlatformTarget=arm64`
+  and `RuntimeIdentifier=win-arm64` → `PCC0002`;
   `net8.0-windows` → `PCC0001`; `net11.0-windows` without an OS version → `PCC0001`). It sits outside
   the `[Category=Unit]` filter because it restores from nuget.org.
 

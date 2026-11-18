@@ -20,7 +20,7 @@ Each package ships exactly:
 | `buildTransitive/Purview.Containers.Core.props` / `.targets` | **Core (abstractions) package.** Declares the `PurviewContainersBackends` list and turns it into a generated backend initializer in the consuming assembly. |
 | `buildTransitive/Purview.Containers.Wsl.props` / `.targets` | **WSL Containers backend only.** Defaults `WindowsSdkPackageVersion`/`PlatformTarget` and raises `PCC0001`/`PCC0002` for unsupported consumers. |
 | `buildTransitive/Purview.Containers.Docker.props` | **Docker backend only.** Adds the Docker backend to the `PurviewContainersBackends` list. |
-| `payload/win-x64/*`, `payload/win-arm64/*` | **WSL Containers backend only.** The Windows implementation, the WSLC projection, its Windows SDK dependencies and the native SDK. The portable facades load them at run time on a Windows host; the `buildTransitive` targets copy the matching folder to the consumer output. One payload (built from the lowest Windows target) serves both portable targets, because a .NET 11 process loads a .NET 10 assembly. |
+| `payload/win-x64/*` | **WSL Containers backend only.** The Windows implementation, the WSLC projection, its Windows SDK dependencies and the native SDK. The backend is x64 only, so there is no ARM64 payload. The portable facades load them at run time on an x64 Windows host; the `buildTransitive` targets copy the folder to the consumer output. One payload (built from the lowest Windows target) serves both portable targets, because a .NET 11 process loads a .NET 10 assembly. |
 
 Portable PDBs are delivered through the `.snupkg`, never inside the `.nupkg`. The umbrella
 `Purview.Containers` package has no `buildTransitive` of its own: its dependencies' assets flow
@@ -31,7 +31,7 @@ transitively.
 `Purview.Containers.Wsl` ships `lib/net10.0/` and `lib/net11.0/` (the facades), `lib/net10.0-windows10.0.19041/`
 and `lib/net11.0-windows10.0.19041/` (the implementations), with the `payload/` folders alongside. Every
 package therefore restores on a portable `net10.0` or `net11.0` project. Consumers must target .NET 10 or
-.NET 11; see [Consumer Requirements](Consumer-Requirements.md).
+.NET 11; see [Consumer Requirements](../Consumer-Requirements.md).
 
 ## Package metadata
 
@@ -94,6 +94,7 @@ alongside the `Sdk/README.md`. Removing content from a package means removing th
 3. Add the package to `RequiredContent` in `purview-build.json`.
 4. Prove it with `just pack` and `just pipeline-pack-validate`.
 
+> [!IMPORTANT]
 > **Packaging a backend or a new MSBuild asset?** NuGet only auto-imports `buildTransitive/<PackageId>.props`
 > and `buildTransitive/<PackageId>.targets`, so an asset named after anything else — including a shorter
 > product name — is shipped but never applied. A regression here is invisible to the build of this
@@ -111,4 +112,4 @@ package with no rule, or a packed entry matched by no glob, fails validation.
 ## Related
 
 - [Release Flow](Release-Flow.md) — how packages are versioned and published.
-- [Contributing Modules](Contributing-Modules.md) — the module contract a new package follows.
+- [Contributing Modules](../Contributing-Modules.md) — the module contract a new package follows.

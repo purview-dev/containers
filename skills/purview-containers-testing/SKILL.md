@@ -73,8 +73,9 @@ Print `wsl --version` and `wslc version` in WSLC jobs so provisioning failures a
 ## CI shape
 
 - **Docker half** — runs on every pull request, on `ubuntu-latest`.
-- **WSLC contract** — runs on every pull request on `windows-2025`, with nested virtualisation and
-  WSL Containers installed by the workflow.
+- **WSLC contract** — runs on every pull request on the hosted `windows-2025` runner (GitHub's hosted
+  `windows-2022` runner cannot run the WSLC suites), with nested virtualisation and the stable WSL
+  brought to 3.0.5 or later by `wsl --update` in the workflow.
 - **Full WSLC matrix** — runs nightly on `windows-2025`, or on demand on a hosted or self-hosted runner:
 
   ```bash
@@ -86,7 +87,8 @@ Print `wsl --version` and `wslc version` in WSLC jobs so provisioning failures a
   shared WSLC image store is never contended. Use `scope: contract` for the backend contract alone.
 
 Self-hosted runner prerequisites: a **Windows x64** runner labelled `self-hosted` and `wslc`, with
-WSL Containers installed (`wsl --install --no-distribution`) and the pinned .NET SDK. Tell
+virtualisation enabled, WSL 3.0.5 or later from the stable channel (`wsl --install --no-distribution`
+or `wsl --update`) and the pinned .NET SDK. ARM64 runners are not supported. Tell
 `actionlint` about the custom label in `.github/actionlint.yaml`.
 
 > The shared pipeline runs on `ubuntu-latest`, so it builds the portable `net10.0`/`net11.0` projects **and**

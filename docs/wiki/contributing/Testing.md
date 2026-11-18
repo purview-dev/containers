@@ -33,7 +33,7 @@ runtime fails the job instead of skipping every test.
 > The shared `purview-dev/build` workflow runs on **`ubuntu-latest`**, so the pipeline builds the portable
 > `net10.0`/`net11.0` projects and the `net11.0-windows…` test projects on Linux. That works because
 > `src/Directory.Build.props` sets `EnableWindowsTargeting=true`; without it the SDK reports `NETSDK1100`.
-> See [Consumer Requirements](Consumer-Requirements.md) for what that workaround does and does not
+> See [Consumer Requirements](../Consumer-Requirements.md) for what that workaround does and does not
 > cover.
 
 ```powershell
@@ -48,7 +48,7 @@ to Docker, so a WSLC host runs the WSLC suites and a Docker-only host runs the D
 (`Docker.IntegrationTests` for the container contract, `Modules.Docker.IntegrationTests` for the nine
 service modules) skip themselves when no daemon is reachable, and the WSLC suites skip themselves when the
 host lacks the WSL Containers components. Set `PURVIEW_CONTAINERS_REQUIRE_BACKEND=wsl|docker` to turn that
-skip into a failure — the CI integration jobs do. See [Backends: WSLC or Docker](Backends.md) for
+skip into a failure — the CI integration jobs do. See [Backends: WSLC or Docker](../Backends.md) for
 consumer-facing setup and CI examples.
 
 ```powershell
@@ -104,8 +104,9 @@ existed are never deleted, and the shared image store and host bind mounts are u
 
 The WSLC half used to be manual-only because no hosted runner was assumed to have WSL Containers. That is
 no longer true: GitHub's `windows-2025` runner is Windows Server 2025 with hardware nested virtualisation,
-and `wsl --update --pre-release` installs a WSL build that includes `wslc`. The binary is not on `PATH`, so
-the workflow adds `C:\Program Files\WSL` and calls it by absolute path.
+and WSL Containers ships in the stable WSL channel, so `wsl --update` brings the runner to WSL 3.0.5 or
+later, including `wslc`. The workflow checks `C:\Program Files\WSL\wslc.exe` and prints its version by
+absolute path; the library itself finds `wslc` there without a `PATH` change.
 
 Coverage is split for cost:
 
@@ -126,10 +127,10 @@ gh run watch
 ### Hosted runner notes
 
 Windows runners bill at 2× and the full module matrix pulls several GB of images on a cold runner, so the
-full matrix is nightly rather than per-PR. `windows-2022` and Windows 10 do not support WSL Containers;
-`windows-2025` is the only hosted option. The WSLC API surface is pinned by the
-`Microsoft.WSL.Containers` package, so a hosted runner with a newer pre-release WSL may report the runtime
-as incompatible. The workflow sets `PURVIEW_CONTAINERS_REQUIRE_BACKEND=wsl`, which turns that into a failed
+full matrix is nightly rather than per-PR. The WSLC suites run on the hosted `windows-2025` runner;
+GitHub's hosted `windows-2022` runner cannot run them. The WSLC API surface is pinned by the
+`Microsoft.WSL.Containers` package (3.0.5), so a runner whose WSL is older than that floor, or newer than
+the bundled SDK supports, reports the runtime as incompatible. The workflow sets `PURVIEW_CONTAINERS_REQUIRE_BACKEND=wsl`, which turns that into a failed
 job rather than a green run with every test skipped.
 
 ### Self-hosted runner prerequisites
@@ -137,9 +138,10 @@ job rather than a green run with every test skipped.
 Register a **Windows x64** runner for this repository (or organisation) with the labels
 `self-hosted` and the custom **`wslc`** label, and install on that machine:
 
-- Windows 11 (22H2 or later) or Windows Server 2025 with **WSL Containers**:
-  `wsl --install --no-distribution`, verified with `wsl --version` and `wslc version`. Windows 10 and
-  Windows Server 2022 do not support WSL Containers.
+- A host that meets the
+  [host requirements](../Consumer-Requirements.md#host-requirements-wsl-containers-backend): x64, a Windows
+  where WSL 2 runs, virtualisation enabled, and **WSL 3.0.5 or later** from the stable channel
+  (`wsl --install --no-distribution` or `wsl --update`), verified with `wsl --version` and `wslc version`.
 - The **.NET 11 SDK** the repository pins in `global.json` (`11.0.100`).
 
 The job's first step prints `wsl --version` and `wslc version`, so a mis-provisioned runner fails
@@ -164,12 +166,12 @@ startup; it cannot substitute for real runtime validation.
 `Wsl.UnitTests/ConsumerRequirementsTests.cs` guards the shape of the shipped library inside
 the normal unit run: the Windows build targets `.NETCoreApp,Version=v10.0`, targets `Windows10.0.19041.0`
 and declares only that OS platform. If the target framework ever drifts, that test fails — and
-[Consumer Requirements](Consumer-Requirements.md), the package READMEs and the shipped
+[Consumer Requirements](../Consumer-Requirements.md), the package READMEs and the shipped
 `buildTransitive` defaults all have to move with it.
 
 The behavioural side is covered by `just verify-consumers`, which packs the packages and builds
 throwaway consumer projects for every documented outcome (see
-[Consumer Requirements](Consumer-Requirements.md#verifying-these-requirements)). It is deliberately
+[Consumer Requirements](../Consumer-Requirements.md#verifying-these-requirements)). It is deliberately
 outside the `[Category=Unit]` filter because it packs and restores from nuget.org:
 
 ```powershell
@@ -180,4 +182,4 @@ just verify-consumers -Keep    # same, keeping the generated projects for inspec
 ## Related
 
 - [Architecture](Architecture.md) — session lifetime, the concurrency gate and the shared-store fallback.
-- [Getting Started](Getting-Started.md) — running the tests locally.
+- [Getting Started](../Getting-Started.md) — running the tests locally.

@@ -39,7 +39,7 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 | `src/Directory.Build.props` / `src/Directory.Build.targets` | Solution-wide SDK import, package metadata and the shared package icon |
 | `.config/purview-build.json` | Shared `Purview.Build` pipeline configuration: solution, test discovery/filter and the **exhaustive** pack-validation manifest |
 | `Directory.Build.rsp` | Purview.BuildSdk-managed MSBuild response file: enables the .NET 11 multithreaded build (`-mt`) and disables node reuse (`-nr:false`). Delete its marker line to take ownership |
-| `Justfile` | Supported local workflow commands |
+| `Justfile` / `.build/just/` | Supported local workflow commands: the root `Justfile` holds this repository's own recipes (`test` override, `verify-consumers`, samples) and imports the shared modules in `.build/just/`, copied verbatim from the `purview-buildsdk-justfile` skill - change them there, not here |
 | `skills` | The agent skills this repository authors and publishes |
 | `.agents/skills` | Skills installed from other repositories by the skills CLI (gitignored; `skills-lock.json` is the tracked record) |
 
@@ -59,7 +59,15 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   managed bridge networks/aliases, Linux capabilities, session host loopback, builds and reuse. WSLC uses
   the managed `Microsoft.WSL.Containers` 3.0.5 SDK for lifecycle, images, networks, capabilities and host
   loopback, and the SDK-owned session with a bounded `wslc` subprocess only for SDK-missing capabilities
-  (entrypoint/user/labels, copy, builds, reuse); ordinary SDK-only consumers need no CLI.
+  (entrypoint/user/labels, copy, builds, reuse); ordinary SDK-only consumers need no CLI. `wslc` is
+  found on PATH or at `%ProgramFiles%\WSL\wslc.exe`.
+- **The WSLC backend is x64 only** (no ARM64 or x86 payload; `PCC0002` rejects a non-x64 Windows
+  consumer and the facade reports `wsl` unavailable in a non-x64 process). The WSL floor is
+  `MinimumWslVersion` in `Directory.Packages.props` (it follows the `Microsoft.WSL.Containers` SDK
+  pin) and is enforced at run time by `WslRequirements`. Do not add a Windows-build check: WSL owns
+  that floor and reports `WSL_E_OS_NOT_SUPPORTED`. Every unavailable/incompatible reason must name its
+  fix (for example "Run 'wsl --update'"). The authoritative host list is
+  [Consumer Requirements](docs/wiki/Consumer-Requirements.md#host-requirements-wsl-containers-backend).
 - Never swallow caller cancellation as a successful exec/stop. Startup is a total five-minute managed
   budget; exec defaults to one minute, stop to 15 seconds and cleanup to 30 seconds. Synchronous WSLC
   native calls cannot be safely interrupted; never advertise hard zero-hang guarantees.
@@ -152,8 +160,9 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   `ContainerException` and the backend interfaces are documented extension points.
 - `Purview.Containers.Wsl` ships `Sdk/buildTransitive/Purview.Containers.Wsl.{props,targets}` so consumers
   inherit `WindowsSdkPackageVersion`/`PlatformTarget` defaults, a clear error for an unsupported target
-  framework (`PCC0001`) or a 32-bit Windows consumer (`PCC0002`), and — for a platform-neutral consumer
-  on a Windows build host — a copy of the WSLC implementation payload (`wslc/`) that the portable facade
+  framework (`PCC0001`) or a non-x64 Windows consumer (`PCC0002`), and — for a platform-neutral consumer
+  on a Windows build host — a copy of the x64-only WSLC implementation payload (`payload/win-x64/`,
+  copied to `wslc/`) that the portable facade
   loads at run time. Those assets are framework-agnostic, so NuGet never raises `NU1202` at restore time;
   the guards are the fail-fast path. Keep them, and keep the `RequiredContent` entries (including
   `payload/**`) that declare them. They belong to the WSL backend package only.
@@ -248,7 +257,7 @@ just lint-check / just lint-fix       # CSharpier check / format
 just pack                             # build + dotnet pack into ./artifacts
 just verify-consumers                 # build throwaway consumers against the packed packages
 just pipeline-pack-validate           # restore, build, lint, test, pack, validate
-just scrub                            # reset bin/obj, clean, forced restore, build-server shutdown
+just scrub                            # build-server shutdown, delete bin/obj and artifacts, forced restore
 ```
 
 Commit messages follow Conventional Commits enforced by the `commit-msg` lefthook
@@ -267,13 +276,14 @@ Commit messages follow Conventional Commits enforced by the `commit-msg` lefthoo
   example `release/v1.0.9` for `1.0.0-prerelease.9`). `.config/purview-build.json`
   sets the `TrunkReservesMinor` eligibility policy; a version whose `v<version>` tag already exists is
   skipped (`REL002`), so every release needs a new `package.json` version. See
-  [Release Flow](docs/wiki/Release-Flow.md).
+  [Release Flow](docs/wiki/contributing/Release-Flow.md).
 - `.github/workflows/integration-wsl.yml` runs the WSLC integration suites. The fast contract suite runs on
   a hosted `windows-2025` runner on every pull request from `pr.yml`; the full service-module matrix runs
   nightly on `windows-2025` and can be dispatched manually against either the hosted runner or a
-  self-hosted Windows runner with the custom `wslc` label (documented in [Testing](docs/wiki/Testing.md)).
-  `windows-2022` and Windows 10 do not support WSL Containers. `.github/actionlint.yaml` declares the
-  custom label.
+  self-hosted Windows runner with the custom `wslc` label (documented in [Testing](docs/wiki/contributing/Testing.md)).
+  The WSLC suites run on the hosted `windows-2025` runner (GitHub's hosted `windows-2022` runner cannot
+  run them), and the workflows bring WSL up to date with the stable-channel `wsl --update`; no
+  `--pre-release` channel is used. `.github/actionlint.yaml` declares the custom label.
 - The workflows pin `dotnet-version` to `global.json`'s `sdk.version`; keep them in sync, and keep
   `.config/purview-build.json` pointing at `src/Containers.slnx`. The shared workflow runs on
   `ubuntu-latest`, which is why `EnableWindowsTargeting=true` must stay in `src/Directory.Build.props`.

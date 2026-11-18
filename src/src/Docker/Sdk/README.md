@@ -61,7 +61,7 @@ PURVIEW_CONTAINERS_BACKEND=docker     # or "auto" (the default) to probe WSLC fi
   one minute for exec/copy/read/log snapshots, 15 seconds for stop and 30 seconds for cleanup.
   Reuse follows Testcontainers semantics and disables normal reaper cleanup; `DeleteAsync` removes
   retained containers explicitly. See
-  [capabilities and ownership](https://github.com/purview-dev/containers/blob/main/docs/wiki/Backend-Capabilities.md).
+  [capabilities and ownership](https://github.com/purview-dev/containers/blob/main/docs/wiki/guide/Backend-Capabilities.md).
 - Named volumes created through `WithVolumeMount` are tracked by the backend. Set
   `ContainerCleanup.CleanUpVolumesOnExit` (or `PURVIEW_CONTAINERS_CLEAN_VOLUMES=true`) before creating
   containers to force-remove those containers and the volumes the backend created when the process exits;

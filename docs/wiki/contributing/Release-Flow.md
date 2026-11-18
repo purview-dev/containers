@@ -11,11 +11,11 @@ that end up in each nuspec.
 
 Versions use a `-prerelease.N` suffix until the stable 1.0.0 release, which will include the WSL Containers
 backend. Until then, consumers should pin an exact version rather than float, and each bump can change
-the API or the [consumer requirements](Consumer-Requirements.md).
+the API or the [consumer requirements](../Consumer-Requirements.md).
 
 ## Local commands
 
-The `Justfile` wraps the common steps:
+The `Justfile` wraps the common steps. The shared recipes live in `.build/just/` (copied verbatim from the `purview-buildsdk-justfile` skill); the root `Justfile` adds this repository's own:
 
 | Command | What it does |
 | --- | --- |
@@ -23,8 +23,8 @@ The `Justfile` wraps the common steps:
 | `just test` | `dotnet test` across the solution, one test module at a time (see [Testing](Testing.md)). |
 | `just lint-check` / `just lint-fix` | CSharpier check / format over the repository root. |
 | `just pack` | Build (Debug) and `dotnet pack` into `./artifacts`. |
-| `just verify-consumers` | Pack, then build throwaway consumer projects that assert the published consumer contract ([Consumer Requirements](Consumer-Requirements.md)). |
-| `just scrub` | Delete `bin`/`obj`, clean, re-restore with `--force-evaluate`, and shut down the build server. |
+| `just verify-consumers` | Pack, then build throwaway consumer projects that assert the published consumer contract ([Consumer Requirements](../Consumer-Requirements.md)). |
+| `just scrub` | Shut down the build servers, delete `bin`/`obj` and `artifacts`, and re-restore with `--force-evaluate`. |
 | `just pipeline-pack-validate` | Shared pipeline: restore, build, lint, test, pack and **validate** the packages, without publishing. |
 
 ## The shared pipeline
@@ -98,9 +98,9 @@ The shared workflow runs on **`ubuntu-latest`**, so the Linux agent builds the p
 `src/Directory.Build.props`
 sets `EnableWindowsTargeting=true`; removing it fails the pipeline with `NETSDK1100`. The agent has no WSL
 Containers, which is why the pipeline is filtered to `[Category=Unit]` — see
-[Consumer Requirements](Consumer-Requirements.md) and [Testing](Testing.md).
+[Consumer Requirements](../Consumer-Requirements.md) and [Testing](Testing.md).
 
 ## Related
 
 - [Packaging](Packaging.md) — the package contents and the validation manifest.
-- [Contributing](Contributing.md) — the local workflow before raising a PR.
+- [Contributing](README.md) — the local workflow before raising a PR.
