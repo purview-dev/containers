@@ -7,7 +7,8 @@ on:
     # re-evaluate the required build gate once it is marked ready for review.
     types: [opened, synchronize, reopened, ready_for_review]
   # Every merge to main is built and tested too, so main's own status reflects what was merged rather
-  # than the last PR head. This never publishes: releases still come only from release/** (release.yml).
+  # than the last PR head. This job never publishes: release.yml, which also runs on every push to main,
+  # is what publishes a bumped package.json version.
   push:
     branches: [main]
 
