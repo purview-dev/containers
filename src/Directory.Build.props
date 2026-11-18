@@ -48,10 +48,10 @@
 	<PropertyGroup Label="NuGet package metadata" Condition="'$(IsPackable)' == 'true'">
 		<PackageIcon>purview-logo-light.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<!-- The nuget.org "Project Site" link. The rendered documentation wiki lives in this
-		     repository, so the repository URL is the most useful target until the aggregated
-		     purview.dev project page exists. RepositoryUrl/RepositoryType come from SourceLink. -->
-		<PackageProjectUrl>https://github.com/purview-dev/containers</PackageProjectUrl>
+		<!-- The nuget.org "Project Site" link: the purview.dev project page, which aggregates this
+		     repository's documentation wiki. Matches `homepage` in package.json. RepositoryUrl/RepositoryType
+		     come from SourceLink. -->
+		<PackageProjectUrl>https://purview.dev/projects/containers/</PackageProjectUrl>
 	</PropertyGroup>
 
 	<ItemGroup Label="NuGet package assets" Condition="'$(IsPackable)' == 'true'">
