@@ -46,16 +46,19 @@ public sealed class DockerContainerBackend : IContainerBackend, IContainerBacken
 	/// <inheritdoc />
 	public async Task<ContainerBackendInfo> GetInfoAsync(CancellationToken cancellationToken = default)
 	{
-		var probeTimeout = TimeSpan.FromSeconds(10);
-		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-		deadline.CancelAfter(probeTimeout);
-
-		// Testcontainers reports "no daemon discovered" as a null endpoint, not an exception.
+		// Testcontainers reports "no daemon discovered" as a null endpoint, not an exception. Discovery
+		// itself can take several seconds (it probes each configured provider in turn), so the ping
+		// deadline starts only once an endpoint is known; otherwise a slow discovery would leave the ping
+		// no time and a healthy daemon would be reported as not responding.
 		var endpoint = DockerEndpoint.TryResolve();
 		if (endpoint is null)
 		{
 			return Unavailable(DockerEndpoint.NotFoundMessage);
 		}
+
+		var probeTimeout = TimeSpan.FromSeconds(10);
+		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		deadline.CancelAfter(probeTimeout);
 
 		try
 		{
