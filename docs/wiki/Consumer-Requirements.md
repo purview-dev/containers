@@ -35,7 +35,7 @@ for operation deadlines, resource ownership and native cancellation limits.
 | `Purview.Containers.Wsl` | `net10.0`, `net11.0`, `net10.0-windows10.0.19041.0` and `net11.0-windows10.0.19041.0` | The WSL Containers backend: portable facades plus the Windows implementations. **The requirements on this page are its contract.** |
 | `Purview.Containers.Docker` | `net10.0` and `net11.0`, any platform | The Docker backend (Testcontainers). Needs a reachable Docker daemon, not a Windows target framework. |
 | `Purview.Containers.Environment` | `net10.0` and `net11.0`, any platform | Standalone Docker-compatible CLI bind-sharing resolver; no Aspire, Testcontainers or WSLC dependency. |
-| `Purview.Containers.Aspire` | `net10.0` and `net11.0`, any platform | Optional adapter requiring Aspire 13.6.5+ and the Environment package; no backend dependency. |
+| `Purview.Containers.Aspire` | `net10.0` and `net11.0`, any platform | Optional adapter requiring Aspire 17.0.0+ and the Environment package; no backend dependency. |
 
 The standalone resolver requires a reachable Linux-container daemon through its selected CLI, working
 credential helpers on `PATH`, and client write access to bind-source directories for verification markers.

@@ -29,7 +29,7 @@
 	<PropertyGroup>
 		<MicrosoftWSLContainersVersion>3.0.5</MicrosoftWSLContainersVersion>
 		<WindowsSdkRefPackageVersion>10.0.26100.80</WindowsSdkRefPackageVersion>
-		<TUnitVersion>1.76.0</TUnitVersion>
+		<TUnitVersion>1.87.0</TUnitVersion>
 	</PropertyGroup>
 
 	<ItemGroup Label="Transitive Pinning">
@@ -38,20 +38,20 @@
 		  .NET 10 servicing line on purpose: the .NET 8/.NET 9 lines are no longer supported, and a
 		  component declares the lowest band a consumer on the oldest supported framework can take.
 		-->
-		<PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
+		<!--<PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />-->
 	</ItemGroup>
 	<ItemGroup>
-		<PackageVersion Include="Aspire.Hosting" Version="13.6.5" />
+		<PackageVersion Include="Aspire.Hosting" Version="17.0.0" />
 		<PackageVersion Include="Microsoft.WSL.Containers" Version="$(MicrosoftWSLContainersVersion)" />
-		<PackageVersion Include="Testcontainers" Version="4.16.0" />
+		<PackageVersion Include="Testcontainers" Version="4.17.0" />
 		<!--
 		  Shipped by every package (not PrivateAssets), so its version is the floor every consumer
-		  inherits. 10.0.0 is the .NET 10 GA release of the extension - the lowest that ships for the
-		  oldest framework these packages target - rather than the newest 10.x release.
+		  inherits. 11.0.0 still ships a net10.0 asset (binding the 10.0.x Microsoft.Extensions
+		  servicing line), so raising the floor does not raise the .NET 10 requirement.
 		-->
-		<PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.0.0" />
-		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.402" />
-		<PackageVersion Include="Purview.Telemetry.SourceGenerator" Version="5.0.5" />
+		<PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="11.0.0" />
+		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="11.0.100" />
+		<PackageVersion Include="Purview.Telemetry.SourceGenerator" Version="6.0.1" />
 		<PackageVersion Include="TUnit" Version="$(TUnitVersion)" />
 		<PackageVersion Include="TUnit.Core" Version="$(TUnitVersion)" />
 		<PackageVersion Include="TUnit.Mocks" Version="$(TUnitVersion)" />
@@ -62,21 +62,21 @@
 		  package is licensed under the Microsoft Testing Platform Tools terms, which permit use in
 		  OSI-approved open-source projects; it never ships in a Purview package.
 		-->
-		<PackageVersion Include="Microsoft.Testing.Extensions.Retry" Version="2.5.1" />
-		<PackageVersion Include="Purview.Skills.Testing" Version="1.2.0" />
+		<PackageVersion Include="Microsoft.Testing.Extensions.Retry" Version="2.5.3" />
+		<PackageVersion Include="Purview.Skills.Testing" Version="2.2.0" />
 		<PackageVersion Include="Bogus" Version="35.6.5" />
-		<PackageVersion Include="Azure.Core" Version="1.63.0" />
-		<PackageVersion Include="Azure.Security.KeyVault.Certificates" Version="4.9.2" />
+		<PackageVersion Include="Azure.Core" Version="1.65.0" />
+		<PackageVersion Include="Azure.Security.KeyVault.Certificates" Version="4.10.0" />
 		<PackageVersion Include="Azure.Security.KeyVault.Keys" Version="4.10.2" />
-		<PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.11.2" />
+		<PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.12.0" />
 		<!-- Test-only: the Azurite and Service Bus emulator suites prove authenticated client operations. -->
 		<PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.21.0" />
 		<PackageVersion Include="Azure.Storage.Blobs" Version="12.30.1" />
 		<PackageVersion Include="Npgsql" Version="10.0.3" />
-		<PackageVersion Include="Microsoft.Data.SqlClient" Version="7.1.1" />
-		<PackageVersion Include="StackExchange.Redis" Version="3.4.5" />
+		<PackageVersion Include="Microsoft.Data.SqlClient" Version="7.1.2" />
+		<PackageVersion Include="StackExchange.Redis" Version="3.4.35" />
 		<PackageVersion Include="RabbitMQ.Client" Version="7.2.2" />
-		<PackageVersion Include="NATS.Client.Core" Version="3.3.1" />
-		<PackageVersion Include="MySqlConnector" Version="2.6.2" />
+		<PackageVersion Include="NATS.Client.Core" Version="3.4.0" />
+		<PackageVersion Include="MySqlConnector" Version="3.0.0" />
 	</ItemGroup>
 </Project>

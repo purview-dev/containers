@@ -60,7 +60,7 @@ for inspection, and `.WithAutoRemove()` is opted into separately. See
 referencing the umbrella package, Testcontainers or WSLC. It verifies native paths, running WSL
 translations and explicit shared-remote mappings against the daemon using two-way file markers.
 `Purview.Containers.Aspire` adds opt-in `builder.AddContainerEnvironment()` integration for any
-Aspire AppHost. Both target `net10.0` and `net11.0`; the adapter requires Aspire 13.6.5 or later.
+Aspire AppHost. Both target `net10.0` and `net11.0`; the adapter requires Aspire 17.0.0 or later.
 These are separate from the existing Docker backend's automatic WSL2 path handling.
 Docker Engine inside a WSL distribution is not Microsoft WSL Containers.
 See the [environment package guide](src/src/Environment/Sdk/README.md) and
