@@ -11,18 +11,16 @@ bring your own client.
 
 ## Requirements
 
-- **WSL Containers backend:** Windows 10/11 with WSL Containers (`wsl --install --no-distribution`), and a
+- **WSL Containers backend:** an x64 Windows host with WSL 3.0.5 or later (`wsl --install --no-distribution` or `wsl --update`), and a
   `.NET 10` or `.NET 11` project. A platform-neutral `net10.0` or `net11.0` project binds the portable facade and gets
   automatic WSLC-or-Docker selection; a Windows target framework
-  (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. The
+  (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`, x64 only; ARM64 is not supported) binds the implementation directly. The
   `Purview.Containers.Wsl` package supplies `buildTransitive` defaults for
   `WindowsSdkPackageVersion`/`PlatformTarget` and (for a platform-neutral consumer on a Windows build
   host) the implementation payload, rejecting an unsupported consumer with `PCC0001`/`PCC0002` — see the
   [consumer requirements](https://github.com/purview-dev/containers/blob/main/docs/wiki/Consumer-Requirements.md).
 - **Docker backend:** any reachable Docker daemon (`docker info`), with a `net10.0` or `net11.0` project on any
   platform. No Windows target framework and no `PCC` guards apply.
-- **Experimental:** the API, defaults and packaging can change between prereleases; there is no
-  production support guarantee.
 
 ## Quick start
 
@@ -68,4 +66,4 @@ startup failure (`eacces` reading `.erlang.cookie`). See
 
 - [Backends: WSLC or Docker](https://github.com/purview-dev/containers/blob/main/docs/wiki/Backends.md) — choosing and configuring the runtime.
 - [Modules](https://github.com/purview-dev/containers/blob/main/docs/wiki/Modules.md) — the module contract and readiness choices.
-- [Wait Strategies](https://github.com/purview-dev/containers/blob/main/docs/wiki/Wait-Strategies.md) — overriding readiness checks.
+- [Wait Strategies](https://github.com/purview-dev/containers/blob/main/docs/wiki/guide/Wait-Strategies.md) — overriding readiness checks.

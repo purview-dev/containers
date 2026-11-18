@@ -6,10 +6,15 @@ on:
     # `ready_for_review` is not one of the default activity types, so a draft PR would never
     # re-evaluate the required build gate once it is marked ready for review.
     types: [opened, synchronize, reopened, ready_for_review]
+  # Every merge to main is built and tested too, so main's own status reflects what was merged rather
+  # than the last PR head. This never publishes: releases still come only from release/** (release.yml).
+  push:
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer push to a PR supersedes the older run; on main every merge gets its own complete run.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -43,8 +48,8 @@ jobs:
       PURVIEW_CONTAINERS_BACKEND: docker
       PURVIEW_CONTAINERS_REQUIRE_BACKEND: docker
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           # Keep in sync with `sdk.version` in global.json.
           dotnet-version: "11.0.100"
@@ -56,7 +61,7 @@ jobs:
         run: dotnet test src/tests/Modules.Docker.IntegrationTests/Modules.Docker.IntegrationTests.csproj --configuration Release --treenode-filter '/*/*/*/*' --timeout 15m --retry-failed-tests 2 --retry-failed-tests-delay 5s --retry-failed-tests-max-percentage 50
 
   # WSLC needs a Windows host with nested virtualisation. windows-2025 provides it (Windows Server
-  # 2025); wslc ships in the pre-release WSL channel and its directory is not on PATH. This is the
+  # 2025); wslc ships in the stable WSL channel (3.0.1 and later). This is the
   # contract suite only: the full module matrix is too slow for every pull request and runs in the
   # nightly integration-wsl workflow instead.
   integration-wsl:
@@ -68,26 +73,30 @@ jobs:
       PURVIEW_CONTAINERS_REQUIRE_BACKEND: wsl
       WSL_UTF8: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           # Keep in sync with `sdk.version` in global.json.
           dotnet-version: "11.0.100"
       - name: Install WSL Containers
         shell: pwsh
         run: |
-          wsl --update --pre-release
+          # WSL Containers is generally available in the stable WSL channel (WSL 3.0.1 and later), so this
+          # installs exactly what a consumer gets. The backend's floor is MinimumWslVersion, which follows
+          # MicrosoftWSLContainersVersion in Directory.Packages.props; read it from there so the two
+          # cannot drift.
+          wsl --update
+          wsl --version
           $wslc = 'C:\Program Files\WSL\wslc.exe'
           if (-not (Test-Path $wslc)) {
-            # The feature reached GA in some channels; fall back to the stable update before failing.
-            wsl --update
+            throw "wslc.exe was not installed at $wslc; the runner did not get a WSL build with containers."
           }
-          wsl --version
-          if (-not (Test-Path $wslc)) {
-            throw "wslc.exe was not installed at $wslc; the hosted runner did not get a WSL build with containers."
+          $minimum = [version](Select-Xml -Path Directory.Packages.props -XPath '//MicrosoftWSLContainersVersion').Node.InnerText
+          $installed = [version]((& $wslc version) -replace '^wslc\s+', '')
+          if ($installed -lt $minimum) {
+            throw "WSL $installed is older than $minimum, the minimum Purview.Containers.Wsl supports."
           }
-          $env:PATH = "C:\Program Files\WSL;$env:PATH"
-          & $wslc version
+          Write-Host "wslc $installed (minimum $minimum)"
       - name: Restore
         run: dotnet restore src/Containers.slnx
       - name: Build

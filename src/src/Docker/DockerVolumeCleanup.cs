@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net;
 using Docker.DotNet.Models;
-using DotNet.Testcontainers.Configurations;
 using Purview.Containers.Mounts;
 
 namespace Purview.Containers.Docker;
@@ -167,6 +166,5 @@ sealed class DockerVolumeCleanup
 		};
 	}
 
-	static global::Docker.DotNet.DockerClient CreateClient() =>
-		TestcontainersSettings.OS.DockerEndpointAuthConfig.GetDockerClientBuilder(Guid.NewGuid()).Build();
+	static global::Docker.DotNet.DockerClient CreateClient() => DockerEndpoint.CreateClient();
 }

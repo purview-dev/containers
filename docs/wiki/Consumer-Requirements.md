@@ -1,9 +1,8 @@
 # Consumer Requirements
 
-> **Experimental.** `Purview.Containers.*` is an experimental project: the public API, the
-> defaults and these requirements can change between prereleases, and there is no production
-> support guarantee. Treat every version as a preview and pin the exact package version you build
-> against.
+What a .NET project and its host need to use `Purview.Containers`: the supported target frameworks
+(.NET 10 and .NET 11), the WSL Containers host requirements (x64, WSL 3.0.5 or later), and the
+`PCC0001`/`PCC0002` build errors that enforce them.
 
 The WSL Containers backend package is **multi-target**. It ships Windows builds
 (`net10.0-windows10.0.19041.0` and `net11.0-windows10.0.19041.0`, the implementations, built on the
@@ -21,10 +20,11 @@ the `net11.0` assets, which are compiled with `runtime-async=on` and can use the
 ## Which package requires what
 
 The WSLC SDK-only path keeps its existing prerequisites. Entry-point/user/label overrides, reuse, file
-copy and Dockerfile builds additionally require the installed `wslc` CLI on PATH; named networks,
+copy and Dockerfile builds additionally require the `wslc` CLI that ships with WSL (found on PATH or at
+`%ProgramFiles%\WSL\wslc.exe`); named networks,
 aliases, Linux capabilities and host loopback use the managed SDK (3.0.5+).
 The CLI operates in the SDK-owned session/store, not the user's default CLI session. Missing CLI support
-fails explicitly, without switching backends. See [Capabilities and Cancellation](Backend-Capabilities.md)
+fails explicitly, without switching backends. See [Capabilities and Cancellation](guide/Backend-Capabilities.md)
 for operation deadlines, resource ownership and native cancellation limits.
 
 | Package | Target framework | Notes |
@@ -35,7 +35,7 @@ for operation deadlines, resource ownership and native cancellation limits.
 | `Purview.Containers.Wsl` | `net10.0`, `net11.0`, `net10.0-windows10.0.19041.0` and `net11.0-windows10.0.19041.0` | The WSL Containers backend: portable facades plus the Windows implementations. **The requirements on this page are its contract.** |
 | `Purview.Containers.Docker` | `net10.0` and `net11.0`, any platform | The Docker backend (Testcontainers). Needs a reachable Docker daemon, not a Windows target framework. |
 | `Purview.Containers.Environment` | `net10.0` and `net11.0`, any platform | Standalone Docker-compatible CLI bind-sharing resolver; no Aspire, Testcontainers or WSLC dependency. |
-| `Purview.Containers.Aspire` | `net10.0` and `net11.0`, any platform | Optional adapter requiring Aspire 13.6.5+ and the Environment package; no backend dependency. |
+| `Purview.Containers.Aspire` | `net10.0` and `net11.0`, any platform | Optional adapter requiring Aspire 17.0.0+ and the Environment package; no backend dependency. |
 
 The standalone resolver requires a reachable Linux-container daemon through its selected CLI, working
 credential helpers on `PATH`, and client write access to bind-source directories for verification markers.
@@ -65,7 +65,7 @@ backend selection. A Windows-targeting project can be explicit:
 ```xml
 <PropertyGroup>
 	<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-	<PlatformTarget>x64</PlatformTarget> <!-- or arm64 -->
+	<PlatformTarget>x64</PlatformTarget> <!-- x64 only: ARM64 and x86 are not supported -->
 	<WindowsSdkPackageVersion>10.0.26100.80</WindowsSdkPackageVersion>
 </PropertyGroup>
 ```
@@ -81,9 +81,9 @@ file, and because the defaults only fill in a value when you have not chosen one
 | --- | --- | --- |
 | 1 | **.NET 10 or .NET 11** | `Purview.Containers.Wsl` ships `lib/net10.0/` and `lib/net11.0/` (facades) and `lib/net10.0-windows10.0.19041/` and `lib/net11.0-windows10.0.19041/` (implementations). `Purview.Containers` and the service modules ship `lib/net10.0/` and `lib/net11.0/` too. Anything older — including .NET 8 and .NET 9 — is unsupported. |
 | 2 | **A Windows-specific target framework that names the OS version** (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`) — *only when you want the implementation bound directly; a platform-neutral project binds the facade and still runs WSLC on a Windows host* | The `Microsoft.WSL.Containers` projection only ships Windows assets. `net10.0-windows` on its own is not enough. |
-| 3 | **64-bit** (`PlatformTarget` `x64`/`arm64`, or a matching `RuntimeIdentifier`) | The native `wslcsdk.dll` ships for `win-x64` and `win-arm64` only. |
+| 3 | **x64** (`PlatformTarget` `x64`, the default, or the `win-x64` `RuntimeIdentifier`) | The Windows implementation is compiled for x64 and only the `win-x64` native `wslcsdk.dll` is deployed. ARM64 and x86 are not supported. |
 | 4 | **`WindowsSdkPackageVersion` at least `10.0.26100.80`** | The projection is compiled against `Microsoft.Windows.SDK.NET` `10.0.26100.79`; the pack the SDK resolves for a `10.0.19041.0` target framework is older. |
-| 5 | **A Windows 11 (22H2 or later) or Windows Server 2025 host with WSL Containers** to actually run containers | The library drives WSLC; it never installs or updates WSL for you. Windows 10 and Windows Server 2022 are not supported by WSL Containers. |
+| 5 | **A host that meets the [host requirements](#host-requirements-wsl-containers-backend)** to actually run containers | The library drives WSLC; it never installs or updates WSL for you. |
 
 ### 1. .NET 10 or .NET 11
 
@@ -125,14 +125,21 @@ the implementation was built against, so NuGet selects no compile assets for it.
 version. (The `Microsoft.WSL.Containers` package itself is `net8.0-windows10.0.19041.0`, which a
 `net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0` project consumes without issue.)
 
-### 3. 64-bit consumers only
+### 3. x64 consumers only
 
-The native WSL Containers SDK is shipped for `win-x64` and `win-arm64` only. A 32-bit (`x86`)
-consumer builds but cannot load `wslcsdk.dll` at runtime, so the packages fail the build instead:
+The WSL Containers backend supports **x64 only**: the Windows implementation is compiled for x64 and
+the package deploys only the `win-x64` native SDK. A Windows-target-framework consumer that is not x64
+(`PlatformTarget` `arm64` or `x86`, or a non-x64 `RuntimeIdentifier` such as `win-arm64`) would fail
+to load `wslcsdk.dll` at run time, so the packages fail the build instead:
 
 ```text
-error PCC0002: Purview.Containers.Wsl requires a 64-bit (x64 or arm64) consumer ...
+error PCC0002: Purview.Containers.Wsl requires an x64 consumer on a Windows target framework ...
 ```
+
+Remove `PlatformTarget` (x64 is the default), set it to `x64`, or choose the `win-x64`
+`RuntimeIdentifier`. A platform-neutral (`net10.0`/`net11.0`) consumer still builds anywhere; in a
+non-x64 process the facade reports the backend unavailable ("supports x64 processes only"), so
+automatic selection falls through to Docker.
 
 ### 4. Windows SDK targeting pack version
 
@@ -151,9 +158,39 @@ for you, so you only need it if you want to override the value deliberately.
 
 ### 5. Host prerequisites
 
-The build requirements above are host-independent. Running containers needs a Windows 11 (22H2 or later)
-or Windows Server 2025 host with WSL Containers installed (`wsl --install --no-distribution`) — see
+The build requirements above are host-independent. Running containers needs a host that meets the
+[host requirements](#host-requirements-wsl-containers-backend) below — see also
 [Getting Started](Getting-Started.md).
+
+## Host requirements (WSL Containers backend)
+
+This is the authoritative list; other pages state the short form and link here.
+
+1. **x64 only.** The backend runs in x64 processes. ARM64 and x86 are not supported: a Windows-target
+   consumer fails the build with `PCC0002`, and a platform-neutral consumer in a non-x64 process sees
+   the backend reported unavailable, so automatic selection falls through to Docker.
+2. **WSL 3.0.5 or later**, from the normal stable channel: `wsl --install --no-distribution` for a new
+   install, or `wsl --update`. WSL Containers has been generally available in the stable channel since
+   WSL 3.0.1; the `--pre-release` channel is not needed. The floor follows the bundled
+   `Microsoft.WSL.Containers` SDK (3.0.5) and is checked at run time: an older WSL is reported as
+   incompatible with "Run 'wsl --update'".
+3. **Windows wherever WSL 2 runs:** Windows 11, Windows 10 version 2004 (build 19041) or later with
+   current updates, or Windows Server 2025. The library carries no Windows-version check of its own —
+   WSL decides, and an unsupported Windows is reported as `WSL_E_OS_NOT_SUPPORTED` with the fix.
+4. **Virtualisation** enabled in the firmware, plus the Windows **Virtual Machine Platform** feature
+   (`wsl --install --no-distribution` enables it; a restart is required).
+5. **The `wslc` CLI** ships with WSL and is needed only for the CLI-backed features (entrypoint, user
+   and label overrides, file copy, image builds and reuse). The library finds it on PATH or at
+   `%ProgramFiles%\WSL\wslc.exe`, so no PATH change is needed.
+
+Tested on Windows 11 23H2 (development) and Windows Server 2025 (the `windows-2025` CI runner);
+Windows 10 and Windows Server 2022 are untested.
+
+A host that falls short is reported with its fix, by `WslContainerBackend.GetInfoAsync()` and in
+`ContainerBackendUnavailableException`. For example: "The Virtual Machine Platform Windows feature is
+not enabled… run 'wsl --install --no-distribution'…", "WSL 3.0.3 is older than WSL 3.0.5, the
+minimum… Run 'wsl --update'.", or, when WSL is newer than the bundled SDK, "Update the
+Purview.Containers.Wsl package…".
 
 ## What the packages do for you
 
@@ -180,8 +217,8 @@ runs on WSLC locally and Docker in CI with no further configuration:
 		<TargetFramework>net10.0</TargetFramework> <!-- auto: WSLC on Windows, Docker elsewhere -->
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Purview.Containers.PostgreSql" Version="1.0.0-prerelease.1" />
-		<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.1" />
+		<PackageReference Include="Purview.Containers.PostgreSql" Version="1.0.0-prerelease.14" />
+		<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.14" />
 	</ItemGroup>
 </Project>
 ```
@@ -199,9 +236,9 @@ always wins over these defaults.
 | Error | Raised by | Meaning | Fix |
 | --- | --- | --- | --- |
 | `PCC0001` | the shipped guard target | The consumer's target framework is neither .NET 10/.NET 11 on Windows 10.0.19041.0+ nor a platform-neutral .NET 10/.NET 11 framework | Retarget as above. |
-| `PCC0002` | the shipped guard target | The consumer is not 64-bit | Remove your `PlatformTarget`, set it to `x64`/`arm64`, or choose a matching `RuntimeIdentifier`. |
+| `PCC0002` | the shipped guard target | The consumer is not x64 (ARM64 and x86 are not supported) | Remove your `PlatformTarget` (x64 is the default), set it to `x64`, or choose the `win-x64` `RuntimeIdentifier`. |
 | `CS1705` | the C# compiler | `WindowsSdkPackageVersion` is older than the projection requires | Set `WindowsSdkPackageVersion` to `10.0.26100.80` or later. |
-| `CS8012` | the C# compiler | A referenced assembly targets a different processor (seen when a consumer forces `x86`) | Use a 64-bit consumer. |
+| `CS8012` | the C# compiler | A referenced assembly targets a different processor (seen when a consumer forces `x86`) | Use an x64 consumer. |
 | `NETSDK1100` | the .NET SDK | A Windows-targeted project is being built on a non-Windows operating system | Set `EnableWindowsTargeting` (see below). |
 | `CS0234`/`CS0246` for `Microsoft.WSL`/`Purview` types | the C# compiler | The package contributed no compile assets (an unsupported target framework, or an unverified escape hatch) | Fix the target framework; `PCC0001` explains the same problem with a clearer message. |
 
@@ -221,7 +258,7 @@ system, set the EnableWindowsTargeting property to true"*).
 
 This is exactly how this repository's own CI works: the shared `purview-dev/build` workflow runs on
 **`ubuntu-latest`**, so `src/Directory.Build.props` sets `EnableWindowsTargeting=true` and the
-pipeline is filtered to `[Category=Unit]`. See [Testing](Testing.md).
+pipeline is filtered to `[Category=Unit]`. See [Testing](contributing/Testing.md).
 
 What it does and does not do:
 
@@ -269,7 +306,7 @@ unconditionally — every inner build is supported:
 	<TargetFrameworks>net10.0;net11.0;net10.0-windows10.0.19041.0</TargetFrameworks>
 </PropertyGroup>
 <ItemGroup>
-	<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.1" />
+	<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.14" />
 </ItemGroup>
 ```
 
@@ -280,7 +317,7 @@ condition is no longer needed.
 
 ## Verifying these requirements
 
-`just verify-consumers` packs the solution and builds twenty-five throwaway consumer projects against the
+`just verify-consumers` packs the solution and builds twenty-eight throwaway consumer projects against the
 produced packages, asserting every claim on this page:
 
 | Case | Consumer | Expected outcome |
@@ -310,6 +347,9 @@ produced packages, asserting every claim on this page:
 | 23 | a `net10.0` consumer of the Aspire adapter | builds; no backend required |
 | 24 | a plain `net11.0` consumer of the WSL Containers backend | builds; the `wsl` registration is generated (the runtime-async facade) |
 | 25 | a `net11.0` consumer of modules with only the umbrella `Purview.Containers` | builds; both registrations are generated (one reference) |
+| 26 | `.NET 11` + Windows with `PlatformTarget=arm64` | `PCC0002` — the backend is x64 only |
+| 27 | `.NET 11` + Windows with `RuntimeIdentifier=win-arm64` | `PCC0002` — the backend is x64 only |
+| 28 | a plain `net10.0` consumer of the WSL Containers backend | builds; the x64 implementation payload (`wslc/`, including `wslcsdk.dll`) is copied to the output |
 
 The script is `scripts/verify-consumers.ps1` and it only writes to the temp folder. It needs network
 access (it restores transitive dependencies from nuget.org), so it is a local/CI-explicit step
@@ -318,6 +358,6 @@ rather than part of the `[Category=Unit]` filter.
 ## Related
 
 - [Getting Started](Getting-Started.md) — prerequisites and the first container.
-- [Packaging](Packaging.md) — what each package contains, including the `buildTransitive` assets.
-- [Testing](Testing.md) — the Linux CI run, the unit filter and the serial WSLC rule.
+- [Packaging](contributing/Packaging.md) — what each package contains, including the `buildTransitive` assets.
+- [Testing](contributing/Testing.md) — the Linux CI run, the unit filter and the serial WSLC rule.
 - [Modules](Modules.md) — the service modules that inherit these defaults.

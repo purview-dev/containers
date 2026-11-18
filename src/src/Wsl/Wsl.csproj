@@ -19,9 +19,17 @@
 		  platform-neutral consumer gets the facade. The approach rests on the extracted and tested
 		  result that the WSLC projection is a net8.0-windows asset loadable by a net10.0 or net11.0
 		  process.
+
+		  The list is derived from Purview.BuildSdk's `Supported` set (selected in src/Directory.Build.props)
+		  rather than restated: each supported framework contributes its portable build and its
+		  -windows10.0.19041.0 build, so this package always targets exactly what the other packages do.
+		  The payload target below and the pack manifest still name net10.0 (the lowest supported build)
+		  and fail fast if the set moves.
 		-->
 		<TargetFramework></TargetFramework>
-		<TargetFrameworks>net10.0;net10.0-windows10.0.19041.0;net11.0;net11.0-windows10.0.19041.0</TargetFrameworks>
+		<!-- Unescape: MSBuild escapes the ';' a property function returns, which would otherwise turn
+		     the Windows half of the list into one invalid TFM during project-reference negotiation. -->
+		<TargetFrameworks>$(PurviewTargetFrameworksSupported);$([MSBuild]::Unescape($(PurviewTargetFrameworksSupported.Replace(';', '-windows10.0.19041.0;'))))-windows10.0.19041.0</TargetFrameworks>
 		<Description>WSL Containers (WSLC) backend for Purview.Containers: run WSLC-native throwaway Linux containers from any .NET 10 or .NET 11 project, with automatic Docker fallback.</Description>
 		<PackageTags>wsl;wslc;containers;linux;windows;testing;integration;testcontainers</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -56,6 +64,9 @@
 
 	<ItemGroup Condition="'$(IsWslWindowsBuild)' == 'true'">
 		<PackageReference Include="Microsoft.WSL.Containers" />
+		<!-- The run-time WSL floor (WslRequirements), single-sourced from Directory.Packages.props. -->
+		<AssemblyMetadata Include="Purview.Containers.Wsl.MinimumWslVersion" Value="$(MinimumWslVersion)" />
+		<AssemblyMetadata Include="Purview.Containers.Wsl.SdkVersion" Value="$(MicrosoftWSLContainersVersion)" />
 	</ItemGroup>
 
 	<!--
@@ -79,6 +90,7 @@
 		<Compile Remove="WslSessionSweeper.cs" />
 		<Compile Remove="WslContainerResidue.cs" />
 		<Compile Remove="LogBuffer.cs" />
+		<Compile Remove="WslRequirements.cs" />
 		<Compile Remove="Diagnostics/WslContainerActivity.cs" />
 	</ItemGroup>
 
@@ -91,9 +103,10 @@
 	<!--
 	  Package payload. The portable consumer's facade loads the Windows implementation at run time, so
 	  the package ships that implementation plus the WSLC projection, its Windows SDK dependencies and
-	  the native SDK under "payload/<rid>/". The buildTransitive targets copy the matching folder to the
-	  consumer output on Windows. The managed implementation is architecture independent, so only the
-	  native wslcsdk.dll differs between the two RIDs.
+	  the native SDK under "payload/win-x64/". The buildTransitive targets copy it to the consumer output
+	  on Windows. The backend supports x64 only: the Windows implementation is compiled for x64
+	  (PlatformTarget above), so no ARM64 payload is shipped, and the facade reports the backend as
+	  unavailable in a non-x64 process so auto-selection falls through to Docker.
 
 	  Exactly one inner build contributes the payload, and it is the lowest portable one (net10.0), with
 	  the lowest Windows implementation beside it: a net11.0 process loads a net10.0 assembly without
@@ -142,10 +155,6 @@
 			Text="The native WSLC SDK is missing at '$(_WslcPayloadSource)/runtimes/win-x64/native/wslcsdk.dll'. $(_WslcPayloadVersionHint)"
 		/>
 		<Error
-			Condition="!Exists('$(_WslcPayloadSource)/runtimes/win-arm64/native/wslcsdk.dll')"
-			Text="The native WSLC SDK is missing at '$(_WslcPayloadSource)/runtimes/win-arm64/native/wslcsdk.dll'. $(_WslcPayloadVersionHint)"
-		/>
-		<Error
 			Condition="!Exists('$(_WindowsSdkPayloadSource)/lib/net8.0/Microsoft.Windows.SDK.NET.dll')"
 			Text="The Windows SDK projection is missing at '$(_WindowsSdkPayloadSource)/lib/net8.0/Microsoft.Windows.SDK.NET.dll'. $(_WindowsSdkPayloadVersionHint)"
 		/>
@@ -174,27 +183,6 @@
 			<TfmSpecificPackageFile
 				Include="$(_WindowsSdkPayloadSource)/lib/net8.0/WinRT.Runtime.dll"
 				PackagePath="payload/win-x64"
-			/>
-
-			<TfmSpecificPackageFile
-				Include="$(_WslWindowsBinDir)Purview.Containers.Wsl.dll"
-				PackagePath="payload/win-arm64"
-			/>
-			<TfmSpecificPackageFile
-				Include="$(_WslcPayloadSource)/lib/net8.0-windows10.0.19041.0/wslcsdkcs.dll"
-				PackagePath="payload/win-arm64"
-			/>
-			<TfmSpecificPackageFile
-				Include="$(_WslcPayloadSource)/runtimes/win-arm64/native/wslcsdk.dll"
-				PackagePath="payload/win-arm64"
-			/>
-			<TfmSpecificPackageFile
-				Include="$(_WindowsSdkPayloadSource)/lib/net8.0/Microsoft.Windows.SDK.NET.dll"
-				PackagePath="payload/win-arm64"
-			/>
-			<TfmSpecificPackageFile
-				Include="$(_WindowsSdkPayloadSource)/lib/net8.0/WinRT.Runtime.dll"
-				PackagePath="payload/win-arm64"
 			/>
 		</ItemGroup>
 	</Target>

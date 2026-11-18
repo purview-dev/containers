@@ -8,13 +8,16 @@ points you at the test workflow.
 Everything runs on one of two backends; pick the one that matches your machine — see
 [Backends: WSLC or Docker](Backends.md) for the full comparison.
 
-- **WSL Containers backend:** Windows 11 (22H2 or later) or Windows Server 2025 with **WSL Containers** (`wsl --install --no-distribution`),
-  verified against WSL **3.0.5.0**. A consuming project must be **.NET 10 or .NET 11** (**.NET 8 and
+- **WSL Containers backend:** an **x64** Windows host where WSL 2 runs (Windows 11, Windows 10 version
+  2004 or later, or Windows Server 2025) with virtualisation enabled and **WSL 3.0.5 or later** from the
+  stable channel (`wsl --install --no-distribution`, or `wsl --update`); ARM64 is not supported — see
+  [Host requirements](Consumer-Requirements.md#host-requirements-wsl-containers-backend). A consuming
+  project must be **.NET 10 or .NET 11** (**.NET 8 and
   .NET 9 are not supported**): a platform-neutral `net10.0` or `net11.0` project binds the portable facade
   and gets automatic WSLC-or-Docker selection, while a Windows target framework
-  (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`, x64 or arm64) binds the implementation
+  (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`, x64 only) binds the implementation
   directly. The `Purview.Containers.Wsl` package ships MSBuild defaults for `WindowsSdkPackageVersion` and
-  `PlatformTarget`; an unsupported target framework fails the build with `PCC0001` and a 32-bit Windows
+  `PlatformTarget`; an unsupported target framework fails the build with `PCC0001` and a non-x64 Windows
   consumer with `PCC0002`.
 - **Docker backend:** any reachable Docker daemon, on any platform, with a `net10.0` or `net11.0` project.
   No Windows target framework and no `PCC` guards apply.
@@ -23,9 +26,6 @@ Everything runs on one of two backends; pick the one that matches your machine �
   `DockerContainerBackend.GetInfoAsync()` report what is missing.
 - The full consumer contract, every error, and the `EnableWindowsTargeting` workaround for non-Windows CI
   agents live in [Consumer Requirements](Consumer-Requirements.md).
-
-> **Experimental.** The API, defaults and packaging rules can change between prereleases; there is no
-> production support guarantee.
 
 ## 1. Reference a package
 
@@ -111,7 +111,7 @@ just test '/*/*/*/*[Category=Unit]'   # unit tests only (no runtime required)
 
 Integration tests need a **running backend**: WSL Containers or a Docker daemon, depending on which you
 selected. A WSLC session exclusively locks its image-store VHD, so test modules run serially by default —
-see [Testing](Testing.md) for the details and how to run a subset.
+see [Testing](contributing/Testing.md) for the details and how to run a subset.
 
 To see a container start end to end, run one of the samples in this repository:
 
@@ -128,12 +128,12 @@ just pack                 # build + dotnet pack into ./artifacts
 just pipeline-pack-validate   # shared pipeline: restore, build, lint, test, pack, validate
 ```
 
-See [Contributing](Contributing.md) for the full local workflow and [Release Flow](Release-Flow.md) for
+See [Contributing](contributing/README.md) for the full local workflow and [Release Flow](contributing/Release-Flow.md) for
 versioning and publishing.
 
 ## Next steps
 
-- [Architecture](Architecture.md) — the session model, concurrency rules and cleanup decisions.
-- [Wait Strategies](Wait-Strategies.md) — started vs ready, and composing your own checks.
-- [Networking](Networking.md) — port mapping behaviour under WSLC.
-- [Packaging](Packaging.md) — what lands in each package.
+- [Architecture](contributing/Architecture.md) — the session model, concurrency rules and cleanup decisions.
+- [Wait Strategies](guide/Wait-Strategies.md) — started vs ready, and composing your own checks.
+- [Networking](guide/Networking.md) — port mapping behaviour under WSLC.
+- [Packaging](contributing/Packaging.md) — what lands in each package.

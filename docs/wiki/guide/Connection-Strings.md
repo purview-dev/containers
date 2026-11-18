@@ -66,4 +66,4 @@ provider used before `Configure` throws `ConnectionStringProviderNotConfiguredEx
 
 ## Module reference
 
-See [Modules](Modules.md) for each module's default connection string and any extra endpoint accessors.
+See [Modules](../Modules.md) for each module's default connection string and any extra endpoint accessors.

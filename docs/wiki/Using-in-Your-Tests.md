@@ -13,10 +13,10 @@ a Mac) — nothing changes between them.
 	</PropertyGroup>
 	<ItemGroup>
 		<!-- the services you want -->
-		<PackageReference Include="Purview.Containers.Redis" Version="1.0.0-prerelease.2" />
-		<PackageReference Include="Purview.Containers.PostgreSql" Version="1.0.0-prerelease.2" />
+		<PackageReference Include="Purview.Containers.Redis" Version="1.0.0-prerelease.14" />
+		<PackageReference Include="Purview.Containers.PostgreSql" Version="1.0.0-prerelease.14" />
 		<!-- one backend reference: the umbrella brings the abstractions and both backends -->
-		<PackageReference Include="Purview.Containers" Version="1.0.0-prerelease.2" />
+		<PackageReference Include="Purview.Containers" Version="1.0.0-prerelease.14" />
 	</ItemGroup>
 </Project>
 ```

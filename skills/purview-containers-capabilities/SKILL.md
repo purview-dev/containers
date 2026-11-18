@@ -14,7 +14,8 @@ metadata:
 
 Docker uses Testcontainers for .NET. WSLC ordinarily uses its managed SDK (3.0.5): lifecycle, images,
 named networks and aliases, Linux capabilities and host loopback are SDK-backed; entrypoint/user/labels,
-reuse, image builds and copy need the `wslc` CLI on PATH. The CLI targets the same
+reuse, image builds and copy need the `wslc` CLI that ships with WSL (found on PATH or at
+`%ProgramFiles%\WSL\wslc.exe`). The CLI targets the same
 SDK-owned session and image store, not the user's default CLI session. There is no Docker dependency
 on the WSLC path and no silent runtime fallback when an operation is unsupported.
 

@@ -4,43 +4,73 @@ Design for a Testcontainers-style .NET library with pluggable container backends
 
 ## Core model
 
-The library is split into a backend-neutral abstraction assembly and one assembly per backend:
+The library is split into a backend-neutral abstraction assembly and one assembly per backend. Modules
+reference the abstractions only; the backend is resolved at run time.
 
-```
-Purview.Containers                       (net10.0 + net11.0)   umbrella: references Core, Wsl and Docker
- └─ Purview.Containers.Core              (net10.0 + net11.0, portable)   the backend-neutral abstractions
-     ├─ IContainer / IContainerConfiguration / ContainerConfiguration   the container contract
-     ├─ ContainerBuilder<TBuilder, TContainer, TConfiguration>          fluent configuration + validation
-     ├─ ContainerBase                                                   typed module container (delegates to the backend)
-     ├─ ContainerBackends + IContainerBackend                           backend registry and selection
-     ├─ Waiting / Images / Mounts / Networking / Diagnostics            readiness, model, secrets
-     ├─ IConnectionStringProvider / ConnectionMode / ContainerConnectionStringProvider   connection strings
-     └─ Runtime/ContainerException                                      neutral error taxonomy
-
-Purview.Containers.Wsl                   (net10.0 + net11.0 facades,
-                                          net10.0 + net11.0 windows10.0.19041.0 implementations)
- ├─ WslContainerBackend : IContainerBackend  registers itself as "wsl"
- ├─ WslContainerRuntime : IContainerRuntime  process singleton, owns the shared session
- │   ├─ SessionSettings (name, storagePath, cpu/mem, gpu, timeout)
- │   ├─ SemaphoreSlim   -> serialises session-mutating and container-lifecycle ops
- │   ├─ ImageCatalog    -> pull policies + keyed dedup of concurrent pulls
- │   ├─ PortAllocator   -> native random host ports (windowsPort=0)
- │   └─ SessionHandle   -> Microsoft.WSL.Containers.Session (internal)
- ├─ WslContainer        : IContainer         WSLC-backed container
- ├─ WslContainerSession : IContainerSession  image pull + container create/start/stop/delete/exec
- └─ WslResource / WslCommand / WslFileCopy  owned resources; bounded CLI fallback in that same session
-
-IContainer : IConnectionStringProvider, IAsyncDisposable
-  StartAsync / StopAsync / DisposeAsync / ExecAsync / GetMappedPublicPort /
-  GetConnectionString / GetLogsAsync / tailing IAsyncEnumerable
-  CopyAsync / ReadFileAsync / WaitForExitAsync / DeleteAsync
+<!-- purview:likec4 file="../diagrams/package-architecture.c4" view="packageArchitecture" title="Package architecture" -->
+```mermaid
+flowchart TB
+  tests([Your tests]) -- references --> umbrella[Purview.Containers]
+  tests -- references --> modules[Service modules]
+  umbrella --> core[Purview.Containers.Core]
+  umbrella --> wsl[Purview.Containers.Wsl]
+  umbrella --> docker[Purview.Containers.Docker]
+  modules -- references only --> core
+  wsl -- implements IContainerBackend --> core
+  docker -- implements IContainerBackend --> core
+  wsl -- lifecycle, images, networks --> wslcSdk[Microsoft.WSL.Containers SDK]
+  wsl -- entrypoint, copy, builds, reuse --> wslcCli[wslc CLI]
+  wslcSdk --> wslcSession[(WSLC session)]
+  wslcCli --> wslcSession
+  docker --> testcontainers[Testcontainers] --> dockerDaemon[(Docker daemon)]
 ```
 
+[LikeC4 model](../diagrams/package-architecture.c4)
+<!-- /purview:likec4 -->
+
+| Package | Target frameworks | Key types |
+| --- | --- | --- |
+| `Purview.Containers` | `net10.0`, `net11.0` | None: the umbrella references Core, Wsl and Docker |
+| `Purview.Containers.Core` | `net10.0`, `net11.0` | `IContainer`, `IContainerConfiguration`/`ContainerConfiguration` (the contract); `ContainerBuilder<TBuilder, TContainer, TConfiguration>` (fluent configuration and validation); `ContainerBase` (typed module container); `ContainerBackends`, `IContainerBackend` (registry and selection); `IConnectionStringProvider`, `ConnectionMode`, `ContainerConnectionStringProvider`; `Runtime/ContainerException` (the neutral error taxonomy); the `Waiting`, `Images`, `Mounts`, `Networking` and `Diagnostics` namespaces |
+| `Purview.Containers.Wsl` | `net10.0`, `net11.0` facades; `net10.0`/`net11.0-windows10.0.19041.0` x64 implementations | `WslContainerBackend` (registers as `wsl`); `WslContainerRuntime` (process singleton that owns the shared session); `WslContainer`; `WslContainerSession` (pull, create, start, stop, delete, exec); `WslResource`, `WslCommand`, `WslFileCopy` (owned resources and the bounded CLI fallback in the same session); `WslRequirements` (host requirements and their fixes) |
+| `Purview.Containers.Docker` | `net10.0`, `net11.0` | `DockerContainerBackend` (registers as `docker`); `DockerContainer`; `DockerEndpoint` (daemon discovery) |
+
+Inside the WSL backend, one gate in `WslContainerRuntime` serialises every session-mutating and
+container-lifecycle operation, `WslContainerSession` de-duplicates concurrent pulls of the same image,
+and random host ports are allocated natively (`windowsPort=0`) and read back from the container.
+
+The container contract every backend implements:
+
+```csharp
+public interface IContainer : IConnectionStringProvider, IAsyncDisposable
+{
+    string Id { get; }
+    string Name { get; }
+    ContainerState State { get; }
+    string Image { get; }
+    string? NetworkIp { get; }
+
+    Task StartAsync(CancellationToken cancellationToken = default);
+    Task StopAsync(CancellationToken cancellationToken = default);
+    Task DeleteAsync(CancellationToken cancellationToken = default);
+    Task<ExecResult> ExecAsync(string[] command, ExecOptions? options = null, CancellationToken cancellationToken = default);
+
+    ushort GetMappedPublicPort(ushort containerPort);
+    IReadOnlyDictionary<ushort, ushort> GetMappedPublicPorts();
+
+    Task<string> GetLogsAsync(LogOutput? stream = null, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<ContainerLogEntry> GetLogsAsync(CancellationToken cancellationToken);
+
+    Task CopyAsync(string source, string target, CancellationToken cancellationToken = default);
+    Task<byte[]> ReadFileAsync(string path, CancellationToken cancellationToken = default);
+    Task<long> WaitForExitAsync(CancellationToken cancellationToken = default);
+}
+```
 `IContainerBackend.CreateNetworkAsync` and `BuildImageAsync` return owned `IContainerResource`
 instances on either backend. Docker delegates to Testcontainers. WSLC networks and their deletion use the
 managed SDK; CLI-backed resources (image builds) target the SDK-owned session/store, while lifecycle,
 images and network operations remain SDK-backed. Dispose containers before networks/images. See
-[Capabilities and Cancellation](Backend-Capabilities.md).
+[Capabilities and Cancellation](../guide/Backend-Capabilities.md).
 
 A module (`Purview.Containers.PostgreSql`, `Purview.Containers.Redis`, …) derives its container from
 `ContainerBase` and references `Purview.Containers.Core` only. The backend is resolved at run time through
@@ -53,16 +83,18 @@ Microsoft types (`Session`, `Container`, `Process`, `ContainerSettings`, …) ar
 ## Target frameworks
 
 Every package ships `net10.0` and `net11.0` assets. **.NET 8 and .NET 9 are dropped**; the contract is in
-[Consumer Requirements](Consumer-Requirements.md). Purview.BuildSdk's `Current` target-framework set
-supplies that pair; the repository does not hand-maintain it.
+[Consumer Requirements](../Consumer-Requirements.md). Purview.BuildSdk's `Supported` target-framework set
+(selected in `src/Directory.Build.props`) supplies that pair; the repository does not hand-maintain it,
+and the WSL backend derives its Windows builds from the same set.
 
 - `net10.0` is the floor. A consumer that has not moved to .NET 11 keeps the classic compiler-generated
   async state machines and the .NET 10 library surface.
 - `net11.0` is compiled with `runtime-async=on` and the C# 15 updated memory-safety rules
   (`MemorySafetyRules=2`). The runtime manages suspension and resumption instead of compiler-generated
   state machines, which lowers async overhead and makes live stack traces (profiler, `new StackTrace()`,
-  debugger) name the real methods. `PurviewRuntimeAsync=false` opts out for a local experiment;
-  `Wsl.UnitTests/BuildFeatureTests.cs` guards that the shipped default is on.
+  debugger) name the real methods. Purview.BuildSdk 2.2.0 makes both features opt-in, so
+  `src/Directory.Build.props` enables them (`PurviewRuntimeAsync=true`, `MemorySafetyRules=2`);
+  `Wsl.UnitTests/BuildFeatureTests.cs` guards that both are on in the shipped build.
 - The WSL Containers backend uses the same split for its Windows builds, and a single implementation
   payload serves both portable targets because a .NET 11 process loads a .NET 10 assembly.
 
@@ -93,7 +125,7 @@ Resolution is cached per process, so probes run once; `Reset()` (tests) and `Reg
 cache. Package consumers get registration from the generated module initializer in
 `Purview.Containers.Core.targets`; project-reference consumers register explicitly with
 `Register(...)`. Consumer-facing guidance (including the CI example) is in
-[Backends: WSLC or Docker](Backends.md).
+[Backends: WSLC or Docker](../Backends.md).
 
 ## Session lifetime model
 
@@ -181,4 +213,4 @@ Isolated stores are transient and are removed when their session terminates.
 
 - Public surface deliberately small; WSLC types internal.
 - One opt-in accessor (`IWslContainerAccessor`) exposes `Inspect()` / raw handle for advanced users.
-- Third-party modules subclass the generic builder (see [Modules](Modules.md)).
+- Third-party modules subclass the generic builder (see [Modules](../Modules.md)).

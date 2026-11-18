@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using DotNet.Testcontainers.Configurations;
 using Purview.Containers.Runtime;
 using Purview.Containers.Waiting;
 using TcContainer = DotNet.Testcontainers.Containers.IContainer;
@@ -151,9 +150,7 @@ public sealed class DockerContainer : IContainer
 
 		// Testcontainers' argv overload cannot supply exec settings and logs argv. Send environment
 		// separately through its Docker client transport rather than embedding secrets in a shell command.
-		using var client = TestcontainersSettings
-			.OS.DockerEndpointAuthConfig.GetDockerClientBuilder(Guid.NewGuid())
-			.Build();
+		using var client = DockerEndpoint.CreateClient();
 		var created = await client
 			.Exec.CreateContainerExecAsync(
 				Handle.Id,
@@ -353,9 +350,7 @@ public sealed class DockerContainer : IContainer
 		deadline.Token.ThrowIfCancellationRequested();
 		if (_handle is not null && !_deleted)
 		{
-			using var client = TestcontainersSettings
-				.OS.DockerEndpointAuthConfig.GetDockerClientBuilder(Guid.NewGuid())
-				.Build();
+			using var client = DockerEndpoint.CreateClient();
 			try
 			{
 				await client
@@ -398,9 +393,7 @@ public sealed class DockerContainer : IContainer
 
 	async Task<long> ObserveExitAsync()
 	{
-		using var client = TestcontainersSettings
-			.OS.DockerEndpointAuthConfig.GetDockerClientBuilder(Guid.NewGuid())
-			.Build();
+		using var client = DockerEndpoint.CreateClient();
 		var result = await client.Containers.WaitContainerAsync(Handle.Id, _lifetime.Token).ConfigureAwait(false);
 		return result.StatusCode;
 	}

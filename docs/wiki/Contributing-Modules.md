@@ -1,18 +1,19 @@
 # Contributing a module
 
-How to add a new service module to `Purview.Containers`.
+How to add a new service module to `Purview.Containers`: the configuration record, builder and
+container a module provides, what it may and may not contribute, and the tests it needs.
 
 ## Files
 
-```
-src/src/MyService/
-  MyService.csproj                      -> PackageId Purview.Containers.MyService
-  MyServiceConfiguration.cs             -> immutable record, module fields
-  MyServiceBuilder.cs                   -> fluent builder
-  MyServiceContainer.cs                 -> container, connection string / endpoints
-src/tests/MyService.UnitTests/
-src/tests/MyService.IntegrationTests/
-```
+| Path | Purpose |
+| --- | --- |
+| `src/src/MyService/MyService.csproj` | The project; packs as `Purview.Containers.MyService` |
+| `src/src/MyService/MyServiceConfiguration.cs` | Immutable configuration record with the module's fields |
+| `src/src/MyService/MyServiceBuilder.cs` | The fluent builder |
+| `src/src/MyService/MyServiceContainer.cs` | The container, with its connection string and endpoints |
+| `src/src/MyService/Sdk/README.md` | The package README |
+| `src/tests/MyService.UnitTests/` | Unit tests |
+| `src/tests/MyService.IntegrationTests/` | Integration tests against a real container |
 
 ## Steps
 
@@ -77,7 +78,7 @@ public class MyServiceBuilder : ContainerBuilder<MyServiceBuilder, MyServiceCont
        .WithPortBinding(DefaultPort, assignRandomHostPort: true)
        .WithConnectionStringProvider(new MyServiceConnectionStringProvider());
    ```
-5. **Wait strategy** — prefer verifying the service itself (exec a readiness command or a host client connection), not merely that a TCP port is open. See [Wait Strategies](Wait-Strategies.md). Default waits are applied in `BuildConfiguration()` unless the caller supplied their own.
+5. **Wait strategy** — prefer verifying the service itself (exec a readiness command or a host client connection), not merely that a TCP port is open. See [Wait Strategies](guide/Wait-Strategies.md). Default waits are applied in `BuildConfiguration()` unless the caller supplied their own.
 6. **Secrets** — passwords/usernames go into a `Secret`-typed field; configuration `ToString()` redacts sensitive values automatically.
 7. **Tests** — unit tests use `BuildConfigurationForTesting()` (internal test hook on the module builder); integration tests use TUnit, the shared `WslcTest.SkipIfUnavailableAsync()` helper from `src/tests/SharedTestingFramework`, and the real client.
 

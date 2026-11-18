@@ -1,7 +1,7 @@
 name: Integration (WSL Containers)
 
 # The WSLC suites need Windows Server 2025 with nested virtualisation, which GitHub's `windows-2025`
-# hosted runners provide. The pre-release WSL channel carries wslc and its directory is not on PATH.
+# hosted runners provide. WSL Containers ships in the stable WSL channel (3.0.1 and later).
 #
 # Coverage:
 #   - every pull request: the WSLC contract suite, from pr.yml's `integration-wsl` job (fast)
@@ -9,7 +9,7 @@ name: Integration (WSL Containers)
 #   - manually: either the hosted matrix or a self-hosted Windows runner carrying the custom `wslc`
 #     label (useful when a warm image store matters), selected with the `runner` input
 #
-# Runner prerequisites are documented in docs/wiki/Testing.md.
+# Runner prerequisites are documented in docs/wiki/contributing/Testing.md.
 on:
   workflow_dispatch:
     inputs:
@@ -54,12 +54,12 @@ jobs:
       PURVIEW_CONTAINERS_REQUIRE_BACKEND: wsl
       WSL_UTF8: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           # Keep in sync with `sdk.version` in global.json (and the other workflows).
           dotnet-version: "11.0.100"
@@ -67,18 +67,22 @@ jobs:
       - name: Install WSL Containers
         shell: pwsh
         run: |
-          wsl --update --pre-release
+          # WSL Containers is generally available in the stable WSL channel (WSL 3.0.1 and later), so this
+          # installs exactly what a consumer gets. The backend's floor is MinimumWslVersion, which follows
+          # MicrosoftWSLContainersVersion in Directory.Packages.props; read it from there so the two
+          # cannot drift.
+          wsl --update
+          wsl --version
           $wslc = 'C:\Program Files\WSL\wslc.exe'
           if (-not (Test-Path $wslc)) {
-            # The feature reached GA in some channels; fall back to the stable update before failing.
-            wsl --update
+            throw "wslc.exe was not installed at $wslc; the runner did not get a WSL build with containers."
           }
-          wsl --version
-          if (-not (Test-Path $wslc)) {
-            throw "wslc.exe was not installed at $wslc; the hosted runner did not get a WSL build with containers."
+          $minimum = [version](Select-Xml -Path Directory.Packages.props -XPath '//MicrosoftWSLContainersVersion').Node.InnerText
+          $installed = [version]((& $wslc version) -replace '^wslc\s+', '')
+          if ($installed -lt $minimum) {
+            throw "WSL $installed is older than $minimum, the minimum Purview.Containers.Wsl supports."
           }
-          $env:PATH = "C:\Program Files\WSL;$env:PATH"
-          & $wslc version
+          Write-Host "wslc $installed (minimum $minimum)"
 
       - name: Restore
         run: dotnet restore src/Containers.slnx
@@ -136,12 +140,12 @@ jobs:
       PURVIEW_CONTAINERS_REQUIRE_BACKEND: wsl
       WSL_UTF8: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           # Keep in sync with `sdk.version` in global.json (and the other workflows).
           dotnet-version: "11.0.100"

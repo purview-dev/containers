@@ -14,10 +14,10 @@ its state in SQL Server), and needs a backend package (`Purview.Containers.Wsl` 
 
 ## Requirements
 
-- **WSL Containers backend:** Windows 10/11 with WSL Containers (`wsl --install --no-distribution`), and a
+- **WSL Containers backend:** an x64 Windows host with WSL 3.0.5 or later (`wsl --install --no-distribution` or `wsl --update`), and a
   `.NET 10` or `.NET 11` project. A platform-neutral `net10.0` or `net11.0` project binds the portable facade and gets
   automatic WSLC-or-Docker selection; a Windows target framework
-  (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`, x64 or arm64) binds the implementation directly. The
+  (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`, x64 only; ARM64 is not supported) binds the implementation directly. The
   `Purview.Containers.Wsl` package supplies `buildTransitive` defaults for
   `WindowsSdkPackageVersion`/`PlatformTarget` and (for a platform-neutral consumer on a Windows build
   host) the implementation payload, rejecting an unsupported consumer with `PCC0001`/`PCC0002` — see the
@@ -25,11 +25,9 @@ its state in SQL Server), and needs a backend package (`Purview.Containers.Wsl` 
 - **Docker backend:** any reachable Docker daemon (`docker info`), with a `net10.0` or `net11.0` project on any
   platform. No Windows target framework and no `PCC` guards apply.
 - **SQL Server sidecar:** the default is SQL Server 2025 (`mcr.microsoft.com/mssql/server:2025-latest`),
-  which is x64 only and needs at least 2000 MB of memory in the WSLC session VM or Docker host. On ARM64,
+  which is x64 only and needs at least 2000 MB of memory in the WSLC session VM or Docker host. On an ARM64 Docker host (the WSLC backend is x64 only),
   `WithSqlServerImage("mcr.microsoft.com/azure-sql-edge:latest")` is an alternative the emulator supports.
   SQL Server 2022 does not start on WSLC (it fails to create `/.system` as the non-root `mssql` user).
-- **Experimental:** the API, defaults and packaging can change between prereleases; there is no
-  production support guarantee.
 - The emulator is for local development and testing only; it is not a replacement for Azure Service Bus.
 
 ## Quick start
@@ -170,7 +168,8 @@ What this module and its tests have established:
   time and any unconsumed messages are lost with the container.
 - **Slow, memory-hungry start.** About a minute per instance, and the SQL Server sidecar needs at least
   2000 MB. Running several emulators at once multiplies both, which is why sharing one is recommended.
-- **x64 only by default.** SQL Server 2025 has no ARM64 image.
+- **x64 only by default.** SQL Server 2025 has no ARM64 image (this matters only on an ARM64 Docker
+  host; the WSLC backend is x64 only).
 - **Host connections only.** The connection strings point at `127.0.0.1` and the mapped host ports. An
   application under test that runs in another container cannot use them (`ConnectionMode.Container` is
   not supported).
@@ -207,5 +206,5 @@ known.
 
 - [Backends: WSLC or Docker](https://github.com/purview-dev/containers/blob/main/docs/wiki/Backends.md) — choosing and configuring the runtime.
 - [Modules](https://github.com/purview-dev/containers/blob/main/docs/wiki/Modules.md) — the module contract and readiness choices.
-- [Networking](https://github.com/purview-dev/containers/blob/main/docs/wiki/Networking.md) — how containers reach each other by IP.
+- [Networking](https://github.com/purview-dev/containers/blob/main/docs/wiki/guide/Networking.md) — how containers reach each other by IP.
 - [Azure Service Bus Emulator](https://learn.microsoft.com/azure/service-bus-messaging/overview-emulator) — the emulator itself.

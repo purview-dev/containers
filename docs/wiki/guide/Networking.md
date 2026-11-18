@@ -1,5 +1,8 @@
 # Networking
 
+Container networking in `Purview.Containers` on WSL Containers and Docker: bridged networking,
+mapped host ports, managed networks with alias DNS, and WSLC host loopback.
+
 Containers default to `ContainerNetworkingMode.Bridged`. The default WSLC bridge supports
 container-to-container IP traffic but not container-name DNS. `None` disables networking.
 

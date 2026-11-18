@@ -1,11 +1,14 @@
 # Modules
 
-Module architecture for `Purview.Containers`.
+Typed service modules for .NET integration tests: PostgreSQL, Redis, SQL Server, MySQL, RabbitMQ,
+Azurite, NATS and the Azure Key Vault and Service Bus emulators. Each is a thin layer over
+`Purview.Containers` that supplies the image, ports, readiness check and connection string, and runs
+on WSL Containers or Docker.
 
 ## Principle
 
 Modules are thin packages layered on the backend-neutral abstractions
-([`Purview.Containers.Core`](Architecture.md)). A module supplies only:
+([`Purview.Containers.Core`](contributing/Architecture.md)). A module supplies only:
 
 - default image
 - default ports
@@ -124,7 +127,7 @@ public sealed class PostgreSqlContainer : ContainerBase
 
 Every module builder also registers a connection string provider, so the polymorphic
 `IContainer.GetConnectionString()` returns the same value as the module's own `GetConnectionString()`.
-See [Connection Strings](Connection-Strings.md). `ConnectionMode.Container` (container-to-container) is
+See [Connection Strings](guide/Connection-Strings.md). `ConnectionMode.Container` (container-to-container) is
 not supported yet.
 
 Every module exposes `GetConnectionString()` with the same shape it has in Testcontainers, so test code

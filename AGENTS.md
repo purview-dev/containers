@@ -39,7 +39,7 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 | `src/Directory.Build.props` / `src/Directory.Build.targets` | Solution-wide SDK import, package metadata and the shared package icon |
 | `.config/purview-build.json` | Shared `Purview.Build` pipeline configuration: solution, test discovery/filter and the **exhaustive** pack-validation manifest |
 | `Directory.Build.rsp` | Purview.BuildSdk-managed MSBuild response file: enables the .NET 11 multithreaded build (`-mt`) and disables node reuse (`-nr:false`). Delete its marker line to take ownership |
-| `Justfile` | Supported local workflow commands |
+| `Justfile` / `.build/just/` | Supported local workflow commands: the root `Justfile` holds this repository's own recipes (`test` override, `verify-consumers`, samples) and imports the shared modules in `.build/just/`, copied verbatim from the `purview-buildsdk-justfile` skill - change them there, not here |
 | `skills` | The agent skills this repository authors and publishes |
 | `.agents/skills` | Skills installed from other repositories by the skills CLI (gitignored; `skills-lock.json` is the tracked record) |
 
@@ -59,7 +59,15 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   managed bridge networks/aliases, Linux capabilities, session host loopback, builds and reuse. WSLC uses
   the managed `Microsoft.WSL.Containers` 3.0.5 SDK for lifecycle, images, networks, capabilities and host
   loopback, and the SDK-owned session with a bounded `wslc` subprocess only for SDK-missing capabilities
-  (entrypoint/user/labels, copy, builds, reuse); ordinary SDK-only consumers need no CLI.
+  (entrypoint/user/labels, copy, builds, reuse); ordinary SDK-only consumers need no CLI. `wslc` is
+  found on PATH or at `%ProgramFiles%\WSL\wslc.exe`.
+- **The WSLC backend is x64 only** (no ARM64 or x86 payload; `PCC0002` rejects a non-x64 Windows
+  consumer and the facade reports `wsl` unavailable in a non-x64 process). The WSL floor is
+  `MinimumWslVersion` in `Directory.Packages.props` (it follows the `Microsoft.WSL.Containers` SDK
+  pin) and is enforced at run time by `WslRequirements`. Do not add a Windows-build check: WSL owns
+  that floor and reports `WSL_E_OS_NOT_SUPPORTED`. Every unavailable/incompatible reason must name its
+  fix (for example "Run 'wsl --update'"). The authoritative host list is
+  [Consumer Requirements](docs/wiki/Consumer-Requirements.md#host-requirements-wsl-containers-backend).
 - Never swallow caller cancellation as a successful exec/stop. Startup is a total five-minute managed
   budget; exec defaults to one minute, stop to 15 seconds and cleanup to 30 seconds. Synchronous WSLC
   native calls cannot be safely interrupted; never advertise hard zero-hang guarantees.
@@ -131,27 +139,30 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   dropped): `Purview.Containers.Core` (abstractions) and the service modules target **`net10.0` and
   `net11.0`** on any platform. `Purview.Containers.Wsl` is **multi-target**: `net10.0`/`net11.0` (portable
   facades) and `net10.0-windows10.0.19041.0`/`net11.0-windows10.0.19041.0` (the WSLC implementations).
-  Purview.BuildSdk's `Current` target-framework set supplies the `net10.0;net11.0` list to the library
-  subtree, while `src/Directory.Build.props` pins that set to `net11.0-windows10.0.19041.0` for
-  `src/tests` so the WSLC tests bind the implementation; `Wsl.csproj` adds the Windows
-  builds with a platform-identifier condition (never a literal TFM). The Docker integration projects
+  `src/Directory.Build.props` selects Purview.BuildSdk's `Supported` target-framework set
+  (`PurviewTargetFrameworkSet=Supported`, `net10.0;net11.0` in BuildSdk 2.2.0) for every project that
+  declares no target of its own, and pins that set to `net11.0-windows10.0.19041.0` for `src/tests` so
+  the WSLC tests bind the implementation. `Wsl.csproj` derives its four targets from the same set (each
+  supported framework plus its `-windows10.0.19041.0` build) and selects files with a
+  platform-identifier condition (never a literal TFM). The Docker integration projects
   declare `net10.0` directly so they run on Linux **and** keep the lowest supported framework under test.
   The contract, the failures that enforce it and the CI workarounds are documented in
   [Consumer Requirements](docs/wiki/Consumer-Requirements.md); update that page whenever a target
   framework, the `buildTransitive` defaults, the payload layout or the `PCC0001`/`PCC0002` guards change.
-- The `net11.0` library builds are compiled with `runtime-async=on` (`PurviewRuntimeAsync=false` opts out):
-  Purview.BuildSdk applies it to every `net11.0`+ target together with the C# 15
-  `updated-memory-safety-rules` tier (`MemorySafetyRules=2`), so the repository does not repeat either
-  switch. The runtime manages suspension instead of compiler-generated state machines, which lowers async
-  overhead and makes live stack traces name the real methods. `Wsl.UnitTests/BuildFeatureTests.cs` guards
-  it. The `net10.0` builds keep the classic state machines. Because `closed` hierarchies require
+- The `net11.0` builds are compiled with `runtime-async=on` and the C# 15
+  `updated-memory-safety-rules` tier. Purview.BuildSdk 2.2.0 makes both **opt-in**, so
+  `src/Directory.Build.props` sets `PurviewRuntimeAsync=true` and `MemorySafetyRules=2` explicitly; do not
+  remove them. The runtime manages suspension instead of compiler-generated state machines, which lowers
+  async overhead and makes live stack traces name the real methods. `Wsl.UnitTests/BuildFeatureTests.cs`
+  guards both. The `net10.0` builds keep the classic state machines. Because `closed` hierarchies require
   `System.Runtime.CompilerServices.IsClosedTypeAttribute` and C# unions require `UnionAttribute` (both
   .NET 11 runtime types), neither is used: no public hierarchy here is closed anyway — `WaitStrategy`,
   `ContainerException` and the backend interfaces are documented extension points.
 - `Purview.Containers.Wsl` ships `Sdk/buildTransitive/Purview.Containers.Wsl.{props,targets}` so consumers
   inherit `WindowsSdkPackageVersion`/`PlatformTarget` defaults, a clear error for an unsupported target
-  framework (`PCC0001`) or a 32-bit Windows consumer (`PCC0002`), and — for a platform-neutral consumer
-  on a Windows build host — a copy of the WSLC implementation payload (`wslc/`) that the portable facade
+  framework (`PCC0001`) or a non-x64 Windows consumer (`PCC0002`), and — for a platform-neutral consumer
+  on a Windows build host — a copy of the x64-only WSLC implementation payload (`payload/win-x64/`,
+  copied to `wslc/`) that the portable facade
   loads at run time. Those assets are framework-agnostic, so NuGet never raises `NU1202` at restore time;
   the guards are the fail-fast path. Keep them, and keep the `RequiredContent` entries (including
   `payload/**`) that declare them. They belong to the WSL backend package only.
@@ -162,8 +173,9 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   tests) registers explicitly instead — `WslcTest.EnsureBackendRegistered()`.
 - `src/Directory.Build.props` sets `EnableWindowsTargeting=true` because the shared CI agent is
   `ubuntu-latest`; removing it fails the pipeline with `NETSDK1100`.
-- The project is **experimental**: keep the experimental notice in `README.md`, `docs/wiki/Home.md` and
-  the package READMEs, and keep versions on a `-prerelease.N` suffix.
+- Versions stay on a `-prerelease.N` suffix until the stable 1.0.0 release, which includes the WSL
+  Containers backend. The docs, README and package READMEs must not carry experimental or preview
+  notices.
 
 ## Module rules
 
@@ -227,6 +239,23 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 - Use the shared `WslcTest` helper in `src/tests/SharedTestingFramework` for WSLC integration
   skip/availability checks; the Docker suites use their own `DockerTest` helper. Unit tests may use the
   modules' `BuildConfigurationForTesting()` internal hook.
+- **Unit tests must never load the WSL Containers SDK at run time.** The `*.UnitTests` projects run on
+  the shared **Linux** CI agent (`ubuntu-latest`). The `Microsoft.WSL.Containers` assembly's module
+  initializer loads the Windows-only native `wslcsdk.dll`, so the first run-time use of *any* SDK
+  type fails there with `TypeInitializationException` / `DllNotFoundException` (`Unable to load shared
+  library 'wslcsdk.dll'`), even though the same test passes on a Windows machine. In a unit test (and
+  in any code path a unit test reaches), never pass, box, construct, call or enumerate an SDK type
+  such as `Component`, `ServiceVersion` or `WslcService`.
+  - Keep testable logic SDK-free and map SDK values at the single call site that already runs
+    against the SDK. For example, `WslComponent` (in `WslRequirements.cs`) mirrors the SDK's
+    `Component` flags, and `WslContainerRuntime.GetInfoAsync` converts with
+    `(WslComponent)(int)component`.
+  - When mirroring an SDK enum, define its values *from* the SDK constants
+    (`VirtualMachinePlatform = Sdk.Component.VirtualMachinePlatform`). The compiler folds them into
+    this assembly, so the values cannot drift and nothing loads the SDK.
+  - Reproduce the Linux condition locally before pushing: delete every `wslcsdk.dll` under
+    `src/tests/Wsl.UnitTests/bin/<Configuration>/net11.0-windows10.0.19041.0/` and run
+    `Wsl.UnitTests`; rebuild to restore it.
 - `Wsl.UnitTests/ConsumerRequirementsTests.cs` guards the published target framework of the Windows
   build this project binds (`.NETCoreApp,Version=v11.0` plus `Windows10.0.19041.0`), and
   `Wsl.UnitTests/BuildFeatureTests.cs` guards that the net11.0 build has no compiler-generated async
@@ -245,7 +274,7 @@ just lint-check / just lint-fix       # CSharpier check / format
 just pack                             # build + dotnet pack into ./artifacts
 just verify-consumers                 # build throwaway consumers against the packed packages
 just pipeline-pack-validate           # restore, build, lint, test, pack, validate
-just scrub                            # reset bin/obj, clean, forced restore, build-server shutdown
+just scrub                            # build-server shutdown, delete bin/obj and artifacts, forced restore
 ```
 
 Commit messages follow Conventional Commits enforced by the `commit-msg` lefthook
@@ -254,21 +283,24 @@ Commit messages follow Conventional Commits enforced by the `commit-msg` lefthoo
 ## Versioning and releases
 
 - `package.json` is the authoritative release and package version. Do not diverge project versions by hand.
-- `.github/workflows/pr.yml` builds and tests pull requests through the shared
-  `purview-dev/build/.github/workflows/purview-build.yml`, with pack and validation enabled.
+- `.github/workflows/pr.yml` builds and tests pull requests **and every push to `main`** through the
+  shared `purview-dev/build/.github/workflows/purview-build.yml`, with pack and validation enabled (plus
+  the Docker and WSLC contract jobs). A push to `main` never publishes; superseded PR runs are
+  cancelled, `main` runs are not.
 - `.github/workflows/release.yml` runs the shared release pipeline with `release-mode: NuGet` on a push to a
   `release/**` branch (or a manual dispatch), **not** on a push to `main`. Cut a release by merging the
   version bump into `main`, then pushing a `release/v…` branch named after the version from it (for
   example `release/v1.0.9` for `1.0.0-prerelease.9`). `.config/purview-build.json`
   sets the `TrunkReservesMinor` eligibility policy; a version whose `v<version>` tag already exists is
   skipped (`REL002`), so every release needs a new `package.json` version. See
-  [Release Flow](docs/wiki/Release-Flow.md).
+  [Release Flow](docs/wiki/contributing/Release-Flow.md).
 - `.github/workflows/integration-wsl.yml` runs the WSLC integration suites. The fast contract suite runs on
   a hosted `windows-2025` runner on every pull request from `pr.yml`; the full service-module matrix runs
   nightly on `windows-2025` and can be dispatched manually against either the hosted runner or a
-  self-hosted Windows runner with the custom `wslc` label (documented in [Testing](docs/wiki/Testing.md)).
-  `windows-2022` and Windows 10 do not support WSL Containers. `.github/actionlint.yaml` declares the
-  custom label.
+  self-hosted Windows runner with the custom `wslc` label (documented in [Testing](docs/wiki/contributing/Testing.md)).
+  The WSLC suites run on the hosted `windows-2025` runner (GitHub's hosted `windows-2022` runner cannot
+  run them), and the workflows bring WSL up to date with the stable-channel `wsl --update`; no
+  `--pre-release` channel is used. `.github/actionlint.yaml` declares the custom label.
 - The workflows pin `dotnet-version` to `global.json`'s `sdk.version`; keep them in sync, and keep
   `.config/purview-build.json` pointing at `src/Containers.slnx`. The shared workflow runs on
   `ubuntu-latest`, which is why `EnableWindowsTargeting=true` must stay in `src/Directory.Build.props`.

@@ -5,18 +5,19 @@ request.
 
 ## Prerequisites
 
-- Windows with **WSL Containers** for integration tests; see [Getting Started](Getting-Started.md).
+- Windows with **WSL Containers** for integration tests; see [Getting Started](../Getting-Started.md).
 - .NET SDK 11 (pinned in `global.json` as `11.0.100`).
-- The library projects split by framework: Purview.BuildSdk's `Current` target-framework set gives the
-  backend-neutral abstractions and the service modules `net10.0;net11.0` (the `net11.0` build adds
-  `runtime-async=on` and the C# 15 updated memory-safety rules).
+- The library projects split by framework: Purview.BuildSdk's `Supported` target-framework set
+  (selected in `src/Directory.Build.props`) gives the backend-neutral abstractions and the service
+  modules `net10.0;net11.0` (the `net11.0` build adds `runtime-async=on` and the C# 15 updated
+  memory-safety rules, both opted into explicitly in `src/Directory.Build.props`).
   `src/src/Wsl/Wsl.csproj` is multi-target (`net10.0`/`net11.0` facades plus
   `net10.0-windows10.0.19041.0`/`net11.0-windows10.0.19041.0` implementations) because the WSL Containers
   projection is Windows-only. `src/tests` pins the same set to
   `net11.0-windows10.0.19041.0` (`src/Directory.Build.props`), which also sets
   `EnableWindowsTargeting=true` so the solution builds on the Linux CI agent. Do not remove that property:
   without it the shared pipeline fails with `NETSDK1100`. See
-  [Consumer Requirements](Consumer-Requirements.md).
+  [Consumer Requirements](../Consumer-Requirements.md).
 - [just](https://github.com/casey/just) for the repository recipes, and `dotnet tool restore` for the pinned
   local tools (CSharpier, dotnet-inspect).
 - [Bun](https://bun.sh) only for `just version` and the commit hook tooling; the commit hook runs
@@ -40,7 +41,7 @@ just verify-consumers           # build throwaway consumers against the packed p
 just pipeline-pack-validate     # full local gate: restore, build, lint, test, pack, validate
 ```
 
-`just scrub` resets the repository (`bin`/`obj`, clean, forced restore, build-server shutdown) when a stale
+`just scrub` resets the repository (build-server shutdown, `bin`/`obj` and `artifacts` deleted, forced restore) when a stale
 restore or compiler state is suspected.
 
 ## Commits
@@ -57,9 +58,9 @@ A change is not complete until the affected documentation matches:
 - **`src/src/<Project>/Sdk/README.md`** — the package's own README, shipped inside the `.nupkg`. Update it
   whenever a module's public API, defaults, readiness or endpoints change.
 - **`docs/wiki`** — the user-facing wiki aggregated by the purview-dev website. Update the topic page
-  ([Consumer Requirements](Consumer-Requirements.md), [Architecture](Architecture.md),
-  [Lifecycle](Lifecycle.md), [Networking](Networking.md), [Wait Strategies](Wait-Strategies.md),
-  [Modules](Modules.md), [Testing](Testing.md), [Packaging](Packaging.md), [Release Flow](Release-Flow.md))
+  ([Consumer Requirements](../Consumer-Requirements.md), [Architecture](Architecture.md),
+  [Lifecycle](../guide/Lifecycle.md), [Networking](../guide/Networking.md), [Wait Strategies](../guide/Wait-Strategies.md),
+  [Modules](../Modules.md), [Testing](Testing.md), [Packaging](Packaging.md), [Release Flow](Release-Flow.md))
   and `_Sidebar.md` when adding a page.
 - **`purview-build.json`** — the exhaustive `PackValidation.RequiredContent` manifest has to keep matching
   what the packages actually contain; see [Packaging](Packaging.md).
@@ -75,6 +76,6 @@ A change is not complete until the affected documentation matches:
 
 ## Related
 
-- [Contributing Modules](Contributing-Modules.md) — the module contract for new service packages.
+- [Contributing Modules](../Contributing-Modules.md) — the module contract for new service packages.
 - [Packaging](Packaging.md) — package contents and validation rules.
 - [Release Flow](Release-Flow.md) — versioning and what CI does on a PR and on release.

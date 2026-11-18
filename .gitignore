@@ -665,3 +665,4 @@ sketch
 # Per-agent folders (including .claude/) are local too - never commit a copy.
 .agents/skills/
 .claude/
+

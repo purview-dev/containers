@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
-using DotNet.Testcontainers.Configurations;
 
 namespace Purview.Containers.Docker;
 
@@ -43,13 +42,14 @@ sealed class WslDockerHost(string distribution, Func<string[], string?> run)
 
 	internal static WslDockerHost? Detect()
 	{
-		var endpoint = TestcontainersSettings.OS.DockerEndpointAuthConfig;
-		if (!OperatingSystem.IsWindows() || !IsLocalTcp(endpoint.Endpoint))
+		// No discovered daemon means there is nothing to translate for; starting a container reports it.
+		var endpoint = DockerEndpoint.TryResolve();
+		if (endpoint is null || !OperatingSystem.IsWindows() || !IsLocalTcp(endpoint.Endpoint))
 		{
 			return null;
 		}
 
-		using var client = endpoint.GetDockerClientBuilder(Guid.NewGuid()).Build();
+		using var client = DockerEndpoint.CreateClient(endpoint);
 		using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(5));
 		var info = client.System.GetSystemInfoAsync(timeout.Token).ConfigureAwait(false).GetAwaiter().GetResult();
 		var distribution = FindDistribution(endpoint.Endpoint, info.KernelVersion, info.OperatingSystem, info.ID, Run);

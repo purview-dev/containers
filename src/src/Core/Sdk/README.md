@@ -43,7 +43,7 @@ Defaults: total startup 5 minutes; exec/exit wait 1 minute; stop 15 seconds; cle
 copy/read/log snapshots 1 minute. Fluent timeout overrides and cancellation tokens are supported.
 Native synchronous WSLC calls cannot be safely interrupted; these are managed deadlines, not a
 hard runtime isolation guarantee. See the
-[capability contract](https://github.com/purview-dev/containers/blob/main/docs/wiki/Backend-Capabilities.md).
+[capability contract](https://github.com/purview-dev/containers/blob/main/docs/wiki/guide/Backend-Capabilities.md).
 
 ## Backend registration
 
@@ -87,6 +87,3 @@ callers that want to apply their own policy.
 
 - [Purview.Containers.Wsl](https://www.nuget.org/packages/Purview.Containers.Wsl) — WSL Containers backend.
 - Documentation wiki: <https://github.com/purview-dev/containers/tree/main/docs/wiki>.
-
-> **Experimental.** The public API, defaults and packaging rules can change between prereleases, and
-> there is no production support guarantee. Pin the exact package version you build against.

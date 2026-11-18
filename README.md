@@ -32,23 +32,18 @@ to one minute, stop to 15 seconds and cleanup to 30 seconds, all configurable. C
 propagated; synchronous native WSLC calls cannot be forcibly interrupted. Disposal follows
 Testcontainers' `WithCleanUp`: containers are removed by default, `.WithCleanUp(false)` retains them
 for inspection, and `.WithAutoRemove()` is opted into separately. See
-[Capabilities and Cancellation](docs/wiki/Backend-Capabilities.md) for APIs, ownership and limits.
+[Capabilities and Cancellation](docs/wiki/guide/Backend-Capabilities.md) for APIs, ownership and limits.
 
-> **Experimental.** This project is an experiment in running throwaway containers through Microsoft
-> WSL Containers. The public API, defaults and packaging rules can change between prereleases, and
-> there is no production support guarantee. Pin the exact package version you build against, and read
-> [Consumer Requirements](docs/wiki/Consumer-Requirements.md) before adopting it.
-
-> **Status: preview.** Backend-neutral abstractions, two backends (WSL Containers and Docker), wait
-> strategies, the `Image`/`Tag` parser, registry auth, observability, hardening, and **nine service
-> modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite, NATS, MySQL, Azure Key Vault Emulator, Azure Service Bus Emulator). On WSLC, **images are shared
-> by default** (`StorageMode.Shared`): sessions reuse a stable image store
-> (`%LOCALAPPDATA%\Purview\WslContainers\images`) so images are pulled once, not per session;
-> `StorageMode.PerSession` provides isolation. Move the store with `PURVIEW_CONTAINERS_STORAGE_PATH` or
-> `WslContainerRuntimeOptions.StoragePath`. Named volumes are retained by default; set
-> `PURVIEW_CONTAINERS_CLEAN_VOLUMES=true` (or `ContainerCleanup.CleanUpVolumesOnExit`) to delete the
-> volumes the library created when the process or session ends. Runnable samples live in
-> `samples/getting-started`.
+**Features.** Backend-neutral abstractions, two backends (WSL Containers and Docker), wait
+strategies, the `Image`/`Tag` parser, registry auth, observability, hardening, and **nine service
+modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite, NATS, MySQL, Azure Key Vault Emulator, Azure
+Service Bus Emulator). On WSLC, **images are shared by default** (`StorageMode.Shared`): sessions reuse a
+stable image store (`%LOCALAPPDATA%\Purview\WslContainers\images`) so images are pulled once, not per
+session; `StorageMode.PerSession` provides isolation. Move the store with
+`PURVIEW_CONTAINERS_STORAGE_PATH` or `WslContainerRuntimeOptions.StoragePath`. Named volumes are retained
+by default; set `PURVIEW_CONTAINERS_CLEAN_VOLUMES=true` (or `ContainerCleanup.CleanUpVolumesOnExit`) to
+delete the volumes the library created when the process or session ends. Runnable samples live in
+`samples/getting-started`.
 
 **Documentation:** [Containers documentation](https://purview.dev/docs/containers/)
 
@@ -60,7 +55,7 @@ for inspection, and `.WithAutoRemove()` is opted into separately. See
 referencing the umbrella package, Testcontainers or WSLC. It verifies native paths, running WSL
 translations and explicit shared-remote mappings against the daemon using two-way file markers.
 `Purview.Containers.Aspire` adds opt-in `builder.AddContainerEnvironment()` integration for any
-Aspire AppHost. Both target `net10.0` and `net11.0`; the adapter requires Aspire 13.6.5 or later.
+Aspire AppHost. Both target `net10.0` and `net11.0`; the adapter requires Aspire 17.0.0 or later.
 These are separate from the existing Docker backend's automatic WSL2 path handling.
 Docker Engine inside a WSL distribution is not Microsoft WSL Containers.
 See the [environment package guide](src/src/Environment/Sdk/README.md) and
@@ -75,13 +70,14 @@ want to fix the runtime.
 
 **WSL Containers backend**
 
-- Windows 11 (22H2 or later) or Windows Server 2025 with **WSL Containers**, installed via
-  `wsl --install --no-distribution` (verified against
-  WSL 3.0.5.0).
+- An **x64** Windows host where WSL 2 runs (Windows 11, Windows 10 version 2004 or later, or Windows
+  Server 2025) with virtualisation enabled and **WSL 3.0.5 or later** from the stable channel:
+  `wsl --install --no-distribution`, or `wsl --update`. ARM64 is not supported. The full list is in
+  [Host requirements](docs/wiki/Consumer-Requirements.md#host-requirements-wsl-containers-backend).
 - A consuming project that is **.NET 10 or .NET 11** (.NET 8 and .NET 9 are not supported). A
   platform-neutral `net10.0` or `net11.0` project binds the portable facade and gets automatic
   WSLC-or-Docker selection; a Windows target framework (`net10.0-windows10.0.19041.0` or
-  `net11.0-windows10.0.19041.0`, x64 or arm64) binds the matching implementation directly. The
+  `net11.0-windows10.0.19041.0`, x64 only) binds the matching implementation directly. The
   `Purview.Containers.Wsl` package ships MSBuild defaults for the supporting settings.
 
 **Docker backend**
@@ -96,8 +92,8 @@ enough for a consumer.
 Verify:
 
 ```powershell
-wsl --version     # WSL Containers installed (verified against 3.0.5.0)
-wslc version      # e.g. 3.0.5.0
+wsl --version     # WSL 3.0.5 or later (run 'wsl --update' if older)
+wslc version      # ships with WSL (%ProgramFiles%\WSL\wslc.exe); e.g. 3.0.5.0
 ```
 
 ```bash
@@ -173,7 +169,7 @@ string amqp = rabbitMq.GetConnectionString();
 
 ## Repository layout
 
-```
+```text
 src/
   Containers.slnx    canonical solution (restore, build, test, pack)
   src/
@@ -205,12 +201,12 @@ The project documentation lives in [`docs/wiki`](docs/wiki/Home.md) and is publi
 - [Getting Started](docs/wiki/Getting-Started.md) — prerequisites, first container, first module.
 - [Backends: WSLC or Docker](docs/wiki/Backends.md) — how to choose, side-by-side project setup, CI example, troubleshooting.
 - [Consumer Requirements](docs/wiki/Consumer-Requirements.md) — the target-framework contract, the `PCC0001`/`PCC0002` guards, and the CI workarounds.
-- [Architecture](docs/wiki/Architecture.md) — the shared session model, concurrency and cleanup decisions.
-- [Lifecycle](docs/wiki/Lifecycle.md), [Networking](docs/wiki/Networking.md), [Wait Strategies](docs/wiki/Wait-Strategies.md).
+- [Architecture](docs/wiki/contributing/Architecture.md) — the shared session model, concurrency and cleanup decisions.
+- [Lifecycle](docs/wiki/guide/Lifecycle.md), [Networking](docs/wiki/guide/Networking.md), [Wait Strategies](docs/wiki/guide/Wait-Strategies.md).
 - [Modules](docs/wiki/Modules.md) — the module contract and every shipped module.
-- [Testing](docs/wiki/Testing.md) — unit vs integration categories and the serial WSLC test rule.
-- [Packaging](docs/wiki/Packaging.md) and [Release Flow](docs/wiki/Release-Flow.md) — what ships and how it is released.
-- [Contributing](docs/wiki/Contributing.md) and [Contributing Modules](docs/wiki/Contributing-Modules.md).
+- [Testing](docs/wiki/contributing/Testing.md) — unit vs integration categories and the serial WSLC test rule.
+- [Packaging](docs/wiki/contributing/Packaging.md) and [Release Flow](docs/wiki/contributing/Release-Flow.md) — what ships and how it is released.
+- [Contributing](docs/wiki/contributing/README.md) and [Contributing Modules](docs/wiki/Contributing-Modules.md).
 
 Every package also ships its own `README.md` (from `src/src/<Project>/Sdk/README.md`), so
 `dotnet add package Purview.Containers.<Module>` brings documentation specific to that package.
@@ -301,7 +297,7 @@ Every test process owns a single shared WSLC session and, by default, uses the s
 `storage.vhdx`**, and the lock is taken lazily on the first store access — so running test assemblies
 in parallel makes the losers fail with `0x80070020`:
 
-```
+```text
 The process cannot access the file because it is being used by another process.
 ```
 
@@ -338,7 +334,7 @@ just sample-docker            # needs a Docker daemon
 ### Verifying the consumer contract
 
 ```powershell
-just verify-consumers          # pack, then build 25 throwaway consumer projects against ./artifacts
+just verify-consumers          # pack, then build 28 throwaway consumer projects against ./artifacts
 just verify-consumers -Keep    # same, keeping the generated projects for inspection
 ```
 

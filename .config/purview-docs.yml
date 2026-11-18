@@ -14,9 +14,10 @@ description: >-
   WSL Containers (WSLC) with no Docker installation, or Docker through Testcontainers. Containers are
   created through backend-neutral abstractions (Purview.Containers.Core) and the backend is resolved at
   run time, so the same test code runs on WSLC (Purview.Containers.Wsl) or Docker
-  (Purview.Containers.Docker) unchanged. The WSLC backend talks to the WSLC managed C# API directly —
-  no wslc.exe, no docker CLI, no Docker.DotNet.
-  Typed service modules add PostgreSQL, Redis, SQL Server, MySQL, RabbitMQ, Azurite, and NATS, each
+  (Purview.Containers.Docker) unchanged. The WSLC backend uses the WSLC managed C# API directly, with a
+  bounded wslc CLI fallback only for the few features the SDK lacks — no docker CLI, no Docker.DotNet.
+  Typed service modules add PostgreSQL, Redis, SQL Server, MySQL, RabbitMQ, Azurite, NATS, and the Azure
+  Key Vault and Service Bus emulators, each
   with its own defaults, configuration, readiness wait strategy, and connection-string helper. The
   umbrella package Purview.Containers brings the abstractions plus both backends in a single reference.
 origin: >-
@@ -30,20 +31,18 @@ useWhen: >-
   integration tests, and you want the same suite to run on WSL Containers on a Windows developer
   machine and on Docker in CI without changing a line of test code.
 avoidWhen: >-
-  You need a container runtime other than WSL Containers or Docker, or you require API stability: the
-  public API, defaults, and packaging rules can change between prereleases and there is no production
-  support guarantee.
+  You need a container runtime other than WSL Containers or Docker, or the WSL Containers backend on an
+  ARM64 machine: it supports x64 only (Docker works on any architecture).
 repository: purview-dev/containers
 category: developer-tooling
 status: preview
-experimental: true
+experimental: false
 order: 90
 docs:
   source: github-path
   path: docs/wiki
   exclude:
     - _Sidebar.md
-    - Home.md
 targetFrameworks:
   - net10.0
   - net10.0-windows10.0.19041.0
@@ -78,13 +77,20 @@ packages:
     description: Azurite module — defaults, account key, and Azure Storage connection string.
   - id: Purview.Containers.Nats
     description: NATS module — defaults, configuration, and client endpoint.
-acknowledgments:
+  - id: Purview.Containers.AzureKeyVaultEmulator
+    description: Azure Key Vault emulator module — secrets, keys and certificates endpoints, and certificate-pinned Azure SDK clients.
+  - id: Purview.Containers.AzureServiceBusEmulator
+    description: Azure Service Bus emulator module — the emulator with its SQL Server sidecar, AMQP and management connection strings, and explicit licence acceptance.
+  - id: Purview.Containers.Environment
+    description: Standalone bind-sharing resolver for Docker-compatible CLI consumers — verifies native, WSL and shared-remote paths; no backend dependency.
+  - id: Purview.Containers.Aspire
+    description: Opt-in Aspire AppHost adapter that translates container bind sources with the Environment resolver.acknowledgments:
   - name: Testcontainers for .NET
     url: https://github.com/testcontainers/testcontainers-dotnet
     description: The Docker backend is driven by Testcontainers and the module connection-string shapes follow it; Purview.Containers is not affiliated with or endorsed by the Testcontainers project.
   - name: Microsoft WSL Containers
     url: https://www.nuget.org/packages/Microsoft.WSL.Containers
-    description: The managed C# API behind WSLC that the WSL Containers backend is built against directly, with no wslc.exe or docker CLI.
+    description: The managed C# API behind WSLC that the WSL Containers backend is built against directly, with a bounded wslc CLI fallback and no docker CLI.
 useCases:
   - audience: developer
     title: The same test on WSL Containers or Docker
@@ -133,7 +139,8 @@ useCases:
   - audience: developer
     title: A typed service module instead of a bare image
     scenario: >-
-      You need a throwaway PostgreSQL (or Redis, SQL Server, MySQL, RabbitMQ, Azurite, NATS) and do not
+      You need a throwaway PostgreSQL (or Redis, SQL Server, MySQL, RabbitMQ, Azurite, NATS, or an Azure
+      emulator) and do not
       want to look up its image, port, environment, and readiness probe every time.
     code: |
       await using var postgres = new PostgreSqlBuilder()
@@ -148,7 +155,8 @@ useCases:
       returns once the instance is genuinely ready, and GetConnectionString() points at the mapped host
       port — the same shape Testcontainers modules use.
     evidence: >-
-      Seven service modules ship (PostgreSQL, Redis, SQL Server, MySQL, RabbitMQ, Azurite, NATS), and a
+      Nine service modules ship (PostgreSQL, Redis, SQL Server, MySQL, RabbitMQ, Azurite, NATS, and the Azure
+      Key Vault and Service Bus emulators), and a
       module contributes only its image, ports, environment, wait strategy, and connection string —
       never the shared runtime.
     docsPage: modules
@@ -169,13 +177,13 @@ useCases:
       which runtime a machine has before a test runs.
     evidence: >-
       Purview.Containers.Wsl ships a portable net10.0 facade and a net10.0-windows10.0.19041.0
-      implementation, and the repository builds twenty-one throwaway consumer projects to prove the
+      implementation, and the repository builds twenty-eight throwaway consumer projects to prove the
       target-framework contract and the PCC0001/PCC0002 guards.
     docsPage: consumer-requirements
   - audience: contributor
     title: Add a service module
     scenario: >-
-      You want to add a module for another service, or fix one of the existing seven, and need to know
+      You want to add a module for another service, or fix one of the existing nine, and need to know
       exactly what a module is allowed to contribute.
     outcome: >-
       A module supplies only the default image, ports, environment, its own WithXxx configuration, a

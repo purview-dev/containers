@@ -1,7 +1,5 @@
 # Purview.Containers.Environment
 
-> **Experimental.** Pin the exact prerelease version; the API and defaults may change.
-
 Resolve client-side bind sources against a Docker-compatible daemon without assuming the daemon
 runs on the client machine. This library has no Aspire or AspireC4 dependency.
 
