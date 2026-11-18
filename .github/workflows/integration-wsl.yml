@@ -54,12 +54,12 @@ jobs:
       PURVIEW_CONTAINERS_REQUIRE_BACKEND: wsl
       WSL_UTF8: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           # Keep in sync with `sdk.version` in global.json (and the other workflows).
           dotnet-version: "11.0.100"
@@ -140,12 +140,12 @@ jobs:
       PURVIEW_CONTAINERS_REQUIRE_BACKEND: wsl
       WSL_UTF8: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           # Keep in sync with `sdk.version` in global.json (and the other workflows).
           dotnet-version: "11.0.100"

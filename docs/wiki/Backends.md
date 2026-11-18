@@ -391,8 +391,8 @@ jobs:
       # Optional. "auto" (the default) also selects Docker when WSL Containers is absent.
       PURVIEW_CONTAINERS_BACKEND: docker
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
       - run: dotnet restore
@@ -424,8 +424,8 @@ change:
       PURVIEW_CONTAINERS_REQUIRE_BACKEND: wsl
       WSL_UTF8: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 11.0.x
       - name: Install WSL Containers

@@ -143,6 +143,8 @@ Register a **Windows x64** runner for this repository (or organisation) with the
   where WSL 2 runs, virtualisation enabled, and **WSL 3.0.5 or later** from the stable channel
   (`wsl --install --no-distribution` or `wsl --update`), verified with `wsl --version` and `wslc version`.
 - The **.NET 11 SDK** the repository pins in `global.json` (`11.0.100`).
+- GitHub Actions runner **2.327.1 or later**: the workflows use `actions/checkout@v7` and
+  `actions/setup-dotnet@v6`, which run on Node.js 24.
 
 The job's first step prints `wsl --version` and `wslc version`, so a mis-provisioned runner fails
 immediately instead of surfacing as container timeouts. `actionlint` is told about the custom label in
