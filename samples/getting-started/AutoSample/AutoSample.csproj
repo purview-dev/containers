@@ -23,6 +23,23 @@
 	</ItemGroup>
 
 	<!--
+	  Build-ordering only. The payload below copies the Wsl project's net10.0-windows10.0.19041.0 output,
+	  but the umbrella reference above only builds Wsl's portable net10.0 target, so nothing made this
+	  project wait for the Windows build. Under a parallel (-mt) solution build the copy could run first
+	  and fail with "The Windows implementation is not built". This reference builds that exact target
+	  first without referencing its assembly.
+	-->
+	<ItemGroup Condition="'$(OS)' == 'Windows_NT'">
+		<ProjectReference
+			Include="../../../src/src/Wsl/Wsl.csproj"
+			SetTargetFramework="TargetFramework=net10.0-windows10.0.19041.0"
+			ReferenceOutputAssembly="false"
+			SkipGetTargetFrameworkProperties="true"
+			Private="false"
+		/>
+	</ItemGroup>
+
+	<!--
 	  A package consumer gets the WSLC implementation payload from Purview.Containers.Wsl's buildTransitive
 	  targets automatically. This sample references the projects instead (so it builds from a clone), and the
 	  umbrella project reference does not carry buildTransitive assets, so it assembles the same "wslc/"

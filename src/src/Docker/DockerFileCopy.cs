@@ -1,5 +1,3 @@
-using DotNet.Testcontainers.Configurations;
-
 namespace Purview.Containers.Docker;
 
 static class DockerFileCopy
@@ -15,9 +13,7 @@ static class DockerFileCopy
 		using var archive = await ContainerResourceArchive
 			.CreateAsync(source, target, mode, cancellationToken)
 			.ConfigureAwait(false);
-		using var client = TestcontainersSettings
-			.OS.DockerEndpointAuthConfig.GetDockerClientBuilder(Guid.NewGuid())
-			.Build();
+		using var client = DockerEndpoint.CreateClient();
 		await client
 			.Containers.ExtractArchiveToContainerAsync(
 				id,

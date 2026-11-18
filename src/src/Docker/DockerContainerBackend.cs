@@ -46,14 +46,20 @@ public sealed class DockerContainerBackend : IContainerBackend, IContainerBacken
 	/// <inheritdoc />
 	public async Task<ContainerBackendInfo> GetInfoAsync(CancellationToken cancellationToken = default)
 	{
+		var probeTimeout = TimeSpan.FromSeconds(10);
 		using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-		deadline.CancelAfter(TimeSpan.FromSeconds(10));
+		deadline.CancelAfter(probeTimeout);
+
+		// Testcontainers reports "no daemon discovered" as a null endpoint, not an exception.
+		var endpoint = DockerEndpoint.TryResolve();
+		if (endpoint is null)
+		{
+			return Unavailable(DockerEndpoint.NotFoundMessage);
+		}
+
 		try
 		{
-			// Resolving the endpoint throws when no Docker environment can be discovered, and the ping
-			// throws when the daemon is not running; both are reported as "unavailable" with the reason.
-			var endpoint = TestcontainersSettings.OS.DockerEndpointAuthConfig;
-			using var client = endpoint.GetDockerClientBuilder(Guid.NewGuid()).Build();
+			using var client = DockerEndpoint.CreateClient(endpoint);
 			await client.System.PingAsync(deadline.Token).ConfigureAwait(false);
 			var info = await client.System.GetSystemInfoAsync(deadline.Token).ConfigureAwait(false);
 			return new ContainerBackendInfo(
@@ -64,16 +70,23 @@ public sealed class DockerContainerBackend : IContainerBackend, IContainerBacken
 				[]
 			);
 		}
-		catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+		catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
 		{
-			return new ContainerBackendInfo(
-				Name,
-				IsAvailable: false,
-				IsCompatible: false,
-				Version: string.Empty,
-				MissingComponents: [$"{exception.GetType().Name}: {exception.Message}"]
+			return Unavailable(
+				$"The Docker daemon at {endpoint.Endpoint} did not respond within {probeTimeout.TotalSeconds:0} seconds. "
+					+ "Check that it is running and reachable, or point DOCKER_HOST at a running daemon."
 			);
 		}
+		catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+		{
+			return Unavailable(
+				$"The Docker daemon at {endpoint.Endpoint} could not be reached ({exception.GetType().Name}: {exception.Message}). "
+					+ "Check that it is running, or point DOCKER_HOST at a running daemon."
+			);
+		}
+
+		ContainerBackendInfo Unavailable(string reason) =>
+			new(Name, IsAvailable: false, IsCompatible: false, Version: string.Empty, MissingComponents: [reason]);
 	}
 
 	/// <inheritdoc />
@@ -146,8 +159,7 @@ public sealed class DockerContainerBackend : IContainerBackend, IContainerBacken
 		cancellationToken.ThrowIfCancellationRequested();
 		if (configuration.RegistryCredentials is { } credentials && configuration.PullPolicy != Images.PullPolicy.Never)
 		{
-			var endpoint = TestcontainersSettings.OS.DockerEndpointAuthConfig;
-			using var client = endpoint.GetDockerClientBuilder(Guid.NewGuid()).Build();
+			using var client = DockerEndpoint.CreateClient();
 			var pull = configuration.PullPolicy == Images.PullPolicy.Always;
 			if (!pull)
 			{
