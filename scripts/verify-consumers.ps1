@@ -37,6 +37,9 @@
 	  23  net10.0 + Aspire adapter                                  -> builds, no backend required
 	  24  plain net11.0 + WSL backend (the runtime-async facade)      -> builds, wsl registration generated
 	  25  net11.0 + umbrella Purview.Containers + modules (one ref)   -> builds, both registrations generated
+	  26  net11 windows + PlatformTarget=arm64                        -> fails PCC0002 (the backend is x64 only)
+	  27  net11 windows + RuntimeIdentifier=win-arm64                -> fails PCC0002 (the backend is x64 only)
+	  28  plain net10.0 + WSL backend (portable facade)              -> builds, x64 payload (wslc/) copied
 
 .PARAMETER FeedPath
 	Folder holding the packed .nupkg files. Defaults to <repo>/artifacts.
@@ -500,6 +503,17 @@ public static class Program
 		-Items $umbrellaItems `
 		-Sources @{ 'Smoke.Auto.cs' = $autoSource } `
 		-RequireText @('WslContainerBackend.Create()', 'DockerContainerBackend.Create()')
+
+	New-ConsumerCase -Id '26' -Name 'net11 windows + PlatformTarget=arm64 (x64 only)' `
+		-Properties "$sdkVersion<PlatformTarget>arm64</PlatformTarget>" -Expect 'PCC0002'
+
+	New-ConsumerCase -Id '27' -Name 'net11 windows + RuntimeIdentifier=win-arm64 (x64 only)' `
+		-Properties "$sdkVersion<RuntimeIdentifier>win-arm64</RuntimeIdentifier>" -Expect 'PCC0002'
+
+	New-ConsumerCase -Id '28' -Name 'plain net10.0 + WSL backend copies the x64 payload' `
+		-Framework '<TargetFramework>net10.0</TargetFramework>' `
+		-Sources @{ 'Smoke.Portable.cs' = $portableSource } `
+		-RequireFile 'wslcsdk.dll'
 )
 
 

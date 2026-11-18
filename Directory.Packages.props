@@ -28,6 +28,13 @@
 	-->
 	<PropertyGroup>
 		<MicrosoftWSLContainersVersion>3.0.5</MicrosoftWSLContainersVersion>
+		<!--
+		  The oldest WSL release the backend accepts. The WSL Containers SDK requires a WSL at least as new
+		  as itself, so this follows the SDK pin unless a newer floor is needed. It is stamped into the
+		  Purview.Containers.Wsl assembly (AssemblyMetadata) and checked at run time, so a host on an older
+		  WSL is reported as incompatible with the fix (update WSL) rather than failing obscurely.
+		-->
+		<MinimumWslVersion>$(MicrosoftWSLContainersVersion)</MinimumWslVersion>
 		<WindowsSdkRefPackageVersion>10.0.26100.80</WindowsSdkRefPackageVersion>
 		<TUnitVersion>1.87.0</TUnitVersion>
 	</PropertyGroup>

@@ -5,7 +5,8 @@ throwaway Linux containers for .NET integration testing built directly on the `M
 3.0.5 managed API, with **no Docker installation**, Docker.DotNet or Testcontainers dependency.
 Lifecycle, images, named networks and aliases, Linux capabilities and session host-loopback support all
 use the managed SDK. Capabilities still missing from it use a bounded `wslc` CLI fallback in the same
-session: entrypoint/user/labels, reuse, file copy and Dockerfile builds require `wslc` on PATH.
+session: entrypoint/user/labels, reuse, file copy and Dockerfile builds require the `wslc` CLI that
+ships with WSL (found on PATH or at `%ProgramFiles%\WSL\wslc.exe`).
 
 ```bash
 dotnet add package Purview.Containers.Wsl
@@ -29,13 +30,21 @@ consuming assembly. To also run the same test code on Docker in Linux CI, refere
 
 ## Requirements
 
-- Windows 11 or Windows Server 2025 with **WSL Containers** (`wsl --install --no-distribution`).
+- **An x64 Windows host where WSL 2 runs** (Windows 11, Windows 10 version 2004 or later with current
+  updates, or Windows Server 2025), with virtualisation enabled in the firmware and the Virtual Machine
+  Platform feature on. ARM64 and x86 are not supported.
+- **WSL 3.0.5 or later** from the stable channel: `wsl --install --no-distribution` (new install) or
+  `wsl --update`. No `--pre-release` channel is needed. The floor follows the bundled
+  `Microsoft.WSL.Containers` SDK and is checked at run time; an older WSL is reported with the fix. The
+  library adds no Windows-version check of its own: WSL decides, and reports `WSL_E_OS_NOT_SUPPORTED`.
+  Tested on Windows 11 23H2 and Windows Server 2025; the full list is in the
+  [host requirements](https://github.com/purview-dev/containers/blob/main/docs/wiki/Consumer-Requirements.md#host-requirements-wsl-containers-backend).
 - **A .NET 10 or .NET 11 project** (.NET 8 and .NET 9 are not supported). The recommended target
   framework is platform-neutral (`net10.0` or `net11.0`): it binds the facade and gives you automatic
   WSLC-or-Docker selection. A Windows target framework
-  (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`, x64 or arm64) binds the implementation
+  (`net10.0-windows10.0.19041.0` or `net11.0-windows10.0.19041.0`, x64 only; ARM64 is not supported) binds the implementation
   directly. Anything older than .NET 10, or a Windows TFM below Windows 10.0.19041.0, fails the build with
-  `PCC0001`; a 32-bit Windows consumer fails with `PCC0002`; and without the packages' MSBuild defaults a
+  `PCC0001`; a non-x64 (ARM64 or x86) Windows consumer fails with `PCC0002`; and without the packages' MSBuild defaults a
   stale `WindowsSdkPackageVersion` fails with `CS1705`.
 - This package supplies the `buildTransitive` defaults for `WindowsSdkPackageVersion` and
   `PlatformTarget` that every module package inherits, and (for a platform-neutral consumer on a Windows
@@ -43,7 +52,7 @@ consuming assembly. To also run the same test code on Docker in Linux CI, refere
   reference and the `EnableWindowsTargeting` workaround for non-Windows CI agents are in the
   [consumer requirements](https://github.com/purview-dev/containers/blob/main/docs/wiki/Consumer-Requirements.md).
 - Verify the host with `wsl --version` and `wslc version`. The library never installs or updates WSL
-  itself; `WslContainerRuntime.GetInfoAsync()` reports what is missing.
+  itself; `WslContainerRuntime.GetInfoAsync()` reports what is missing and how to fix it.
 
 ## Quick start
 
@@ -96,7 +105,7 @@ are available. Exec/stop cancellation is propagated, not returned as a successfu
 Synchronous native SDK calls cannot be interrupted safely. Managed waits and CLI processes are
 bounded, but a blocked native call can outlive cancellation. CLI creation currently rejects privileged
 mode combined with CLI-only features and multi-line environment values. See
-[capabilities and cancellation](https://github.com/purview-dev/containers/blob/main/docs/wiki/Backend-Capabilities.md).
+[capabilities and cancellation](https://github.com/purview-dev/containers/blob/main/docs/wiki/guide/Backend-Capabilities.md).
 
 `IContainer` (and `WslContainer`) exposes `StartAsync`, `StopAsync`, `ExecAsync`, `GetMappedPublicPort`,
 `GetMappedPublicPorts`, `GetLogsAsync(LogOutput?)` and a tailing `IAsyncEnumerable<ContainerLogEntry>`
@@ -180,9 +189,9 @@ raw command/build output.
 
 See the [project wiki](https://github.com/purview-dev/containers/blob/main/docs/wiki/Home.md):
 [Getting Started](https://github.com/purview-dev/containers/blob/main/docs/wiki/Getting-Started.md),
-[Architecture](https://github.com/purview-dev/containers/blob/main/docs/wiki/Architecture.md),
-[Lifecycle](https://github.com/purview-dev/containers/blob/main/docs/wiki/Lifecycle.md),
-[Networking](https://github.com/purview-dev/containers/blob/main/docs/wiki/Networking.md) and
-[Wait Strategies](https://github.com/purview-dev/containers/blob/main/docs/wiki/Wait-Strategies.md).
+[Architecture](https://github.com/purview-dev/containers/blob/main/docs/wiki/contributing/Architecture.md),
+[Lifecycle](https://github.com/purview-dev/containers/blob/main/docs/wiki/guide/Lifecycle.md),
+[Networking](https://github.com/purview-dev/containers/blob/main/docs/wiki/guide/Networking.md) and
+[Wait Strategies](https://github.com/purview-dev/containers/blob/main/docs/wiki/guide/Wait-Strategies.md).
 Ready-made service modules ship as `Purview.Containers.PostgreSql`, `Redis`, `MsSql`, `RabbitMq`,
 `Azurite`, `Nats`, `MySql` and `AzureKeyVaultEmulator`.

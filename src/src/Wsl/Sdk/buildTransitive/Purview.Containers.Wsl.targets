@@ -6,9 +6,10 @@
   has been evaluated, so an explicit PlatformTarget or RuntimeIdentifier always wins. The values
   set here are defaults only.
 
-  PlatformTarget: wslcsdk.dll (the native WSL Containers SDK) ships for win-x64 and win-arm64
-  only. A consumer left on the default AnyCPU is corrected to x64 here; an explicit x86 (32-bit)
-  consumer fails with PCC0002 instead of failing later at runtime with a load error.
+  PlatformTarget: the backend supports x64 only - the Windows implementation is compiled for x64 and
+  only the win-x64 native SDK (wslcsdk.dll) is deployed. A consumer left on the default AnyCPU is
+  corrected to x64 here; an explicit x86 or arm64 consumer fails with PCC0002 instead of failing later
+  at runtime with a load error.
 
   Target framework: because build and buildTransitive assets are framework-agnostic, NuGet does
   not reject an incompatible target framework at restore time with NU1202 - it silently
@@ -23,9 +24,9 @@
 -->
 <Project>
 	<!--
-	  PlatformTarget default. wslcsdk.dll (the native WSL Containers SDK) ships for win-x64 and win-arm64
-	  only, so a Windows consumer left on the default AnyCPU is corrected to x64 here; a 32-bit consumer
-	  fails with PCC0002 rather than a load error at run time. A platform-neutral consumer (the facade) is
+	  PlatformTarget default. The backend supports x64 only, so a Windows consumer left on the default
+	  AnyCPU is corrected to x64 here; an x86 or arm64 consumer fails with PCC0002 rather than a load
+	  error at run time. A platform-neutral consumer (the facade) is
 	  left alone: it may run on any architecture, and only the Windows host needs the native bit.
 	-->
 	<PropertyGroup Condition="'$(RuntimeIdentifier)' == '' AND '$(TargetPlatformIdentifier)' == 'Windows'">
@@ -84,14 +85,14 @@
 			<_PurviewContainersWslIsWindows Condition="'$(TargetPlatformIdentifier)' == 'Windows'"
 				>true</_PurviewContainersWslIsWindows>
 			<_PurviewContainersWslPlatformTargetSupported
-				Condition="'$(_PurviewContainersWslIsWindows)' != 'true' OR '$(PlatformTarget)' == 'x64' OR '$(PlatformTarget)' == 'arm64' OR ('$(PlatformTarget)' == '' AND '$(RuntimeIdentifier)' != '')"
+				Condition="'$(_PurviewContainersWslIsWindows)' != 'true' OR '$(PlatformTarget)' == 'x64' OR ('$(PlatformTarget)' == '' AND $(RuntimeIdentifier.EndsWith('-x64')))"
 				>true</_PurviewContainersWslPlatformTargetSupported>
 		</PropertyGroup>
 
 		<Error
 			Code="PCC0002"
 			Condition="'$(_PurviewContainersWslPlatformTargetSupported)' != 'true'"
-			Text="Purview.Containers.Wsl requires a 64-bit (x64 or arm64) consumer on a Windows target framework: wslcsdk.dll ships for win-x64 and win-arm64 only. PlatformTarget is '$(PlatformTarget)'. Remove the PlatformTarget property to accept the x64 default, set it to x64 or arm64, or select a matching RuntimeIdentifier. See docs/wiki/Consumer-Requirements.md."
+			Text="Purview.Containers.Wsl requires an x64 consumer on a Windows target framework: the WSL Containers backend supports x64 only (ARM64 and x86 are not supported). PlatformTarget is '$(PlatformTarget)' and RuntimeIdentifier is '$(RuntimeIdentifier)'. Remove the PlatformTarget property to accept the x64 default, set it to x64, or select an x64 RuntimeIdentifier (win-x64). See docs/wiki/Consumer-Requirements.md."
 		/>
 	</Target>
 
@@ -108,12 +109,8 @@
 		Condition="'$(TargetFramework)' != '' AND '$(OS)' == 'Windows_NT' AND '$(TargetPlatformIdentifier)' != 'Windows'"
 	>
 		<PropertyGroup>
-			<_PurviewContainersWslPayloadRid
-				Condition="'$(RuntimeIdentifier)' == 'win-arm64' OR '$(PlatformTarget)' == 'arm64'"
-				>win-arm64</_PurviewContainersWslPayloadRid>
-			<_PurviewContainersWslPayloadRid Condition="'$(_PurviewContainersWslPayloadRid)' == ''"
-				>win-x64</_PurviewContainersWslPayloadRid>
-			<_PurviewContainersWslPayloadSource>$(MSBuildThisFileDirectory)..\payload\$(_PurviewContainersWslPayloadRid)\</_PurviewContainersWslPayloadSource>
+			<!-- x64 only: on any other process architecture the facade reports the backend unavailable. -->
+			<_PurviewContainersWslPayloadSource>$(MSBuildThisFileDirectory)..\payload\win-x64\</_PurviewContainersWslPayloadSource>
 		</PropertyGroup>
 
 		<ItemGroup Condition="Exists('$(_PurviewContainersWslPayloadSource)')">

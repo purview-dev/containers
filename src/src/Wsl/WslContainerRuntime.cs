@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using Microsoft.WSL.Containers;
 using Purview.Containers.Runtime;
 using Win32Exception = System.ComponentModel.Win32Exception;
@@ -68,16 +69,32 @@ public sealed class WslContainerRuntime : IContainerRuntime
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 		await Task.Yield();
+		// Every reason reported here is actionable text from WslRequirements, never a bare SDK enum name
+		// or exception type: it is what ContainerBackendUnavailableException shows the consumer.
+		if (WslRequirements.DescribeUnsupportedProcess(RuntimeInformation.ProcessArchitecture) is { } process)
+		{
+			return Unavailable(process);
+		}
+
 		try
 		{
-			var version = WslcService.GetVersion();
+			var serviceVersion = WslcService.GetVersion();
+			Version installed = new((int)serviceVersion.Major, (int)serviceVersion.Minor, (int)serviceVersion.Revision);
 			var missing = WslcService.GetMissingComponents();
-			var compatible = !missing.Contains(Component.SdkNeedsUpdate);
+			List<string> reasons = [.. missing.Select(component => WslRequirements.Describe(component, installed))];
+
+			// The SDK reports a WSL that is too old for it only indirectly, so the floor is checked here.
+			var tooOld = WslRequirements.DescribeVersion(installed);
+			if (tooOld is not null && !missing.Contains(Component.WslPackage))
+			{
+				reasons.Add(tooOld);
+			}
+
 			return new WslContainerRuntimeInfo(
-				$"{version.Major}.{version.Minor}.{version.Revision}",
-				missing.Select(component => component.ToString()).ToArray(),
-				missing.Count == 0,
-				compatible
+				installed.ToString(3),
+				reasons,
+				IsAvailable: missing.Count == 0,
+				IsCompatible: !missing.Contains(Component.SdkNeedsUpdate) && tooOld is null
 			);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException)
@@ -85,13 +102,11 @@ public sealed class WslContainerRuntime : IContainerRuntime
 			// The SDK projection or its native component may be absent even on Windows (for example a
 			// host with Docker but no WSL Containers). "Unavailable" is a result, not an exception:
 			// callers use this probe to decide whether to skip or select another backend.
-			return new WslContainerRuntimeInfo(
-				Version: string.Empty,
-				MissingComponents: [$"{exception.GetType().Name}: {exception.Message}"],
-				IsAvailable: false,
-				IsCompatible: false
-			);
+			return Unavailable(WslRequirements.Describe(exception));
 		}
+
+		static WslContainerRuntimeInfo Unavailable(string reason) =>
+			new(Version: string.Empty, MissingComponents: [reason], IsAvailable: false, IsCompatible: false);
 	}
 
 	/// <inheritdoc />

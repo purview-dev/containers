@@ -71,7 +71,10 @@ public sealed class WslContainerBackend : IContainerBackend, IContainerBackendPr
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException)
 		{
-			return Unavailable($"{exception.GetType().Name}: {exception.Message}");
+			return Unavailable(
+				$"The WSL Containers implementation failed while probing the host ({exception.GetType().Name}: "
+					+ $"{exception.Message}). Check that WSL is installed and up to date ('wsl --update')."
+			);
 		}
 	}
 

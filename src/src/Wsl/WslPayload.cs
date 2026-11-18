@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 
 namespace Purview.Containers.Wsl;
@@ -51,19 +52,31 @@ static class WslPayload
 	static IContainerBackend? DefaultBackend;
 	static string? Failure;
 
-	/// <summary>True when this host could possibly run WSL Containers.</summary>
-	internal static bool IsHostSupported => OperatingSystem.IsWindows();
+	/// <summary>
+	/// True when this process could possibly run WSL Containers: a Windows host and an x64 process (the
+	/// implementation and the only shipped native SDK are x64).
+	/// </summary>
+	internal static bool IsHostSupported => DescribeUnsupportedHost() is null;
+
+	/// <summary>The reason this process can never run the backend, or <c>null</c> when it might.</summary>
+	internal static string? DescribeUnsupportedHost() =>
+		!OperatingSystem.IsWindows() ? "WSL Containers requires a Windows host."
+		: RuntimeInformation.ProcessArchitecture != Architecture.X64
+			? "The WSL Containers backend supports x64 processes only; this process is "
+				+ $"{RuntimeInformation.ProcessArchitecture}. Run the tests as an x64 process, or use the "
+				+ "Docker backend."
+		: null;
 
 	/// <summary>
 	/// Returns the Windows implementation's backend, or <c>null</c> when this host cannot run WSLC
-	/// (non-Windows), the payload is absent, or it failed to load. The reason is available from
-	/// <see cref="FailureReason" />.
+	/// (non-Windows or non-x64), the payload is absent, or it failed to load. The reason is available
+	/// from <see cref="FailureReason" />.
 	/// </summary>
 	internal static IContainerBackend? TryCreateBackend(WslContainerRuntimeOptions? options = null)
 	{
-		if (!IsHostSupported)
+		if (DescribeUnsupportedHost() is { } unsupported)
 		{
-			Failure = "WSL Containers requires a Windows host.";
+			Failure = unsupported;
 			return null;
 		}
 
@@ -161,8 +174,10 @@ static class WslPayload
 		}
 
 		Failure ??=
-			"The WSL Containers implementation payload was not found. Reference 'Purview.Containers.Wsl' "
-			+ $"with the Windows payload deployed (looked in '{string.Join("', '", CandidateDirectories())}').";
+			"The WSL Containers implementation payload (wslc/) was not found next to the application "
+			+ $"(looked in '{string.Join("', '", CandidateDirectories())}'). It is copied there by the "
+			+ "Purview.Containers.Wsl package when the project is built on Windows: rebuild on a Windows host, "
+			+ $"or set {DirectoryEnvironmentVariable} to the folder that holds it.";
 		return null;
 	}
 
