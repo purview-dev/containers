@@ -53,16 +53,18 @@ Microsoft types (`Session`, `Container`, `Process`, `ContainerSettings`, …) ar
 ## Target frameworks
 
 Every package ships `net10.0` and `net11.0` assets. **.NET 8 and .NET 9 are dropped**; the contract is in
-[Consumer Requirements](Consumer-Requirements.md). Purview.BuildSdk's `Current` target-framework set
-supplies that pair; the repository does not hand-maintain it.
+[Consumer Requirements](Consumer-Requirements.md). Purview.BuildSdk's `Supported` target-framework set
+(selected in `src/Directory.Build.props`) supplies that pair; the repository does not hand-maintain it,
+and the WSL backend derives its Windows builds from the same set.
 
 - `net10.0` is the floor. A consumer that has not moved to .NET 11 keeps the classic compiler-generated
   async state machines and the .NET 10 library surface.
 - `net11.0` is compiled with `runtime-async=on` and the C# 15 updated memory-safety rules
   (`MemorySafetyRules=2`). The runtime manages suspension and resumption instead of compiler-generated
   state machines, which lowers async overhead and makes live stack traces (profiler, `new StackTrace()`,
-  debugger) name the real methods. `PurviewRuntimeAsync=false` opts out for a local experiment;
-  `Wsl.UnitTests/BuildFeatureTests.cs` guards that the shipped default is on.
+  debugger) name the real methods. Purview.BuildSdk 2.2.0 makes both features opt-in, so
+  `src/Directory.Build.props` enables them (`PurviewRuntimeAsync=true`, `MemorySafetyRules=2`);
+  `Wsl.UnitTests/BuildFeatureTests.cs` guards that both are on in the shipped build.
 - The WSL Containers backend uses the same split for its Windows builds, and a single implementation
   payload serves both portable targets because a .NET 11 process loads a .NET 10 assembly.
 

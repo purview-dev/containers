@@ -131,20 +131,22 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   dropped): `Purview.Containers.Core` (abstractions) and the service modules target **`net10.0` and
   `net11.0`** on any platform. `Purview.Containers.Wsl` is **multi-target**: `net10.0`/`net11.0` (portable
   facades) and `net10.0-windows10.0.19041.0`/`net11.0-windows10.0.19041.0` (the WSLC implementations).
-  Purview.BuildSdk's `Current` target-framework set supplies the `net10.0;net11.0` list to the library
-  subtree, while `src/Directory.Build.props` pins that set to `net11.0-windows10.0.19041.0` for
-  `src/tests` so the WSLC tests bind the implementation; `Wsl.csproj` adds the Windows
-  builds with a platform-identifier condition (never a literal TFM). The Docker integration projects
+  `src/Directory.Build.props` selects Purview.BuildSdk's `Supported` target-framework set
+  (`PurviewTargetFrameworkSet=Supported`, `net10.0;net11.0` in BuildSdk 2.2.0) for every project that
+  declares no target of its own, and pins that set to `net11.0-windows10.0.19041.0` for `src/tests` so
+  the WSLC tests bind the implementation. `Wsl.csproj` derives its four targets from the same set (each
+  supported framework plus its `-windows10.0.19041.0` build) and selects files with a
+  platform-identifier condition (never a literal TFM). The Docker integration projects
   declare `net10.0` directly so they run on Linux **and** keep the lowest supported framework under test.
   The contract, the failures that enforce it and the CI workarounds are documented in
   [Consumer Requirements](docs/wiki/Consumer-Requirements.md); update that page whenever a target
   framework, the `buildTransitive` defaults, the payload layout or the `PCC0001`/`PCC0002` guards change.
-- The `net11.0` library builds are compiled with `runtime-async=on` (`PurviewRuntimeAsync=false` opts out):
-  Purview.BuildSdk applies it to every `net11.0`+ target together with the C# 15
-  `updated-memory-safety-rules` tier (`MemorySafetyRules=2`), so the repository does not repeat either
-  switch. The runtime manages suspension instead of compiler-generated state machines, which lowers async
-  overhead and makes live stack traces name the real methods. `Wsl.UnitTests/BuildFeatureTests.cs` guards
-  it. The `net10.0` builds keep the classic state machines. Because `closed` hierarchies require
+- The `net11.0` builds are compiled with `runtime-async=on` and the C# 15
+  `updated-memory-safety-rules` tier. Purview.BuildSdk 2.2.0 makes both **opt-in**, so
+  `src/Directory.Build.props` sets `PurviewRuntimeAsync=true` and `MemorySafetyRules=2` explicitly; do not
+  remove them. The runtime manages suspension instead of compiler-generated state machines, which lowers
+  async overhead and makes live stack traces name the real methods. `Wsl.UnitTests/BuildFeatureTests.cs`
+  guards both. The `net10.0` builds keep the classic state machines. Because `closed` hierarchies require
   `System.Runtime.CompilerServices.IsClosedTypeAttribute` and C# unions require `UnionAttribute` (both
   .NET 11 runtime types), neither is used: no public hierarchy here is closed anyway — `WaitStrategy`,
   `ContainerException` and the backend interfaces are documented extension points.

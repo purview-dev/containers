@@ -7,9 +7,10 @@ request.
 
 - Windows with **WSL Containers** for integration tests; see [Getting Started](Getting-Started.md).
 - .NET SDK 11 (pinned in `global.json` as `11.0.100`).
-- The library projects split by framework: Purview.BuildSdk's `Current` target-framework set gives the
-  backend-neutral abstractions and the service modules `net10.0;net11.0` (the `net11.0` build adds
-  `runtime-async=on` and the C# 15 updated memory-safety rules).
+- The library projects split by framework: Purview.BuildSdk's `Supported` target-framework set
+  (selected in `src/Directory.Build.props`) gives the backend-neutral abstractions and the service
+  modules `net10.0;net11.0` (the `net11.0` build adds `runtime-async=on` and the C# 15 updated
+  memory-safety rules, both opted into explicitly in `src/Directory.Build.props`).
   `src/src/Wsl/Wsl.csproj` is multi-target (`net10.0`/`net11.0` facades plus
   `net10.0-windows10.0.19041.0`/`net11.0-windows10.0.19041.0` implementations) because the WSL Containers
   projection is Windows-only. `src/tests` pins the same set to
