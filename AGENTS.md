@@ -239,6 +239,23 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
 - Use the shared `WslcTest` helper in `src/tests/SharedTestingFramework` for WSLC integration
   skip/availability checks; the Docker suites use their own `DockerTest` helper. Unit tests may use the
   modules' `BuildConfigurationForTesting()` internal hook.
+- **Unit tests must never load the WSL Containers SDK at run time.** The `*.UnitTests` projects run on
+  the shared **Linux** CI agent (`ubuntu-latest`). The `Microsoft.WSL.Containers` assembly's module
+  initializer loads the Windows-only native `wslcsdk.dll`, so the first run-time use of *any* SDK
+  type fails there with `TypeInitializationException` / `DllNotFoundException` (`Unable to load shared
+  library 'wslcsdk.dll'`), even though the same test passes on a Windows machine. In a unit test (and
+  in any code path a unit test reaches), never pass, box, construct, call or enumerate an SDK type
+  such as `Component`, `ServiceVersion` or `WslcService`.
+  - Keep testable logic SDK-free and map SDK values at the single call site that already runs
+    against the SDK. For example, `WslComponent` (in `WslRequirements.cs`) mirrors the SDK's
+    `Component` flags, and `WslContainerRuntime.GetInfoAsync` converts with
+    `(WslComponent)(int)component`.
+  - When mirroring an SDK enum, define its values *from* the SDK constants
+    (`VirtualMachinePlatform = Sdk.Component.VirtualMachinePlatform`). The compiler folds them into
+    this assembly, so the values cannot drift and nothing loads the SDK.
+  - Reproduce the Linux condition locally before pushing: delete every `wslcsdk.dll` under
+    `src/tests/Wsl.UnitTests/bin/<Configuration>/net11.0-windows10.0.19041.0/` and run
+    `Wsl.UnitTests`; rebuild to restore it.
 - `Wsl.UnitTests/ConsumerRequirementsTests.cs` guards the published target framework of the Windows
   build this project binds (`.NETCoreApp,Version=v11.0` plus `Windows10.0.19041.0`), and
   `Wsl.UnitTests/BuildFeatureTests.cs` guards that the net11.0 build has no compiler-generated async

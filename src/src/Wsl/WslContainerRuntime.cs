@@ -81,7 +81,10 @@ public sealed class WslContainerRuntime : IContainerRuntime
 			var serviceVersion = WslcService.GetVersion();
 			Version installed = new((int)serviceVersion.Major, (int)serviceVersion.Minor, (int)serviceVersion.Revision);
 			var missing = WslcService.GetMissingComponents();
-			List<string> reasons = [.. missing.Select(component => WslRequirements.Describe(component, installed))];
+			List<string> reasons =
+			[
+				.. missing.Select(component => WslRequirements.Describe((WslComponent)(int)component, installed)),
+			];
 
 			// The SDK reports a WSL that is too old for it only indirectly, so the floor is checked here.
 			var tooOld = WslRequirements.DescribeVersion(installed);

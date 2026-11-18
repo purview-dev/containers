@@ -1,6 +1,6 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
-using Microsoft.WSL.Containers;
+using Sdk = Microsoft.WSL.Containers;
 
 namespace Purview.Containers.Wsl;
 
@@ -15,6 +15,20 @@ namespace Purview.Containers.Wsl;
 /// <c>WSL_E_OS_NOT_SUPPORTED</c> HRESULT it raises on an unsupported Windows). The one floor enforced
 /// here is the WSL version, because the bundled SDK needs a WSL at least as new as itself.
 /// </remarks>
+/// <summary>
+/// The WSL Containers SDK's missing-component flags (<c>Microsoft.WSL.Containers.Component</c>), mirrored
+/// here so describing a component never touches the SDK assembly: its module initializer loads the
+/// Windows-only native <c>wslcsdk.dll</c>, which would fail anywhere else (for example the Linux CI
+/// agent that runs the unit tests). Each value is the SDK's own enum constant, which the compiler folds
+/// into this assembly: the values cannot drift, and nothing here loads the SDK at run time.
+/// </summary>
+enum WslComponent
+{
+	VirtualMachinePlatform = Sdk.Component.VirtualMachinePlatform,
+	WslPackage = Sdk.Component.WslPackage,
+	SdkNeedsUpdate = Sdk.Component.SdkNeedsUpdate,
+}
+
 static class WslRequirements
 {
 	/// <summary><c>WSL_E_OS_NOT_SUPPORTED</c>: the Windows version cannot run WSL Containers.</summary>
@@ -47,18 +61,20 @@ static class WslRequirements
 				+ "Run the tests as an x64 process, or use the Docker backend.";
 
 	/// <summary>The fix for one component the SDK reports as missing.</summary>
-	internal static string Describe(Component component, Version? installed) =>
+	internal static string Describe(WslComponent component, Version? installed) =>
 		component switch
 		{
-			Component.VirtualMachinePlatform =>
+			WslComponent.VirtualMachinePlatform =>
 				"The Virtual Machine Platform Windows feature is not enabled. Enable virtualisation in the "
 					+ $"firmware, run '{InstallCommand}' from an elevated terminal (or enable 'Virtual Machine "
 					+ "Platform' in Windows Features), and restart Windows.",
-			Component.WslPackage => $"WSL is not installed, or is too old for WSL Containers. Run '{InstallCommand}' "
-				+ $"(or '{UpdateCommand}' if WSL is already installed); WSL {MinimumWslVersion} or later is required.",
-			Component.SdkNeedsUpdate => $"The installed WSL{(installed is null ? string.Empty : $" ({installed})")} is "
-				+ $"newer than the WSL Containers SDK bundled with Purview.Containers.Wsl ({SdkVersion}). Update the "
-				+ "Purview.Containers.Wsl package to a release built against this WSL.",
+			WslComponent.WslPackage =>
+				$"WSL is not installed, or is too old for WSL Containers. Run '{InstallCommand}' "
+					+ $"(or '{UpdateCommand}' if WSL is already installed); WSL {MinimumWslVersion} or later is required.",
+			WslComponent.SdkNeedsUpdate =>
+				$"The installed WSL{(installed is null ? string.Empty : $" ({installed})")} is "
+					+ $"newer than the WSL Containers SDK bundled with Purview.Containers.Wsl ({SdkVersion}). Update the "
+					+ "Purview.Containers.Wsl package to a release built against this WSL.",
 			_ => $"WSL Containers reports a missing component: {component}. Run '{UpdateCommand}'.",
 		};
 

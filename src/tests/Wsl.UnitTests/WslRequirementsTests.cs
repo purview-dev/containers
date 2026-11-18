@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using Microsoft.WSL.Containers;
 
 namespace Purview.Containers.Wsl;
 
@@ -45,17 +44,17 @@ public class WslRequirementsTests
 	[Test]
 	public async Task Describe_VirtualMachinePlatform_ExplainsTheWindowsFeature()
 	{
-		var reason = WslRequirements.Describe(Component.VirtualMachinePlatform, installed: null);
+		var reason = WslRequirements.Describe(WslComponent.VirtualMachinePlatform, installed: null);
 
 		await Assert.That(reason).Contains("Virtual Machine Platform");
 		await Assert.That(reason).Contains("wsl --install --no-distribution");
-		await Assert.That(reason).DoesNotContain(nameof(Component.VirtualMachinePlatform));
+		await Assert.That(reason).DoesNotContain(nameof(WslComponent.VirtualMachinePlatform));
 	}
 
 	[Test]
 	public async Task Describe_WslPackage_GivesTheInstallCommandAndTheMinimum()
 	{
-		var reason = WslRequirements.Describe(Component.WslPackage, installed: null);
+		var reason = WslRequirements.Describe(WslComponent.WslPackage, installed: null);
 
 		await Assert.That(reason).Contains("wsl --install --no-distribution");
 		await Assert.That(reason).Contains("wsl --update");
@@ -65,7 +64,7 @@ public class WslRequirementsTests
 	[Test]
 	public async Task Describe_SdkNeedsUpdate_PointsAtThePackageNotWsl()
 	{
-		var reason = WslRequirements.Describe(Component.SdkNeedsUpdate, new Version(3, 1, 0));
+		var reason = WslRequirements.Describe(WslComponent.SdkNeedsUpdate, new Version(3, 1, 0));
 
 		await Assert.That(reason).Contains("3.1.0");
 		await Assert.That(reason).Contains("Update the Purview.Containers.Wsl package");
