@@ -14,9 +14,6 @@ metadata:
 Throwaway Linux containers for .NET tests, behind one API, over either **WSL Containers** (no Docker
 installation on Windows) or **Docker** (anywhere). The same test code runs on both.
 
-> **Experimental and prerelease.** The API, defaults and packaging rules can change between releases.
-> Pin the version you adopt.
-
 ## Which package
 
 | Package | Use it when |

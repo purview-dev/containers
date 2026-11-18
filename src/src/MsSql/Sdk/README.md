@@ -21,8 +21,6 @@ connection-string generation and readiness probing.
   [consumer requirements](https://github.com/purview-dev/containers/blob/main/docs/wiki/Consumer-Requirements.md).
 - **Docker backend:** any reachable Docker daemon (`docker info`), with a `net10.0` or `net11.0` project on any
   platform. No Windows target framework and no `PCC` guards apply.
-- **Experimental:** the API, defaults and packaging can change between prereleases; there is no
-  production support guarantee.
 
 ## Quick start
 

@@ -67,6 +67,3 @@ not change.
 - [Using it in your tests (auto)](https://github.com/purview-dev/containers/blob/main/docs/wiki/Using-in-Your-Tests.md)
 - [Backends: WSLC or Docker](https://github.com/purview-dev/containers/blob/main/docs/wiki/Backends.md)
 - [Modules](https://github.com/purview-dev/containers/blob/main/docs/wiki/Modules.md)
-
-> **Experimental.** The public API, defaults and packaging rules can change between prereleases; there is
-> no production support guarantee.

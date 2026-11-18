@@ -224,7 +224,7 @@ dotnet add package Purview.Containers.Wsl
 		<ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.1" />
+		<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.14" />
 	</ItemGroup>
 </Project>
 ```
@@ -253,7 +253,7 @@ dotnet add package Purview.Containers.Docker
 		<ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Purview.Containers.Docker" Version="1.0.0-prerelease.1" />
+		<PackageReference Include="Purview.Containers.Docker" Version="1.0.0-prerelease.14" />
 	</ItemGroup>
 </Project>
 ```
@@ -278,7 +278,7 @@ dotnet add package Purview.Containers
 		<ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Purview.Containers" Version="1.0.0-prerelease.1" />
+		<PackageReference Include="Purview.Containers" Version="1.0.0-prerelease.14" />
 	</ItemGroup>
 </Project>
 ```

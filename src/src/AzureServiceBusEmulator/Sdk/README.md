@@ -28,8 +28,6 @@ its state in SQL Server), and needs a backend package (`Purview.Containers.Wsl` 
   which is x64 only and needs at least 2000 MB of memory in the WSLC session VM or Docker host. On ARM64,
   `WithSqlServerImage("mcr.microsoft.com/azure-sql-edge:latest")` is an alternative the emulator supports.
   SQL Server 2022 does not start on WSLC (it fails to create `/.system` as the non-root `mssql` user).
-- **Experimental:** the API, defaults and packaging can change between prereleases; there is no
-  production support guarantee.
 - The emulator is for local development and testing only; it is not a replacement for Azure Service Bus.
 
 ## Quick start

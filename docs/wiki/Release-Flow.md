@@ -9,9 +9,9 @@ applies that value to `Version` and `PackageVersion` for every project, so a rel
 bump — never a manual project-file edit. `package.json` also carries the repository, homepage and issue URLs
 that end up in each nuspec.
 
-The project is **experimental**, so versions stay on a `-prerelease.N` suffix: consumers should pin an
-exact version rather than float, and each bump can change the API or the
-[consumer requirements](Consumer-Requirements.md).
+Versions use a `-prerelease.N` suffix until the stable 1.0.0 release, which will include the WSL Containers
+backend. Until then, consumers should pin an exact version rather than float, and each bump can change
+the API or the [consumer requirements](Consumer-Requirements.md).
 
 ## Local commands
 
@@ -48,8 +48,9 @@ the run with the failing module's output.
 
 ## GitHub Actions
 
-- `.github/workflows/pr.yml` — pull requests build and test via the shared
-  `purview-dev/build/.github/workflows/purview-build.yml`, with pack and validation enabled.
+- `.github/workflows/pr.yml` — pull requests **and every push to `main`** build and test via the shared
+  `purview-dev/build/.github/workflows/purview-build.yml`, with pack and validation enabled, plus the
+  Docker and WSLC contract jobs. A push to `main` builds only; it never publishes.
 - `.github/workflows/release.yml` — a push to a **`release/**` branch** (or a manual `workflow_dispatch`)
   calls `purview-dev/build/.github/workflows/purview-release.yml` with `release-mode: NuGet`. It evaluates
   release eligibility and, when eligible, builds, tests, packs, publishes to NuGet and creates the

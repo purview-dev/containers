@@ -34,21 +34,16 @@ Testcontainers' `WithCleanUp`: containers are removed by default, `.WithCleanUp(
 for inspection, and `.WithAutoRemove()` is opted into separately. See
 [Capabilities and Cancellation](docs/wiki/Backend-Capabilities.md) for APIs, ownership and limits.
 
-> **Experimental.** This project is an experiment in running throwaway containers through Microsoft
-> WSL Containers. The public API, defaults and packaging rules can change between prereleases, and
-> there is no production support guarantee. Pin the exact package version you build against, and read
-> [Consumer Requirements](docs/wiki/Consumer-Requirements.md) before adopting it.
-
-> **Status: preview.** Backend-neutral abstractions, two backends (WSL Containers and Docker), wait
-> strategies, the `Image`/`Tag` parser, registry auth, observability, hardening, and **nine service
-> modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite, NATS, MySQL, Azure Key Vault Emulator, Azure Service Bus Emulator). On WSLC, **images are shared
-> by default** (`StorageMode.Shared`): sessions reuse a stable image store
-> (`%LOCALAPPDATA%\Purview\WslContainers\images`) so images are pulled once, not per session;
-> `StorageMode.PerSession` provides isolation. Move the store with `PURVIEW_CONTAINERS_STORAGE_PATH` or
-> `WslContainerRuntimeOptions.StoragePath`. Named volumes are retained by default; set
-> `PURVIEW_CONTAINERS_CLEAN_VOLUMES=true` (or `ContainerCleanup.CleanUpVolumesOnExit`) to delete the
-> volumes the library created when the process or session ends. Runnable samples live in
-> `samples/getting-started`.
+**Features.** Backend-neutral abstractions, two backends (WSL Containers and Docker), wait
+strategies, the `Image`/`Tag` parser, registry auth, observability, hardening, and **nine service
+modules** (PostgreSQL, Redis, SQL Server, RabbitMQ, Azurite, NATS, MySQL, Azure Key Vault Emulator, Azure
+Service Bus Emulator). On WSLC, **images are shared by default** (`StorageMode.Shared`): sessions reuse a
+stable image store (`%LOCALAPPDATA%\Purview\WslContainers\images`) so images are pulled once, not per
+session; `StorageMode.PerSession` provides isolation. Move the store with
+`PURVIEW_CONTAINERS_STORAGE_PATH` or `WslContainerRuntimeOptions.StoragePath`. Named volumes are retained
+by default; set `PURVIEW_CONTAINERS_CLEAN_VOLUMES=true` (or `ContainerCleanup.CleanUpVolumesOnExit`) to
+delete the volumes the library created when the process or session ends. Runnable samples live in
+`samples/getting-started`.
 
 **Documentation:** [Containers documentation](https://purview.dev/docs/containers/)
 

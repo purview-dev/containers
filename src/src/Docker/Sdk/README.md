@@ -69,6 +69,3 @@ PURVIEW_CONTAINERS_BACKEND=docker     # or "auto" (the default) to probe WSLC fi
   store and bind mounts are untouched.
 - Log tailing polls the accumulated output until the container stops, because the Testcontainers API
   exposes no positioned log stream.
-
-> **Experimental.** The public API, defaults and packaging rules can change between prereleases, and
-> there is no production support guarantee. Pin the exact package version you build against.

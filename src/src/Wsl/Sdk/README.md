@@ -44,8 +44,6 @@ consuming assembly. To also run the same test code on Docker in Linux CI, refere
   [consumer requirements](https://github.com/purview-dev/containers/blob/main/docs/wiki/Consumer-Requirements.md).
 - Verify the host with `wsl --version` and `wslc version`. The library never installs or updates WSL
   itself; `WslContainerRuntime.GetInfoAsync()` reports what is missing.
-- **Experimental:** this is an experiment in driving WSL Containers. The public API, defaults and
-  packaging rules can change between prereleases, and there is no production support guarantee.
 
 ## Quick start
 

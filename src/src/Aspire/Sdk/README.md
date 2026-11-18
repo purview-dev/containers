@@ -1,7 +1,5 @@
 # Purview.Containers.Aspire
 
-> **Experimental.** Pin the exact prerelease version; the API and defaults may change.
-
 Apply verified container bind-source resolution to any Aspire AppHost.
 
 ```csharp

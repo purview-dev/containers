@@ -1,10 +1,5 @@
 # Consumer Requirements
 
-> **Experimental.** `Purview.Containers.*` is an experimental project: the public API, the
-> defaults and these requirements can change between prereleases, and there is no production
-> support guarantee. Treat every version as a preview and pin the exact package version you build
-> against.
-
 The WSL Containers backend package is **multi-target**. It ships Windows builds
 (`net10.0-windows10.0.19041.0` and `net11.0-windows10.0.19041.0`, the implementations, built on the
 `Microsoft.WSL.Containers` projection) and platform-neutral builds (`net10.0` and `net11.0`, facades). A
@@ -180,8 +175,8 @@ runs on WSLC locally and Docker in CI with no further configuration:
 		<TargetFramework>net10.0</TargetFramework> <!-- auto: WSLC on Windows, Docker elsewhere -->
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Purview.Containers.PostgreSql" Version="1.0.0-prerelease.1" />
-		<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.1" />
+		<PackageReference Include="Purview.Containers.PostgreSql" Version="1.0.0-prerelease.14" />
+		<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.14" />
 	</ItemGroup>
 </Project>
 ```
@@ -269,7 +264,7 @@ unconditionally — every inner build is supported:
 	<TargetFrameworks>net10.0;net11.0;net10.0-windows10.0.19041.0</TargetFrameworks>
 </PropertyGroup>
 <ItemGroup>
-	<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.1" />
+	<PackageReference Include="Purview.Containers.Wsl" Version="1.0.0-prerelease.14" />
 </ItemGroup>
 ```
 

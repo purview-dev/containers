@@ -24,9 +24,6 @@ Everything runs on one of two backends; pick the one that matches your machine â
 - The full consumer contract, every error, and the `EnableWindowsTargeting` workaround for non-Windows CI
   agents live in [Consumer Requirements](Consumer-Requirements.md).
 
-> **Experimental.** The API, defaults and packaging rules can change between prereleases; there is no
-> production support guarantee.
-
 ## 1. Reference a package
 
 | Package | Use it when |

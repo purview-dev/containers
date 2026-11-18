@@ -9,11 +9,6 @@ capabilities the SDK does not expose. See [Capabilities and Cancellation](Backen
 This wiki is the project documentation hub. The packages are published under the
 `Purview.Containers.*` package IDs.
 
-> **Experimental.** This project is an experiment in running throwaway containers through Microsoft
-> WSL Containers. The public API, defaults and packaging rules can change between prereleases, and
-> there is no production support guarantee. Pin the exact package version you build against and read
-> [Consumer Requirements](Consumer-Requirements.md) before adopting it.
-
 ## Start here
 
 - [Getting Started](Getting-Started.md)

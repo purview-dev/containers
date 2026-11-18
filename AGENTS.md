@@ -164,8 +164,9 @@ whenever a target framework, a backend package or the `buildTransitive` assets c
   tests) registers explicitly instead — `WslcTest.EnsureBackendRegistered()`.
 - `src/Directory.Build.props` sets `EnableWindowsTargeting=true` because the shared CI agent is
   `ubuntu-latest`; removing it fails the pipeline with `NETSDK1100`.
-- The project is **experimental**: keep the experimental notice in `README.md`, `docs/wiki/Home.md` and
-  the package READMEs, and keep versions on a `-prerelease.N` suffix.
+- Versions stay on a `-prerelease.N` suffix until the stable 1.0.0 release, which includes the WSL
+  Containers backend. The docs, README and package READMEs must not carry experimental or preview
+  notices.
 
 ## Module rules
 
@@ -256,8 +257,10 @@ Commit messages follow Conventional Commits enforced by the `commit-msg` lefthoo
 ## Versioning and releases
 
 - `package.json` is the authoritative release and package version. Do not diverge project versions by hand.
-- `.github/workflows/pr.yml` builds and tests pull requests through the shared
-  `purview-dev/build/.github/workflows/purview-build.yml`, with pack and validation enabled.
+- `.github/workflows/pr.yml` builds and tests pull requests **and every push to `main`** through the
+  shared `purview-dev/build/.github/workflows/purview-build.yml`, with pack and validation enabled (plus
+  the Docker and WSLC contract jobs). A push to `main` never publishes; superseded PR runs are
+  cancelled, `main` runs are not.
 - `.github/workflows/release.yml` runs the shared release pipeline with `release-mode: NuGet` on a push to a
   `release/**` branch (or a manual dispatch), **not** on a push to `main`. Cut a release by merging the
   version bump into `main`, then pushing a `release/v…` branch named after the version from it (for
