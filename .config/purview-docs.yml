@@ -84,7 +84,8 @@ packages:
   - id: Purview.Containers.Environment
     description: Standalone bind-sharing resolver for Docker-compatible CLI consumers — verifies native, WSL and shared-remote paths; no backend dependency.
   - id: Purview.Containers.Aspire
-    description: Opt-in Aspire AppHost adapter that translates container bind sources with the Environment resolver.acknowledgments:
+    description: Opt-in Aspire AppHost adapter that translates container bind sources with the Environment resolver.
+acknowledgments:
   - name: Testcontainers for .NET
     url: https://github.com/testcontainers/testcontainers-dotnet
     description: The Docker backend is driven by Testcontainers and the module connection-string shapes follow it; Purview.Containers is not affiliated with or endorsed by the Testcontainers project.
